@@ -1,0 +1,51 @@
+{
+  "version": "0.1.0",
+  "capabilities": [
+    {
+      "name": "users.list",
+      "description": "List all users",
+      "kind": "query",
+      "tags": ["users"]
+    },
+    {
+      "name": "users.create",
+      "description": "Create a new user",
+      "kind": "action",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "email": {"type": "string", "format": "email"},
+          "name": {"type": "string"}
+        },
+        "required": ["email"]
+      },
+      "tags": ["users", "write"]
+    }
+  ],
+  "policies": [
+    {
+      "name": "rate_limit",
+      "effect": "limit",
+      "subject": {"capability_name": "api.*"},
+      "condition": {"max_rate_per_minute": 100}
+    }
+  ],
+  "workflows": [
+    {
+      "id": "user_onboarding",
+      "name": "user_onboarding",
+      "description": "Complete user onboarding flow",
+      "steps": [
+        {"id": "step1", "capability_name": "users.create", "arguments": {}},
+        {"id": "step2", "capability_name": "welcome.send", "arguments": {}}
+      ]
+    }
+  ],
+  "metadata": {
+    "provider_name": "my-service",
+    "provider_url": "https://api.example.com",
+    "capability_count": 2,
+    "policy_count": 1,
+    "workflow_count": 1
+  }
+}

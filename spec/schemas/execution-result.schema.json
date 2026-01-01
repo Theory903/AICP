@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/execution-result.json",
+  "title": "AICP Execution Result",
+  "description": "Normalized result of capability execution with agent guidance.",
+  "type": "object",
+  "required": ["status", "next"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "timeout", "rate_limited", "unavailable"],
+      "description": "Status of the execution"
+    },
+    "data": {
+      "description": "The result data from the execution"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if execution failed"
+    },
+    "error_code": {
+      "type": "string",
+      "description": "Machine-readable error code"
+    },
+    "execution_time_ms": {
+      "type": "number",
+      "description": "Execution time in milliseconds"
+    },
+    "next": {
+      "type": "object",
+      "description": "Agent guidance - what to do next (REQUIRED for AI-ease)",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["continue", "confirm", "retry", "cancel", "complete", "wait"],
+          "description": "Recommended next action"
+        },
+        "capability": {
+          "type": "string",
+          "description": "Next capability to call (if applicable)"
+        },
+        "arguments": {
+          "type": "object",
+          "description": "Suggested arguments for next capability"
+        },
+        "hint": {
+          "type": "string",
+          "description": "Human-readable hint for next step"
+        },
+        "message": {
+          "type": "string",
+          "description": "Message to display to user"
+        },
+        "workflow_id": {
+          "type": "string",
+          "description": "Workflow ID for continuation"
+        }
+      }
+    },
+    "rendered": {
+      "type": "string",
+      "description": "Pre-rendered display string"
+    },
+    "format_hint": {
+      "type": "string",
+      "enum": ["text", "json", "table", "code", "image"],
+      "description": "Hint for how to format the output"
+    },
+    "can_continue": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether execution can continue"
+    },
+    "continuation_hint": {
+      "type": "string",
+      "description": "Hint for continuation"
+    }
+  }
+}

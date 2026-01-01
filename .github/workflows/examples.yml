@@ -1,0 +1,22 @@
+name: Examples Smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: |
+          pip install -e ./packages/core
+          pip install -e ./examples/food-ordering
+          pip install -e ./examples/payment-transfer
+      - name: Run examples smoke test
+        run: make demo-food && make demo-payment

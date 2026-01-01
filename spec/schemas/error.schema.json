@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/error.json",
+  "title": "AICP Error",
+  "description": "Structured error with fix hints for AI agents.",
+  "type": "object",
+  "required": ["code", "message", "fix_hint"],
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Machine-readable error code"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable error message"
+    },
+    "fix_hint": {
+      "type": "string",
+      "description": "Hint for how to fix this error (for AI agents)"
+    },
+    "details": {
+      "type": "object",
+      "description": "Additional error details"
+    },
+    "field": {
+      "type": "string",
+      "description": "Field that caused the error (for validation errors)"
+    },
+    "suggested_value": {
+      "description": "Suggested value to fix the error"
+    },
+    "related": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Related error codes or fields"
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Trace ID for debugging"
+    }
+  }
+}

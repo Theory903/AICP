@@ -1,0 +1,16 @@
+{
+  "status": "success",
+  "data": {
+    "users": [
+      {"id": "1", "name": "Alice"},
+      {"id": "2", "name": "Bob"}
+    ]
+  },
+  "rendered": "Alice (id: 1)\nBob (id: 2)",
+  "format_hint": "table",
+  "can_continue": true,
+  "continuation_hint": "View user details with users.get",
+  "next": {
+    "action": "complete"
+  }
+}

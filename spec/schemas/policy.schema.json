@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/policy.json",
+  "title": "AICP Policy",
+  "description": "A policy defines rules for capability execution.",
+  "type": "object",
+  "required": ["name", "effect", "subject"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique name for this policy"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this policy does"
+    },
+    "effect": {
+      "type": "string",
+      "enum": ["allow", "deny", "ask", "limit"],
+      "description": "The effect of this policy when matched"
+    },
+    "subject": {
+      "$ref": "#/$defs/policySubject"
+    },
+    "condition": {
+      "$ref": "#/$defs/policyCondition"
+    },
+    "priority": {
+      "type": "integer",
+      "default": 0,
+      "description": "Higher priority policies are evaluated first"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata for the policy"
+    }
+  },
+  "$defs": {
+    "policySubject": {
+      "type": "object",
+      "properties": {
+        "capability_name": {
+          "type": "string",
+          "description": "Specific capability this policy applies to"
+        },
+        "capability_kind": {
+          "type": "string",
+          "enum": ["query", "action", "workflow", "async_action", "batch_action"],
+          "description": "Capability kind this policy applies to"
+        },
+        "provider": {
+          "type": "string",
+          "description": "Provider this policy applies to"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tags that must match for this policy"
+        }
+      }
+    },
+    "policyCondition": {
+      "type": "object",
+      "properties": {
+        "max_rate_per_minute": {
+          "type": "integer",
+          "description": "Maximum executions per minute allowed"
+        },
+        "max_amount": {
+          "type": "number",
+          "description": "Maximum amount (for financial operations)"
+        },
+        "require_confirmation": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether user confirmation is required"
+        },
+        "allowed_times": {
+          "type": "string",
+          "description": "Time range when execution is allowed (e.g., '09:00-17:00')"
+        },
+        "ip_whitelist": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IP addresses that are allowed"
+        },
+        "autonomous_execution": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this capability can be executed without human intervention"
+        }
+      }
+    }
+  }
+}

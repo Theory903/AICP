@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/discovery.json",
+  "title": "AICP Discovery Response",
+  "description": "Response from the AICP discovery endpoint.",
+  "type": "object",
+  "required": ["version", "capabilities"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "AICP protocol version"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "$ref": "capability.schema.json" },
+      "description": "Available capabilities"
+    },
+    "policies": {
+      "type": "array",
+      "items": { "$ref": "policy.schema.json" },
+      "description": "Available policies"
+    },
+    "workflows": {
+      "type": "array",
+      "items": { "$ref": "workflow.schema.json" },
+      "description": "Available workflow templates"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional discovery metadata"
+    }
+  }
+}

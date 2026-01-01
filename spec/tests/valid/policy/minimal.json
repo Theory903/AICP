@@ -1,0 +1,8 @@
+{
+  "name": "deny_payments",
+  "description": "Deny all payment operations",
+  "effect": "deny",
+  "subject": {
+    "capability_name": "payments.*"
+  }
+}

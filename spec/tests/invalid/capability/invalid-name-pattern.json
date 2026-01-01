@@ -1,0 +1,5 @@
+{
+  "name": "invalid name with spaces",
+  "description": "Invalid name pattern",
+  "kind": "action"
+}

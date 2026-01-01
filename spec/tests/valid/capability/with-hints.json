@@ -1,0 +1,30 @@
+{
+  "name": "payments.transfer",
+  "description": "Transfer funds between accounts",
+  "kind": "action",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "amount": {"type": "number"},
+      "recipient": {"type": "string"}
+    },
+    "required": ["amount", "recipient"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "transaction_id": {"type": "string"}
+    }
+  },
+  "render": {
+    "format": "table",
+    "fields": ["transaction_id", "status", "timestamp"]
+  },
+  "continuation": {
+    "can_continue": true,
+    "next_capabilities": ["payments.status", "payments.receipt"]
+  },
+  "policy": {
+    "policy_name": "require_confirmation"
+  }
+}

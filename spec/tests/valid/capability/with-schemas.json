@@ -1,0 +1,22 @@
+{
+  "name": "payments.transfer",
+  "description": "Transfer funds between accounts",
+  "kind": "action",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "amount": {"type": "number"},
+      "recipient": {"type": "string"},
+      "currency": {"type": "string", "enum": ["USD", "EUR", "GBP"]}
+    },
+    "required": ["amount", "recipient"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "transaction_id": {"type": "string"},
+      "status": {"type": "string", "enum": ["pending", "completed", "failed"]},
+      "timestamp": {"type": "string", "format": "date-time"}
+    }
+  }
+}

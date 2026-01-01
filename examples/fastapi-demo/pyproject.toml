@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aicp-example-fastapi-demo"
+version = "0.1.0"
+description = "AICP FastAPI Demo Example"
+requires-python = ">=3.10"
+dependencies = ["aiohttp", "fastapi", "uvicorn"]
+
+[tool.setuptools.packages.find]
+where = ["."]

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/workflow.json",
+  "title": "AICP Workflow State",
+  "description": "State of a multi-step workflow execution.",
+  "type": "object",
+  "required": ["id", "name", "steps"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this workflow execution"
+    },
+    "name": {
+      "type": "string",
+      "description": "Workflow name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Workflow description"
+    },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/step" },
+      "description": "Steps in this workflow"
+    },
+    "current_step_index": {
+      "type": "integer",
+      "default": 0,
+      "description": "Index of the current step being executed"
+    },
+    "context": {
+      "type": "object",
+      "description": "Workflow execution context (persists across steps)"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional workflow metadata"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "completed", "failed", "cancelled"],
+      "description": "Overall workflow status"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the workflow was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time the workflow was updated"
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "required": ["id", "capability_name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Step identifier"
+        },
+        "capability_name": {
+          "type": "string",
+          "description": "Capability to execute in this step"
+        },
+        "arguments": {
+          "type": "object",
+          "description": "Arguments for the capability"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "completed", "failed", "skipped", "awaiting_confirmation"],
+          "default": "pending"
+        },
+        "result": {
+          "type": "object",
+          "description": "Result of step execution"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if step failed"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

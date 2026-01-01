@@ -1,0 +1,1 @@
+"""AICP Payment Transfer Example."""

@@ -1,0 +1,27 @@
+{
+  "id": "order_fulfillment",
+  "name": "order_fulfillment",
+  "description": "Fulfill an order end-to-end",
+  "steps": [
+    {
+      "id": "validate_order",
+      "capability_name": "orders.validate",
+      "arguments": {}
+    },
+    {
+      "id": "reserve_inventory",
+      "capability_name": "inventory.reserve",
+      "arguments": {}
+    },
+    {
+      "id": "process_payment",
+      "capability_name": "payments.process",
+      "arguments": {}
+    },
+    {
+      "id": "create_shipping",
+      "capability_name": "shipping.create",
+      "arguments": {}
+    }
+  ]
+}
