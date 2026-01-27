@@ -1,22 +1,36 @@
-name: Examples Smoke
+name: Examples
 
 on:
   push:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.13'
+
 jobs:
   smoke:
+    name: Examples Smoke Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
       - name: Install dependencies
         run: |
           pip install -e ./packages/core
           pip install -e ./examples/food-ordering
           pip install -e ./examples/payment-transfer
+
       - name: Run examples smoke test
-        run: make demo-food && make demo-payment
+        run: make demos
