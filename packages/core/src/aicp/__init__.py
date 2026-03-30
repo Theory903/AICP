@@ -31,8 +31,21 @@ from aicp.api import (
     LivenessHealthCheck,
     ReadinessHealthCheck,
     VersionConfig,
-    VersionManager,
-    lifespan_context,
+)
+
+# Approval (HITL)
+from aicp.approval import (
+    ApprovalContext,
+    ApprovalDecision,
+    ApprovalRequest,
+    ApprovalRisk,
+    ApprovalStatus,
+    calculate_risk,
+)
+from aicp.approval_service import (
+    ApprovalService,
+    ApprovalStore,
+    InMemoryApprovalStore,
 )
 
 # Authentication
@@ -220,6 +233,16 @@ __all__ = [
     "PolicyEffect",
     "PolicySubject",
     "PolicyCondition",
+    # Approval (HITL)
+    "ApprovalContext",
+    "ApprovalDecision",
+    "ApprovalRequest",
+    "ApprovalRisk",
+    "ApprovalService",
+    "ApprovalStatus",
+    "ApprovalStore",
+    "InMemoryApprovalStore",
+    "calculate_risk",
     "Renderer",
     "RenderHints",
     "StepResult",

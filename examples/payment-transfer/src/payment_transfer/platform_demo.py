@@ -13,8 +13,14 @@ from payment_transfer.capabilities import create_payment_capabilities
 APPROVAL_THRESHOLD = 1000.0
 
 
-async def run_platform_demo(store_path: str | Path) -> dict:
-    """Run an end-to-end governed transfer over the runtime stack."""
+async def run_platform_demo(store_path: str | Path, amount: float = 2000.0) -> dict:
+    """Run an end-to-end governed transfer over the runtime stack.
+
+    Args:
+        store_path: Path for the runtime store
+        amount: Transfer amount (default: 2000, triggers approval)
+                 Use < 1000 to skip approval
+    """
     runtime_store = FileRuntimeStore(store_path)
     capability_provider = InMemoryCapabilityRepository("payment-demo")
     for capability in create_payment_capabilities():
@@ -50,29 +56,35 @@ async def run_platform_demo(store_path: str | Path) -> dict:
                 "arguments": {
                     "from_account": "user123",
                     "to_account": "merchant456",
-                    "amount": 2000.00,
+                    "amount": amount,
                 },
             }
         ],
     )
 
     await workflow_service.execute_step(workflow.id, {"requester": "agent-demo"})
-    approval = (await approval_service.list_approvals())[0]
-    resumed_result = await workflow_service.resume_after_approval(
-        workflow.id,
-        approval_id=approval["id"],
-        decision="approved",
-        approver="manager-demo",
-    )
+
+    approvals = await approval_service.list_approvals()
+    approval = None
+    resumed_result = None
+
+    if approvals:
+        approval = approvals[0]
+        resumed_result = await workflow_service.resume_after_approval(
+            workflow.id,
+            approval_id=approval["id"],
+            decision="approved",
+            approver="manager-demo",
+        )
 
     final_workflow = await workflow_service.get_workflow(workflow.id)
-    final_approval = await approval_service.get_approval(approval["id"])
     history = await audit_service.list_entries(workflow_id=workflow.id)
 
     return {
         "workflow": final_workflow.model_dump(mode="json") if final_workflow else None,
-        "approval": final_approval,
-        "execution_result": resumed_result.model_dump(mode="json"),
+        "approval": approval,
+        "approval_requests": [a.model_dump(mode="json") if hasattr(a, 'model_dump') else a for a in approvals],
+        "execution_result": resumed_result.model_dump(mode="json") if resumed_result else None,
         "history": history,
     }
 

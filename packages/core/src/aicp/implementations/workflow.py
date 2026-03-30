@@ -5,7 +5,7 @@ confirmation handling, and agent guidance.
 """
 
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from aicp.interfaces.capability_provider import CapabilityProvider
 from aicp.interfaces.policy_engine import PolicyEffect, PolicyEngine
@@ -20,6 +20,9 @@ from aicp.interfaces.workflow_runtime import (
     utc_now_rfc3339,
 )
 
+if TYPE_CHECKING:
+    from aicp.approval_service import ApprovalService
+
 
 class DefaultWorkflowRuntime(WorkflowRuntime):
     """Default workflow runtime with step orchestration."""
@@ -28,9 +31,11 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         self,
         capability_provider: CapabilityProvider,
         policy_engine: PolicyEngine | None = None,
+        approval_service: "ApprovalService | None" = None,
     ):
         self._provider = capability_provider
         self._policy_engine = policy_engine
+        self._approval_service = approval_service
         self._workflows: dict[str, WorkflowState] = {}
 
     @property
@@ -260,6 +265,68 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
             workflow.touch()
             return True
         return False
+
+    async def pause_for_approval(
+        self,
+        workflow_id: str,
+        approval_request_id: str,
+    ) -> WorkflowState:
+        """Pause a workflow for approval.
+
+        Args:
+            workflow_id: ID of the workflow to pause
+            approval_request_id: ID of the approval request
+
+        Returns:
+            Updated workflow state
+        """
+        workflow = self._workflows.get(workflow_id)
+        if not workflow:
+            raise WorkflowError(f"Workflow not found: {workflow_id}")
+
+        workflow.status = WorkflowStatus.PAUSED_FOR_APPROVAL
+        workflow.metadata["approval_request_id"] = approval_request_id
+
+        step = workflow.current_step
+        if step:
+            step.status = StepStatus.AWAITING_APPROVAL
+
+        workflow.touch()
+        return workflow
+
+    async def resume_after_approval(
+        self,
+        workflow_id: str,
+        approved: bool,
+    ) -> StepResult:
+        """Resume a workflow after approval decision.
+
+        Args:
+            workflow_id: ID of the workflow to resume
+            approved: Whether the step was approved
+
+        Returns:
+            StepResult from executing the step (if approved)
+        """
+        workflow = self._workflows.get(workflow_id)
+        if not workflow:
+            raise WorkflowError(f"Workflow not found: {workflow_id}")
+
+        if workflow.status != WorkflowStatus.PAUSED_FOR_APPROVAL:
+            raise WorkflowError(f"Workflow not paused for approval: {workflow_id}")
+
+        if not approved:
+            workflow.status = WorkflowStatus.CANCELLED
+            workflow.touch()
+            return StepResult(success=False, error="Approval denied")
+
+        step = workflow.current_step
+        if step:
+            step.status = StepStatus.PENDING
+
+        workflow.status = WorkflowStatus.RUNNING
+        workflow.touch()
+        return await self.execute_step(workflow_id)
 
     async def list_workflows(self) -> list[WorkflowState]:
         return list(self._workflows.values())

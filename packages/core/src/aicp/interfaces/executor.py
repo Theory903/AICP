@@ -52,6 +52,10 @@ class ExecutionResult(BaseModel):
     can_continue: bool = True
     continuation_hint: str | None = None
 
+    # Approval (HITL) - when execution requires approval
+    approval_request_id: str | None = None
+    approval_status: str | None = None
+
 
 class Executor(ABC):
     """Abstract interface for capability executors.

@@ -26,6 +26,7 @@ class StepStatus(str, Enum):
     FAILED = "failed"
     SKIPPED = "skipped"
     AWAITING_CONFIRMATION = "awaiting_confirmation"
+    AWAITING_APPROVAL = "awaiting_approval"
 
 
 class WorkflowStatus(str, Enum):
@@ -34,6 +35,7 @@ class WorkflowStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
+    PAUSED_FOR_APPROVAL = "paused_for_approval"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"

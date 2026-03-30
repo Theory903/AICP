@@ -4,6 +4,7 @@ Default executor implementation with policy enforcement and result normalization
 """
 
 import time
+import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -12,12 +13,23 @@ from aicp.interfaces.capability_provider import CapabilityProvider
 from aicp.interfaces.executor import ExecutionResult, ExecutionStatus, Executor
 from aicp.interfaces.policy_engine import PolicyEffect, PolicyEngine
 
+try:
+    from aicp.approval import ApprovalContext
+    from aicp.approval_service import ApprovalService
+
+    APPROVAL_AVAILABLE = True
+except ImportError:
+    APPROVAL_AVAILABLE = False
+    ApprovalService = None
+    ApprovalContext = None
+
 
 class AicpExecutor(Executor):
     """Default AICP executor with policy enforcement.
 
     Wraps a capability provider and adds:
     - Policy evaluation before execution
+    - Approval (HITL) integration
     - Result normalization
     - Execution timing
     - Error handling with fix hints
@@ -27,9 +39,11 @@ class AicpExecutor(Executor):
         self,
         capability_provider: CapabilityProvider,
         policy_engine: PolicyEngine | None = None,
+        approval_service: ApprovalService | None = None,
     ):
         self._provider = capability_provider
         self._policy_engine = policy_engine
+        self._approval_service = approval_service
 
     @property
     def executor_type(self) -> str:
@@ -70,6 +84,35 @@ class AicpExecutor(Executor):
                 )
 
             if decision.effect == PolicyEffect.ASK:
+                if APPROVAL_AVAILABLE and self._approval_service:
+                    execution_id = f"exec_{uuid.uuid4().hex[:12]}"
+                    approval_request = await self._approval_service.create_approval_request(
+                        capability_name=capability_name,
+                        arguments=arguments,
+                        requester=ApprovalContext(
+                            requester_id=context.get("requester_id"),
+                            requester_email=context.get("requester_email"),
+                            requester_role=context.get("requester_role"),
+                            tenant_id=context.get("tenant_id"),
+                            session_id=context.get("session_id"),
+                        ),
+                        execution_id=execution_id,
+                    )
+                    return ExecutionResult(
+                        status=ExecutionStatus.FAILURE,
+                        error=decision.reason,
+                        error_code="requires_approval",
+                        execution_time_ms=self._elapsed_ms(start_time),
+                        approval_request_id=approval_request.id,
+                        approval_status="pending",
+                        next={
+                            "action": "await_approval",
+                            "approval_request_id": approval_request.id,
+                            "capability": capability_name,
+                            "hint": f"Approval required: {decision.reason}",
+                        },
+                        can_continue=False,
+                    )
                 return ExecutionResult(
                     status=ExecutionStatus.FAILURE,
                     error=decision.reason,
@@ -119,6 +162,51 @@ class AicpExecutor(Executor):
             )
             results.append(result)
         return results
+
+    async def execute_after_approval(
+        self,
+        approval_request_id: str,
+        context: dict[str, Any] | None = None,
+    ) -> ExecutionResult:
+        """Execute a capability after approval is granted.
+
+        This is called when an approval request is approved, allowing
+        the execution to proceed.
+
+        Args:
+            approval_request_id: ID of the approved request
+            context: Execution context
+
+        Returns:
+            ExecutionResult from the capability execution
+        """
+        if not self._approval_service:
+            return ExecutionResult(
+                status=ExecutionStatus.FAILURE,
+                error="Approval service not configured",
+                error_code="approval_not_configured",
+            )
+
+        approval_request = await self._approval_service.get_request(approval_request_id)
+        if not approval_request:
+            return ExecutionResult(
+                status=ExecutionStatus.FAILURE,
+                error=f"Approval request not found: {approval_request_id}",
+                error_code="approval_not_found",
+            )
+
+        if approval_request.status.value != "approved":
+            return ExecutionResult(
+                status=ExecutionStatus.FAILURE,
+                error=f"Approval request not approved: {approval_request.status.value}",
+                error_code="approval_denied",
+            )
+
+        return await self.execute(
+            approval_request.capability_name,
+            approval_request.arguments,
+            context,
+        )
 
     def _success_result(
         self,
