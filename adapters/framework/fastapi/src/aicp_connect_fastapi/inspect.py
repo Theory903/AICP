@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from pydantic import BaseModel
 
-from aicp.risk import RiskLevel, infer_risk, is_destructive, risk_to_default_effect
+from aicp.risk import infer_risk, is_destructive, risk_to_default_effect
 
 
 def inspect_routes(app: FastAPI) -> list[dict[str, Any]]:

@@ -52,11 +52,10 @@ async def _scan_fastapi(module_app, output, write):
     import importlib
     import sys
 
-    import yaml
 
     from aicp.config import load_project_config
     from aicp.export import export_all_capabilities
-    from aicp.risk import infer_risk, risk_to_default_effect
+    from aicp.risk import infer_risk
 
     # Parse module:app format
     if ":" in module_app:

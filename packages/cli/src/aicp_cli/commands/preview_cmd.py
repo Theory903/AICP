@@ -26,7 +26,6 @@ def preview(capability_name):
     try:
         from rich.console import Console
         from rich.panel import Panel
-        from rich.columns import Columns
         from rich.text import Text
         from rich.box import ROUNDED
     except ImportError:
@@ -94,17 +93,17 @@ def preview(capability_name):
     risk_color = risk_colors.get(risk, "white")
     
     header_text = Text()
-    header_text.append(f"Name:        ", style="dim")
+    header_text.append("Name:        ", style="dim")
     header_text.append(f"{capability_name}\n", style="cyan bold")
-    header_text.append(f"Kind:        ", style="dim")
+    header_text.append("Kind:        ", style="dim")
     header_text.append(f"{kind}\n", style="magenta")
-    header_text.append(f"Description: ", style="dim")
+    header_text.append("Description: ", style="dim")
     header_text.append(f"{desc}\n")
-    header_text.append(f"Risk:        ", style="dim")
+    header_text.append("Risk:        ", style="dim")
     header_text.append(f"{risk}", style=risk_color)
     if destructive:
-        header_text.append(f" | ", style="dim")
-        header_text.append(f"DESTRUCTIVE", style="bold red")
+        header_text.append(" | ", style="dim")
+        header_text.append("DESTRUCTIVE", style="bold red")
 
     console.print(Panel(header_text, title="[bold]Capability[/]", border_style="cyan", box=ROUNDED))
 
@@ -113,12 +112,12 @@ def preview(capability_name):
     effect_color = effect_colors.get(effect, "white")
     
     gov_text = Text()
-    gov_text.append(f"Effective Policy: ", style="dim")
+    gov_text.append("Effective Policy: ", style="dim")
     gov_text.append(f"{effect.upper()}\n", style=f"bold {effect_color}")
-    gov_text.append(f"Source:           ", style="dim")
+    gov_text.append("Source:           ", style="dim")
     gov_text.append(f"{rule_source}")
     if matched_rule and matched_rule.rpm:
-        gov_text.append(f"\nRate Limit:       ", style="dim")
+        gov_text.append("\nRate Limit:       ", style="dim")
         gov_text.append(f"{matched_rule.rpm} RPM")
 
     console.print(Panel(gov_text, title="[bold]Governance Stack[/]", border_style=effect_color, box=ROUNDED))
@@ -151,10 +150,10 @@ def preview(capability_name):
     if continuation:
         cont_text = Text()
         if "next_hint" in continuation:
-            cont_text.append(f"Hint: ", style="bold")
+            cont_text.append("Hint: ", style="bold")
             cont_text.append(f"{continuation['next_hint']}\n")
         if "next_capabilities" in continuation:
-            cont_text.append(f"Next Capabilities: ", style="bold")
+            cont_text.append("Next Capabilities: ", style="bold")
             cont_text.append(f"{', '.join(continuation['next_capabilities'])}")
         
         console.print(Panel(cont_text, title="[bold]Workflow Hints[/]", border_style="magenta", box=ROUNDED))

@@ -120,7 +120,7 @@ async def _dev(host, port, app_path, reload):
     click.echo(f"  Discovery: http://{host}:{port}/.well-known/aicp")
     click.echo(f"  Approvals: http://{host}:{port}/approvals/")
     if reload:
-        click.echo(f"  Reload:    enabled")
+        click.echo("  Reload:    enabled")
     click.echo()
     click.secho("  Press Ctrl+C to stop", fg="dim")
     click.echo()

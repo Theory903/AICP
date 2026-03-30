@@ -24,19 +24,19 @@ from aicp.config import (
     save_project_config,
 )
 
+# Capability export
+from aicp.export import (
+    capability_to_dict,
+    export_all_capabilities,
+    export_capability_yaml,
+)
+
 # Risk inference
 from aicp.risk import (
     RiskLevel,
     infer_risk,
     is_destructive,
     risk_to_default_effect,
-)
-
-# Capability export
-from aicp.export import (
-    capability_to_dict,
-    export_all_capabilities,
-    export_capability_yaml,
 )
 
 # Capability models

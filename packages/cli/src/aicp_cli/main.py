@@ -223,7 +223,7 @@ async def _show_logs(tail, cap_filter, wf_filter):
     from aicp_runtime.persistence import InMemoryRuntimeStore
     from aicp_runtime.services import AuditService
 
-    config = load_project_config()
+    load_project_config()  # Validate config exists
     store = InMemoryRuntimeStore()
     audit = AuditService(store)
 
@@ -338,7 +338,7 @@ async def _appr_decide(approval_id, decision, approver, reason):
     service = ApprovalService(store)
 
     try:
-        result = await service.decide(
+        await service.decide(
             approval_id=approval_id,
             decision=decision,
             approver=approver,

@@ -28,7 +28,6 @@ def init(app_path, openapi_path, force):
         aicp init --app myapp:app
         aicp init --openapi ./openapi.yaml
     """
-    import yaml
 
     from aicp.config import AicpProjectConfig, find_config_file, save_project_config
 
