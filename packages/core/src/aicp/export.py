@@ -5,10 +5,66 @@ This is the output of `aicp scan` — each capability becomes a readable
 YAML file in aicp/capabilities/.
 """
 
+from __future__ import annotations
+
+import re
 from pathlib import Path
 from typing import Any
 
-from .capability import Capability
+from aicp.capability import Capability
+
+
+class CapabilityExportError(ValueError):
+    """Raised when a capability cannot be exported safely."""
+
+
+def _compact_mapping(data: dict[str, Any]) -> dict[str, Any]:
+    """Remove None, empty dicts, and empty lists recursively."""
+    compact: dict[str, Any] = {}
+
+    for key, value in data.items():
+        if value is None:
+            continue
+
+        if isinstance(value, dict):
+            nested = _compact_mapping(value)
+            if nested:
+                compact[key] = nested
+            continue
+
+        if isinstance(value, list):
+            if value:
+                compact[key] = value
+            continue
+
+        compact[key] = value
+
+    return compact
+
+
+def _extract_attrs(
+    obj: Any,
+    field_names: list[str],
+) -> dict[str, Any]:
+    """Extract a subset of fields from an object or dict."""
+    result: dict[str, Any] = {}
+
+    if obj is None:
+        return result
+
+    if isinstance(obj, dict):
+        for field in field_names:
+            value = obj.get(field)
+            if value is not None:
+                result[field] = value
+        return result
+
+    for field in field_names:
+        value = getattr(obj, field, None)
+        if value is not None:
+            result[field] = value
+
+    return result
 
 
 def capability_to_dict(capability: Capability) -> dict[str, Any]:
@@ -19,97 +75,87 @@ def capability_to_dict(capability: Capability) -> dict[str, Any]:
     data: dict[str, Any] = {
         "name": capability.name,
         "kind": capability.kind.value,
+        "description": capability.description,
+        "tags": list(capability.tags or []),
+        "version": getattr(capability, "version", None),
     }
 
-    if capability.description:
-        data["description"] = capability.description
+    input_schema = getattr(capability, "input_schema", None)
+    if input_schema is not None:
+        input_data = _extract_attrs(
+            input_schema,
+            [
+                "type",
+                "properties",
+                "required",
+                "items",
+                "enum",
+                "format",
+                "description",
+                "additionalProperties",
+            ],
+        )
+        input_data = _compact_mapping(input_data)
+        if input_data:
+            data["input_schema"] = input_data
 
-    # Tags (including risk & destructive)
-    if capability.tags:
-        data["tags"] = capability.tags
+    output_schema = getattr(capability, "output_schema", None)
+    if output_schema is not None:
+        output_data = _extract_attrs(
+            output_schema,
+            [
+                "type",
+                "properties",
+                "required",
+                "items",
+                "enum",
+                "format",
+                "description",
+                "additionalProperties",
+            ],
+        )
+        output_data = _compact_mapping(output_data)
+        if output_data:
+            data["output_schema"] = output_data
 
-    # Input schema — only include if there are properties
-    input_schema = capability.input_schema
-    if input_schema and input_schema.properties:
-        schema_dict: dict[str, Any] = {"type": input_schema.type}
-        if input_schema.properties:
-            schema_dict["properties"] = input_schema.properties
-        if input_schema.required:
-            schema_dict["required"] = input_schema.required
-        data["input_schema"] = schema_dict
+    continuation = _extract_attrs(
+        getattr(capability, "continuation", None),
+        ["can_continue", "next_capabilities", "next_hint"],
+    )
+    continuation = _compact_mapping(continuation)
+    if continuation:
+        data["continuation"] = continuation
 
-    # Output schema
-    output_schema = capability.output_schema
-    if output_schema and output_schema.properties:
-        schema_dict = {"type": output_schema.type}
-        if output_schema.properties:
-            schema_dict["properties"] = output_schema.properties
-        data["output_schema"] = schema_dict
+    render = _extract_attrs(
+        getattr(capability, "render", None),
+        ["format", "fields"],
+    )
+    render = _compact_mapping(render)
+    if render:
+        data["render"] = render
 
-    # Continuation hints
-    if capability.continuation:
-        c = capability.continuation
-        cont = {}
-        if isinstance(c, dict):
-            if c.get("can_continue") is not None:
-                cont["can_continue"] = c["can_continue"]
-            if c.get("next_capabilities"):
-                cont["next_capabilities"] = c["next_capabilities"]
-            if c.get("next_hint"):
-                cont["next_hint"] = c["next_hint"]
-        else:
-            if getattr(c, "can_continue", None) is not None:
-                cont["can_continue"] = getattr(c, "can_continue")
-            if getattr(c, "next_capabilities", None):
-                cont["next_capabilities"] = getattr(c, "next_capabilities")
-            if getattr(c, "next_hint", None):
-                cont["next_hint"] = getattr(c, "next_hint")
-        if cont:
-            data["continuation"] = cont
+    provider = _extract_attrs(
+        getattr(capability, "provider", None),
+        ["name", "type", "url"],
+    )
+    provider = _compact_mapping(provider)
+    if provider:
+        data["provider"] = provider
 
-    # Render hints
-    if capability.render:
-        r = capability.render
-        render = {}
-        if isinstance(r, dict):
-            if r.get("format"):
-                render["format"] = r["format"]
-            if r.get("fields"):
-                render["fields"] = r["fields"]
-        else:
-            if getattr(r, "format", None):
-                render["format"] = getattr(r, "format")
-            if getattr(r, "fields", None):
-                render["fields"] = getattr(r, "fields")
-        if render:
-            data["render"] = render
+    return _compact_mapping(data)
 
-    # Provider info
-    if capability.provider:
-        p = capability.provider
-        provider = {}
-        if isinstance(p, dict):
-            if p.get("name"):
-                provider["name"] = p["name"]
-            if p.get("type"):
-                provider["type"] = p["type"]
-            if p.get("url"):
-                provider["url"] = p["url"]
-        else:
-            if getattr(p, "name", None):
-                provider["name"] = getattr(p, "name")
-            if getattr(p, "type", None):
-                provider["type"] = getattr(p, "type")
-            if getattr(p, "url", None):
-                provider["url"] = getattr(p, "url")
-        if provider:
-            data["provider"] = provider
 
-    # Version
-    if capability.version:
-        data["version"] = capability.version
+def capability_filename(capability_name: str) -> str:
+    """Build a filesystem-safe filename for a capability."""
+    cleaned = capability_name.strip()
+    if not cleaned:
+        raise CapabilityExportError("Capability name cannot be empty")
 
-    return data
+    # Keep dots for namespace readability, replace path-hostile chars.
+    cleaned = re.sub(r"[\\/:\0]+", "-", cleaned)
+    cleaned = re.sub(r"\s+", "-", cleaned)
+
+    return f"{cleaned}.yaml"
 
 
 def export_capability_yaml(capability: Capability, path: Path) -> Path:
@@ -124,16 +170,22 @@ def export_capability_yaml(capability: Capability, path: Path) -> Path:
     """
     try:
         import yaml
-    except ImportError:
+    except ImportError as exc:
         raise ImportError(
             "PyYAML is required for YAML export. Install with: pip install pyyaml"
-        )
+        ) from exc
 
     data = capability_to_dict(capability)
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+    with path.open("w", encoding="utf-8", newline="\n") as f:
+        yaml.safe_dump(
+            data,
+            f,
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True,
+        )
 
     return path
 
@@ -141,6 +193,8 @@ def export_capability_yaml(capability: Capability, path: Path) -> Path:
 def export_all_capabilities(
     capabilities: list[Capability],
     output_dir: str | Path,
+    *,
+    overwrite: bool = True,
 ) -> list[Path]:
     """Write all capabilities as individual YAML files.
 
@@ -149,6 +203,7 @@ def export_all_capabilities(
     Args:
         capabilities: List of capabilities to export
         output_dir: Directory to write files to
+        overwrite: Whether existing files may be replaced
 
     Returns:
         List of written file paths
@@ -156,11 +211,22 @@ def export_all_capabilities(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    written = []
-    for cap in capabilities:
-        filename = f"{cap.name}.yaml"
-        file_path = output_path / filename
-        export_capability_yaml(cap, file_path)
+    written: list[Path] = []
+    seen_names: set[str] = set()
+
+    for capability in capabilities:
+        if capability.name in seen_names:
+            raise CapabilityExportError(
+                f"Duplicate capability name during export: {capability.name}"
+            )
+        seen_names.add(capability.name)
+
+        file_path = output_path / capability_filename(capability.name)
+
+        if file_path.exists() and not overwrite:
+            raise FileExistsError(f"Refusing to overwrite existing file: {file_path}")
+
+        export_capability_yaml(capability, file_path)
         written.append(file_path)
 
     return written

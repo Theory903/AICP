@@ -9,6 +9,8 @@ Risk levels map to default policy effects, so developers
 get sensible governance out of the box without manual config.
 """
 
+from __future__ import annotations
+
 from enum import Enum
 
 from aicp.capability import CapabilityKind
@@ -17,14 +19,14 @@ from aicp.capability import CapabilityKind
 class RiskLevel(str, Enum):
     """Risk classification for capabilities."""
 
-    LOW = "low"  # Safe queries, reads
-    MEDIUM = "medium"  # Standard mutations
-    HIGH = "high"  # Financial, sensitive operations
+    LOW = "low"         # Safe queries, reads
+    MEDIUM = "medium"   # Standard mutations
+    HIGH = "high"       # Financial, sensitive operations
     CRITICAL = "critical"  # Bulk destructive, irreversible
 
 
 # Patterns that indicate higher risk (checked against capability name)
-_CRITICAL_PATTERNS = [
+_CRITICAL_PATTERNS = (
     "delete_all",
     "purge",
     "drop",
@@ -33,9 +35,12 @@ _CRITICAL_PATTERNS = [
     "wipe",
     "reset_all",
     "clear_all",
-]
+    "revoke_all",
+    "bulk_delete",
+    "mass_delete",
+)
 
-_HIGH_PATTERNS = [
+_HIGH_PATTERNS = (
     "transfer",
     "payment",
     "refund",
@@ -46,10 +51,18 @@ _HIGH_PATTERNS = [
     "billing",
     "subscription",
     "escalate",
-    "revoke_all",
-]
+    "revoke",
+    "approve",
+    "reject",
+    "disable",
+    "terminate",
+    "credential",
+    "token",
+    "secret",
+    "password",
+)
 
-_SAFE_PATTERNS = [
+_SAFE_PATTERNS = (
     "list",
     "get",
     "search",
@@ -63,7 +76,74 @@ _SAFE_PATTERNS = [
     "describe",
     "preview",
     "validate",
-]
+)
+
+_DESTRUCTIVE_KEYWORDS = (
+    "delete",
+    "remove",
+    "purge",
+    "drop",
+    "destroy",
+    "wipe",
+    "clear",
+    "reset",
+    "truncate",
+    "revoke",
+)
+
+_SENSITIVE_KEYWORDS = (
+    "auth",
+    "login",
+    "password",
+    "secret",
+    "token",
+    "credential",
+    "permission",
+    "role",
+    "admin",
+    "billing",
+    "payment",
+    "refund",
+)
+
+
+def _normalize(value: str | None) -> str:
+    """Normalize a string for matching."""
+    return (value or "").strip().lower()
+
+
+def _candidate_names(
+    capability_name: str,
+    func_name: str | None = None,
+) -> list[str]:
+    """Build normalized candidate names for matching."""
+    normalized_capability = _normalize(capability_name)
+    parts = [part for part in normalized_capability.split(".") if part]
+    last_part = parts[-1] if parts else normalized_capability
+
+    candidates = [normalized_capability, last_part]
+    normalized_func = _normalize(func_name)
+    if normalized_func:
+        candidates.append(normalized_func)
+
+    # Preserve order, remove duplicates
+    seen: set[str] = set()
+    unique: list[str] = []
+    for item in candidates:
+        if item and item not in seen:
+            seen.add(item)
+            unique.append(item)
+    return unique
+
+
+def _contains_any(text: str, patterns: tuple[str, ...]) -> bool:
+    """Check whether text contains any pattern."""
+    return any(pattern in text for pattern in patterns)
+
+
+def _endswith_or_exact(text: str, patterns: tuple[str, ...]) -> bool:
+    """Check whether text exactly matches or ends with a safe suffix."""
+    return any(text == pattern or text.endswith(pattern) for pattern in patterns)
 
 
 def infer_risk(
@@ -75,10 +155,13 @@ def infer_risk(
     """Infer risk level for a capability.
 
     Priority order:
-    1. Name pattern matching (most specific)
-    2. HTTP method
-    3. Capability kind
-    4. Default (LOW)
+    1. Critical name pattern matching
+    2. High-risk name pattern matching
+    3. Explicit destructive detection
+    4. Safe name pattern matching
+    5. HTTP method
+    6. Capability kind
+    7. Default (LOW)
 
     Args:
         capability_name: Dot-separated capability name (e.g., "notes.delete")
@@ -89,55 +172,54 @@ def infer_risk(
     Returns:
         Inferred RiskLevel
     """
-    # Normalize for pattern matching
-    name_lower = capability_name.lower()
-    name_parts = name_lower.split(".")
-    last_part = name_parts[-1] if name_parts else name_lower
+    candidates = _candidate_names(capability_name, func_name)
+    method = _normalize(http_method).upper()
+    kind_str = kind.value if isinstance(kind, CapabilityKind) else _normalize(kind)
 
-    # Also check function name if available
-    check_names = [name_lower, last_part]
-    if func_name:
-        check_names.append(func_name.lower())
+    # 1. Critical patterns first
+    for candidate in candidates:
+        if _contains_any(candidate, _CRITICAL_PATTERNS):
+            return RiskLevel.CRITICAL
 
-    # 1. Check critical patterns first
-    for name in check_names:
-        for pattern in _CRITICAL_PATTERNS:
-            if pattern in name:
-                return RiskLevel.CRITICAL
+    # 2. High-risk patterns
+    for candidate in candidates:
+        if _contains_any(candidate, _HIGH_PATTERNS):
+            return RiskLevel.HIGH
 
-    # 2. Check high-risk patterns
-    for name in check_names:
-        for pattern in _HIGH_PATTERNS:
-            if pattern in name:
+    # 3. Explicit destructive detection
+    if is_destructive(capability_name, http_method=http_method, func_name=func_name):
+        if method == "DELETE" or kind_str == "batch_action":
+            return RiskLevel.HIGH
+        return RiskLevel.MEDIUM
+
+    # 4. Safe patterns
+    for candidate in candidates:
+        if _endswith_or_exact(candidate, _SAFE_PATTERNS):
+            return RiskLevel.LOW
+
+    # 5. HTTP method-based inference
+    if method == "GET":
+        return RiskLevel.LOW
+    if method == "DELETE":
+        return RiskLevel.HIGH
+    if method in {"PUT", "PATCH"}:
+        return RiskLevel.MEDIUM
+    if method == "POST":
+        # POST is not automatically "safe". Humans post all kinds of disasters.
+        for candidate in candidates:
+            if _contains_any(candidate, _SENSITIVE_KEYWORDS):
                 return RiskLevel.HIGH
+        return RiskLevel.MEDIUM
 
-    # 3. Check safe patterns
-    for name in check_names:
-        for pattern in _SAFE_PATTERNS:
-            if name.endswith(pattern) or name == pattern:
-                return RiskLevel.LOW
-
-    # 4. HTTP method-based inference
-    if http_method:
-        method = http_method.upper()
-        if method == "GET":
-            return RiskLevel.LOW
-        if method == "DELETE":
-            return RiskLevel.MEDIUM
-        if method in ("PUT", "PATCH"):
-            return RiskLevel.MEDIUM
-        if method == "POST":
-            return RiskLevel.LOW  # Creates are generally low risk
-
-    # 5. Kind-based inference
-    if kind:
-        kind_str = kind.value if isinstance(kind, CapabilityKind) else kind
-        if kind_str == "query":
-            return RiskLevel.LOW
-        if kind_str in ("action", "async_action"):
-            return RiskLevel.LOW
-        if kind_str == "batch_action":
-            return RiskLevel.MEDIUM
+    # 6. Kind-based inference
+    if kind_str == "query":
+        return RiskLevel.LOW
+    if kind_str == "batch_action":
+        return RiskLevel.HIGH
+    if kind_str in {"action", "async_action"}:
+        return RiskLevel.MEDIUM
+    if kind_str == "workflow":
+        return RiskLevel.MEDIUM
 
     return RiskLevel.LOW
 
@@ -146,10 +228,10 @@ def risk_to_default_effect(risk: RiskLevel) -> str:
     """Map risk level to a default policy effect.
 
     This is the convention-over-configuration layer:
-    - low → allow (autonomous execution)
-    - medium → ask (require confirmation)
-    - high → require_approval (HITL)
-    - critical → deny (blocked by default)
+    - low → allow
+    - medium → ask
+    - high → require_approval
+    - critical → deny
     """
     mapping = {
         RiskLevel.LOW: "allow",
@@ -169,31 +251,14 @@ def is_destructive(
 
     A capability is destructive if it:
     - Uses DELETE method
-    - Name contains delete, remove, purge, drop, destroy, wipe, clear, reset
+    - Contains destructive keywords in capability or function name
     """
-    destructive_keywords = [
-        "delete",
-        "remove",
-        "purge",
-        "drop",
-        "destroy",
-        "wipe",
-        "clear",
-        "reset",
-        "truncate",
-    ]
-
-    name_lower = capability_name.lower()
-    check_names = [name_lower]
-    if func_name:
-        check_names.append(func_name.lower())
-
-    for name in check_names:
-        for keyword in destructive_keywords:
-            if keyword in name:
-                return True
-
-    if http_method and http_method.upper() == "DELETE":
+    method = _normalize(http_method).upper()
+    if method == "DELETE":
         return True
+
+    for candidate in _candidate_names(capability_name, func_name):
+        if _contains_any(candidate, _DESTRUCTIVE_KEYWORDS):
+            return True
 
     return False

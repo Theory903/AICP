@@ -1,8 +1,35 @@
 {
+    "include": [
+        "packages/core/src",
+        "packages/runtime/src",
+        "packages/cli/src",
+        "adapters/framework/fastapi/src",
+        "adapters/protocol/mcp/src",
+        "adapters/protocol/http/src",
+        "adapters/protocol/openapi/src",
+        "adapters/importers/curl/src",
+        "adapters/importers/postman/src",
+        "adapters/importers/har/src",
+        "mcp/python/src",
+        "mcp/server/src"
+    ],
     "extraPaths": [
         "packages/core/src",
         "packages/runtime/src",
         "packages/cli/src",
-        "adapters/framework/fastapi/src"
-    ]
+        "adapters/framework/fastapi/src",
+        "adapters/protocol/mcp/src",
+        "adapters/protocol/http/src",
+        "adapters/protocol/openapi/src",
+        "adapters/importers/curl/src",
+        "adapters/importers/postman/src",
+        "adapters/importers/har/src",
+        "mcp/python/src",
+        "mcp/server/src"
+    ],
+    "pythonVersion": "3.10",
+    "pythonPlatform": "Darwin",
+    "typeCheckingMode": "standard",
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false
 }

@@ -1,5 +1,26 @@
-"""Compatibility wrapper for FastAPI adapter types."""
+"""Compatibility wrapper for FastAPI adapter types.
 
-from aicp_connect_fastapi.types import AicpConfig, RouteMapping
+This module preserves the old import path while delegating to the
+FastAPI adapter package.
+"""
 
-__all__ = ["AicpConfig", "RouteMapping"]
+from __future__ import annotations
+
+try:
+    from aicp_connect_fastapi.types import AicpConfig, RouteMapping
+except ImportError as exc:  # pragma: no cover
+    class _MissingType:
+        def __init__(self, name: str):
+            self.name = name
+
+        def __repr__(self) -> str:
+            return f"<{self.name} (not installed)>"
+
+    AicpConfig = _MissingType("AicpConfig")
+    RouteMapping = _MissingType("RouteMapping")
+
+
+__all__ = [
+    "AicpConfig",
+    "RouteMapping",
+]

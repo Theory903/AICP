@@ -7,13 +7,13 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
 
 class ApprovalStatus(str, Enum):
-    """Status of an approval request."""
+    """Lifecycle state of an approval request."""
 
     PENDING = "pending"
     APPROVED = "approved"
@@ -23,23 +23,38 @@ class ApprovalStatus(str, Enum):
 
 
 class ApprovalDecision(str, Enum):
-    """Decision on an approval request."""
+    """Human decision applied to an approval request."""
 
     APPROVE = "approve"
     REJECT = "reject"
     REVOKE = "revoke"
 
 
-@dataclass
+class RiskLevel(str, Enum):
+    """Normalized risk levels for approval evaluation."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+@dataclass(slots=True)
 class ApprovalRisk:
     """Risk assessment for an approval request."""
 
-    level: str
+    level: RiskLevel
     factors: list[str] = field(default_factory=list)
     score: float = 0.0
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "level": self.level.value,
+            "factors": list(self.factors),
+            "score": self.score,
+        }
 
-@dataclass
+
+@dataclass(slots=True)
 class ApprovalContext:
     """Context about the entity requesting approval."""
 
@@ -51,10 +66,26 @@ class ApprovalContext:
     ip_address: str | None = None
     user_agent: str | None = None
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "requester_id": self.requester_id,
+            "requester_email": self.requester_email,
+            "requester_role": self.requester_role,
+            "tenant_id": self.tenant_id,
+            "session_id": self.session_id,
+            "ip_address": self.ip_address,
+            "user_agent": self.user_agent,
+        }
 
-@dataclass
+
+@dataclass(slots=True)
 class ApprovalChange:
-    """Proposed change for approval."""
+    """Proposed change for approval.
+
+    Keep this even if not fully used everywhere yet.
+    It is a legitimate protocol-level hook for richer approval UX, audit,
+    and diff-aware governance.
+    """
 
     capability_name: str
     arguments: dict[str, Any]
@@ -62,32 +93,23 @@ class ApprovalChange:
     resource_id: str | None = None
     description: str | None = None
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "capability_name": self.capability_name,
+            "arguments": self.arguments,
+            "resource_type": self.resource_type,
+            "resource_id": self.resource_id,
+            "description": self.description,
+        }
 
-@dataclass
+
+@dataclass(slots=True)
 class ApprovalRequest:
     """Protocol object for Human-in-the-Loop approval.
 
     This is a first-class protocol primitive, not a UI popup.
     The runtime pauses execution when approval is required,
     emits this structured object, and resumes when a decision comes back.
-
-    Attributes:
-        id: Unique identifier (format: apr_xxxxx)
-        capability_name: The capability being requested
-        arguments: Arguments for the capability execution
-        status: Current status of the request
-        approver_role: Role required to approve (e.g., finance_manager)
-        approver_email: Specific approver email (optional)
-        requester: Context about who/what requested this
-        risk: Risk assessment
-        expires_at: When this request expires
-        created_at: When the request was created
-        decided_at: When the decision was made
-        decided_by: Who made the decision
-        decision: The decision (approve/reject/revoke)
-        reason: Human-readable reason for decision
-        execution_id: ID of the execution this approval is for
-        workflow_id: ID of the workflow this approval is for (if any)
     """
 
     id: str
@@ -98,14 +120,27 @@ class ApprovalRequest:
     approver_email: str | None = None
     requester: ApprovalContext = field(default_factory=ApprovalContext)
     risk: ApprovalRisk | None = None
+    change: ApprovalChange | None = None
     expires_in_seconds: int = 86400
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     decided_at: datetime | None = None
     decided_by: str | None = None
     decision: ApprovalDecision | None = None
     reason: str | None = None
     execution_id: str | None = None
     workflow_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.id.startswith("apr_"):
+            raise ValueError("ApprovalRequest id must start with 'apr_'")
+        if not self.capability_name.strip():
+            raise ValueError("capability_name cannot be empty")
+        if self.expires_in_seconds <= 0:
+            raise ValueError("expires_in_seconds must be > 0")
+        if self.created_at.tzinfo is None:
+            raise ValueError("created_at must be timezone-aware")
+        if self.decided_at is not None and self.decided_at.tzinfo is None:
+            raise ValueError("decided_at must be timezone-aware")
 
     @classmethod
     def create(
@@ -117,6 +152,7 @@ class ApprovalRequest:
         approver_email: str | None = None,
         requester: ApprovalContext | None = None,
         risk: ApprovalRisk | None = None,
+        change: ApprovalChange | None = None,
         expires_in_seconds: int = 86400,
         execution_id: str | None = None,
         workflow_id: str | None = None,
@@ -125,11 +161,12 @@ class ApprovalRequest:
         return cls(
             id=f"apr_{uuid.uuid4().hex[:12]}",
             capability_name=capability_name,
-            arguments=arguments,
+            arguments=dict(arguments),
             approver_role=approver_role,
             approver_email=approver_email,
             requester=requester or ApprovalContext(),
             risk=risk,
+            change=change,
             expires_in_seconds=expires_in_seconds,
             execution_id=execution_id,
             workflow_id=workflow_id,
@@ -142,13 +179,39 @@ class ApprovalRequest:
 
     @property
     def is_expired(self) -> bool:
-        """Check if the request has expired."""
-        return datetime.utcnow() > self.expires_at
+        """Check whether the request has expired."""
+        return datetime.now(UTC) > self.expires_at
 
     @property
     def is_pending(self) -> bool:
-        """Check if the request is still pending."""
+        """Check whether the request is still pending and not expired."""
         return self.status == ApprovalStatus.PENDING and not self.is_expired
+
+    @property
+    def is_terminal(self) -> bool:
+        """Check whether the request is in a terminal state."""
+        return self.status in {
+            ApprovalStatus.APPROVED,
+            ApprovalStatus.REJECTED,
+            ApprovalStatus.REVOKED,
+            ApprovalStatus.EXPIRED,
+        }
+
+    def mark_expired(self) -> ApprovalRequest:
+        """Mark a pending request as expired."""
+        if self.status == ApprovalStatus.PENDING:
+            self.status = ApprovalStatus.EXPIRED
+        return self
+
+    def refresh_status(self) -> ApprovalRequest:
+        """Synchronize state with wall clock.
+
+        This keeps long-lived requests honest instead of pretending
+        a pending request is still actionable after expiry.
+        """
+        if self.status == ApprovalStatus.PENDING and self.is_expired:
+            self.status = ApprovalStatus.EXPIRED
+        return self
 
     def approve(
         self,
@@ -156,14 +219,15 @@ class ApprovalRequest:
         reason: str | None = None,
     ) -> ApprovalRequest:
         """Approve this request."""
+        self.refresh_status()
         if not self.is_pending:
-            raise ValueError(f"Cannot approve request in status: {self.status}")
+            raise ValueError(f"Cannot approve request in status: {self.status.value}")
 
         self.status = ApprovalStatus.APPROVED
         self.decision = ApprovalDecision.APPROVE
         self.decided_by = decided_by
         self.reason = reason
-        self.decided_at = datetime.utcnow()
+        self.decided_at = datetime.now(UTC)
         return self
 
     def reject(
@@ -172,30 +236,36 @@ class ApprovalRequest:
         reason: str | None = None,
     ) -> ApprovalRequest:
         """Reject this request."""
+        self.refresh_status()
         if not self.is_pending:
-            raise ValueError(f"Cannot reject request in status: {self.status}")
+            raise ValueError(f"Cannot reject request in status: {self.status.value}")
 
         self.status = ApprovalStatus.REJECTED
         self.decision = ApprovalDecision.REJECT
         self.decided_by = decided_by
         self.reason = reason
-        self.decided_at = datetime.utcnow()
+        self.decided_at = datetime.now(UTC)
         return self
 
-    def revoke(self, decided_by: str, reason: str | None = None) -> ApprovalRequest:
+    def revoke(
+        self,
+        decided_by: str,
+        reason: str | None = None,
+    ) -> ApprovalRequest:
         """Revoke a previously approved request."""
         if self.status != ApprovalStatus.APPROVED:
-            raise ValueError(f"Cannot revoke request in status: {self.status}")
+            raise ValueError(f"Cannot revoke request in status: {self.status.value}")
 
         self.status = ApprovalStatus.REVOKED
         self.decision = ApprovalDecision.REVOKE
         self.decided_by = decided_by
         self.reason = reason
-        self.decided_at = datetime.utcnow()
+        self.decided_at = datetime.now(UTC)
         return self
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for serialization."""
+        """Convert request to a serializable dictionary."""
+        self.refresh_status()
         return {
             "id": self.id,
             "capability_name": self.capability_name,
@@ -203,18 +273,10 @@ class ApprovalRequest:
             "status": self.status.value,
             "approver_role": self.approver_role,
             "approver_email": self.approver_email,
-            "requester": {
-                "requester_id": self.requester.requester_id,
-                "requester_email": self.requester.requester_email,
-                "requester_role": self.requester.requester_role,
-                "tenant_id": self.requester.tenant_id,
-                "session_id": self.requester.session_id,
-            },
-            "risk": {
-                "level": self.risk.level,
-                "factors": self.risk.factors,
-                "score": self.risk.score,
-            } if self.risk else None,
+            "requester": self.requester.to_dict(),
+            "risk": self.risk.to_dict() if self.risk else None,
+            "change": self.change.to_dict() if self.change else None,
+            "expires_in_seconds": self.expires_in_seconds,
             "expires_at": self.expires_at.isoformat(),
             "created_at": self.created_at.isoformat(),
             "decided_at": self.decided_at.isoformat() if self.decided_at else None,
@@ -233,57 +295,65 @@ def calculate_risk(
 ) -> ApprovalRisk:
     """Calculate risk level for a capability execution.
 
-    Args:
-        capability_name: Name of the capability
-        arguments: Arguments being passed
-        thresholds: Threshold configuration (e.g., {"amount": 10000})
-
-    Returns:
-        ApprovalRisk with level and factors
+    thresholds supports overrides like:
+        {
+            "high_amount": 10000,
+            "medium_amount": 1000,
+            "destructive_score": 0.4,
+            "admin_score": 0.5,
+            "sensitive_score": 0.3,
+        }
     """
-    factors = []
-    score = 0.0
-
     thresholds = thresholds or {}
 
-    amount_keys = ["amount", "value", "price", "total", "cost"]
+    high_amount = float(thresholds.get("high_amount", 10000))
+    medium_amount = float(thresholds.get("medium_amount", 1000))
+    destructive_score = float(thresholds.get("destructive_score", 0.4))
+    admin_score = float(thresholds.get("admin_score", 0.5))
+    sensitive_score = float(thresholds.get("sensitive_score", 0.3))
+
+    factors: list[str] = []
+    score = 0.0
+    capability_name_lc = capability_name.lower()
+
+    amount_keys = {"amount", "value", "price", "total", "cost"}
     for key in amount_keys:
-        if key in arguments:
-            try:
-                amount = float(arguments[key])
-                if amount > 10000:
-                    factors.append(f"High transaction amount: {amount}")
-                    score += 0.5
-                elif amount > 1000:
-                    factors.append(f"Medium transaction amount: {amount}")
-                    score += 0.2
-            except (ValueError, TypeError):
-                pass
+        if key not in arguments:
+            continue
+        try:
+            amount = float(arguments[key])
+        except (TypeError, ValueError):
+            continue
 
-    delete_keys = ["delete", "remove", "destroy", "cancel"]
-    for key in delete_keys:
-        if key.lower() in capability_name.lower():
-            factors.append("Destructive action")
-            score += 0.4
-
-    admin_keys = ["admin", "root", "superuser"]
-    for key in admin_keys:
-        if key.lower() in capability_name.lower():
-            factors.append("Administrative action")
+        if amount > high_amount:
+            factors.append(f"High transaction amount: {amount}")
             score += 0.5
+        elif amount > medium_amount:
+            factors.append(f"Medium transaction amount: {amount}")
+            score += 0.2
 
-    data_keys = ["ssn", "password", "secret", "credit_card", "api_key"]
-    for key in data_keys:
-        for arg_key, arg_val in arguments.items():
-            if key.lower() in arg_key.lower():
-                factors.append(f"Sensitive data access: {arg_key}")
-                score += 0.3
+    destructive_terms = {"delete", "remove", "destroy", "cancel", "revoke", "purge"}
+    if any(term in capability_name_lc for term in destructive_terms):
+        factors.append("Destructive action")
+        score += destructive_score
+
+    admin_terms = {"admin", "root", "superuser", "privileged"}
+    if any(term in capability_name_lc for term in admin_terms):
+        factors.append("Administrative action")
+        score += admin_score
+
+    sensitive_terms = {"ssn", "password", "secret", "credit_card", "api_key", "token"}
+    for arg_key in arguments:
+        arg_key_lc = arg_key.lower()
+        if any(term in arg_key_lc for term in sensitive_terms):
+            factors.append(f"Sensitive data access: {arg_key}")
+            score += sensitive_score
 
     if score >= 0.7:
-        level = "high"
+        level = RiskLevel.HIGH
     elif score >= 0.3:
-        level = "medium"
+        level = RiskLevel.MEDIUM
     else:
-        level = "low"
+        level = RiskLevel.LOW
 
-    return ApprovalRisk(level=level, factors=factors, score=score)
+    return ApprovalRisk(level=level, factors=factors, score=round(score, 3))

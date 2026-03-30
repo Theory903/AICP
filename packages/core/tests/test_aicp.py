@@ -29,6 +29,11 @@ def workflow_runtime(repo, policy_engine):
     return DefaultWorkflowRuntime(repo, policy_engine)
 
 
+def _noop_handler(args, ctx):
+    """Default test handler that echoes arguments."""
+    return {"executed": True, **args}
+
+
 @pytest.fixture
 def sample_capability():
     """Create a sample capability."""
@@ -99,7 +104,7 @@ class TestWorkflowRuntime:
         assert datetime.fromisoformat(workflow.updated_at.replace("Z", "+00:00"))
 
     async def test_execute_workflow_with_confirmation(self, workflow_runtime, sample_capability):
-        workflow_runtime._provider.add_capability(sample_capability)
+        workflow_runtime._provider.add_capability(sample_capability, handler=_noop_handler)
 
         policy = Policy(
             name="require_confirmation",
@@ -122,7 +127,7 @@ class TestWorkflowRuntime:
         assert datetime.fromisoformat(workflow.updated_at.replace("Z", "+00:00"))
 
     async def test_workflow_completion(self, workflow_runtime, sample_capability):
-        workflow_runtime._provider.add_capability(sample_capability)
+        workflow_runtime._provider.add_capability(sample_capability, handler=_noop_handler)
 
         workflow = await workflow_runtime.create_workflow(
             name="simple",

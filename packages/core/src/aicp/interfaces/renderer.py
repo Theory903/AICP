@@ -4,11 +4,13 @@ Defines the contract for rendering execution results for display.
 Renderers provide hints on how to display results to users.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RenderFormat(str, Enum):
@@ -27,15 +29,17 @@ class RenderFormat(str, Enum):
 class RenderHints(BaseModel):
     """Hints for how to render a result."""
 
+    model_config = ConfigDict(extra="forbid")
+
     format: RenderFormat = RenderFormat.TEXT
     title: str | None = None
     description: str | None = None
-    fields: list[str] | None = None  # Fields to display
-    max_length: int | None = None
+    fields: list[str] | None = None
+    max_length: int | None = Field(default=None, ge=1)
     truncate: bool = True
-    syntax: str | None = None  # For code: "python", "json", etc.
+    syntax: str | None = None
     table_columns: list[str] | None = None
-    next_actions: list[dict[str, Any]] = []  # Suggested next actions
+    next_actions: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class Renderer(ABC):
@@ -43,14 +47,14 @@ class Renderer(ABC):
 
     Renderers interpret execution results and provide display hints.
     Different renderers can handle different output formats or contexts
-    (CLI, web UI, etc.).
+    such as CLI or web UI.
     """
 
     @property
     @abstractmethod
     def renderer_type(self) -> str:
         """Type identifier for this renderer."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def render(self, result: Any, hints: RenderHints | None = None) -> str:
@@ -63,7 +67,7 @@ class Renderer(ABC):
         Returns:
             Rendered string representation.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def render_error(self, error: Exception) -> str:
@@ -75,7 +79,7 @@ class Renderer(ABC):
         Returns:
             Rendered error string.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def render_table(
@@ -92,33 +96,70 @@ class Renderer(ABC):
         Returns:
             Rendered table string.
         """
-        pass
+        raise NotImplementedError
 
-    def generate_hints(self, result: Any, context: dict[str, Any] | None = None) -> RenderHints:
+    def generate_hints(
+        self,
+        result: Any,
+        context: dict[str, Any] | None = None,
+    ) -> RenderHints:
         """Generate rendering hints for a result.
 
-        Default implementation analyzes result type.
+        Default implementation analyzes result shape.
         Renderers can override with more sophisticated logic.
-
-        Args:
-            result: The result to generate hints for.
-            context: Optional context for hint generation.
-
-        Returns:
-            Generated RenderHints.
         """
+        context = context or {}
         hints = RenderHints()
 
+        forced_format = context.get("format")
+        if forced_format:
+            try:
+                hints.format = (
+                    forced_format
+                    if isinstance(forced_format, RenderFormat)
+                    else RenderFormat(forced_format)
+                )
+                return hints
+            except ValueError:
+                pass
+
+        if isinstance(result, Exception):
+            hints.format = RenderFormat.ERROR
+            hints.title = type(result).__name__
+            hints.description = str(result)
+            return hints
+
         if isinstance(result, dict):
-            hints.format = RenderFormat.JSON
-        elif isinstance(result, list):
-            if result and all(isinstance(r, dict) for r in result):
+            if result and all(not isinstance(value, (dict, list)) for value in result.values()):
                 hints.format = RenderFormat.TABLE
+                hints.table_columns = list(result.keys())
+            else:
+                hints.format = RenderFormat.JSON
+            return hints
+
+        if isinstance(result, list):
+            if result and all(isinstance(item, dict) for item in result):
+                hints.format = RenderFormat.TABLE
+                first_row = result[0]
+                hints.table_columns = list(first_row.keys())
+            else:
+                hints.format = RenderFormat.JSON if result else RenderFormat.TEXT
+            return hints
+
+        if isinstance(result, str):
+            stripped = result.lstrip()
+            if stripped.startswith("{") or stripped.startswith("["):
+                hints.format = RenderFormat.JSON
             else:
                 hints.format = RenderFormat.TEXT
-        elif isinstance(result, str):
-            hints.format = RenderFormat.TEXT
-        else:
-            hints.format = RenderFormat.TEXT
+                if len(result) > 1000:
+                    hints.max_length = 1000
+                    hints.truncate = True
+            return hints
 
+        if isinstance(result, (int, float, bool)) or result is None:
+            hints.format = RenderFormat.TEXT
+            return hints
+
+        hints.format = RenderFormat.TEXT
         return hints

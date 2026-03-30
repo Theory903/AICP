@@ -1,6 +1,10 @@
 """Agent adapters for AICP.
 
-Adapters for integrating AICP with AI agent frameworks like LangChain, etc.
+This package contains integration layers for agent frameworks such as
+LangChain, CrewAI, and other orchestration runtimes.
+Concrete agent adapters should live in their own subpackages.
 """
 
-__all__ = []
+from __future__ import annotations
+
+__all__: list[str] = []

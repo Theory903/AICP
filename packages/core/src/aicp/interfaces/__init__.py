@@ -1,18 +1,16 @@
 """AICP core interfaces.
 
-These interfaces define the contracts for the AICP runtime. They are designed
-to be pluggable, allowing different implementations for various protocols,
-discovery sources, and execution strategies.
+These interfaces define the contracts for the AICP runtime. They are intended
+to be pluggable, allowing different implementations for discovery, execution,
+policy evaluation, rendering, and workflow orchestration.
 """
 
-from aicp.interfaces.capability_provider import CapabilityProvider
-from aicp.interfaces.discovery_source import DiscoveredCapability, DiscoverySource
-from aicp.interfaces.executor import (
-    ExecutionResult,
-    ExecutionStatus,
-    Executor,
-)
-from aicp.interfaces.policy_engine import (
+from __future__ import annotations
+
+from .capability_provider import CapabilityProvider
+from .discovery_source import DiscoveredCapability, DiscoverySource
+from .executor import ExecutionResult, ExecutionStatus, Executor
+from .policy_engine import (
     Policy,
     PolicyCondition,
     PolicyDecision,
@@ -20,8 +18,8 @@ from aicp.interfaces.policy_engine import (
     PolicyEngine,
     PolicySubject,
 )
-from aicp.interfaces.renderer import Renderer, RenderHints
-from aicp.interfaces.workflow_runtime import (
+from .renderer import RenderHints, Renderer
+from .workflow_runtime import (
     Step,
     StepResult,
     StepStatus,
@@ -34,6 +32,13 @@ from aicp.interfaces.workflow_runtime import (
 __all__ = [
     # Capability provider
     "CapabilityProvider",
+    # Discovery
+    "DiscoverySource",
+    "DiscoveredCapability",
+    # Executor
+    "Executor",
+    "ExecutionResult",
+    "ExecutionStatus",
     # Policy engine
     "PolicyEngine",
     "Policy",
@@ -41,6 +46,9 @@ __all__ = [
     "PolicyEffect",
     "PolicySubject",
     "PolicyCondition",
+    # Renderer
+    "Renderer",
+    "RenderHints",
     # Workflow runtime
     "WorkflowRuntime",
     "WorkflowState",
@@ -49,14 +57,4 @@ __all__ = [
     "StepResult",
     "StepStatus",
     "WorkflowStatus",
-    # Executor
-    "Executor",
-    "ExecutionResult",
-    "ExecutionStatus",
-    # Renderer
-    "Renderer",
-    "RenderHints",
-    # Discovery
-    "DiscoverySource",
-    "DiscoveredCapability",
 ]

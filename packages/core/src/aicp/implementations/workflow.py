@@ -1,8 +1,10 @@
 """Default workflow runtime implementation.
 
 A workflow runtime that manages multi-step execution with state,
-confirmation handling, and agent guidance.
+confirmation handling, approval handling, and agent guidance.
 """
+
+from __future__ import annotations
 
 import uuid
 from typing import TYPE_CHECKING, Any
@@ -25,14 +27,14 @@ if TYPE_CHECKING:
 
 
 class DefaultWorkflowRuntime(WorkflowRuntime):
-    """Default workflow runtime with step orchestration."""
+    """Default workflow runtime with in-memory step orchestration."""
 
     def __init__(
         self,
         capability_provider: CapabilityProvider,
         policy_engine: PolicyEngine | None = None,
         approval_service: "ApprovalService | None" = None,
-    ):
+    ) -> None:
         self._provider = capability_provider
         self._policy_engine = policy_engine
         self._approval_service = approval_service
@@ -48,17 +50,26 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         description: str = "",
         steps: list[dict[str, Any]] | None = None,
     ) -> WorkflowState:
+        """Create and store a new workflow."""
         workflow_id = str(uuid.uuid4())
-        step_objects = []
+        step_objects: list[Step] = []
 
-        if steps:
-            for i, step_def in enumerate(steps):
-                step = Step(
-                    id=step_def.get("id", f"step_{i}"),
-                    capability_name=step_def["capability_name"],
-                    arguments=step_def.get("arguments", {}),
+        for index, step_def in enumerate(steps or []):
+            if "capability_name" not in step_def:
+                raise WorkflowError(
+                    "Each workflow step must include 'capability_name'",
+                    workflow_id=workflow_id,
+                    details={"step_index": index, "step": step_def},
                 )
-                step_objects.append(step)
+
+            step_objects.append(
+                Step(
+                    id=str(step_def.get("id", f"step_{index}")),
+                    capability_name=step_def["capability_name"],
+                    arguments=dict(step_def.get("arguments", {})),
+                    metadata=dict(step_def.get("metadata", {})),
+                )
+            )
 
         workflow = WorkflowState(
             id=workflow_id,
@@ -66,10 +77,12 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
             description=description,
             steps=step_objects,
         )
+        workflow.sync_status()
         self._workflows[workflow_id] = workflow
         return workflow
 
     async def get_workflow(self, workflow_id: str) -> WorkflowState | None:
+        """Get a workflow by ID."""
         return self._workflows.get(workflow_id)
 
     async def execute_step(
@@ -77,117 +90,92 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         workflow_id: str,
         arguments: dict[str, Any] | None = None,
     ) -> StepResult:
-        workflow = self._workflows.get(workflow_id)
-        if not workflow:
-            raise WorkflowError(f"Workflow not found: {workflow_id}")
+        """Execute the current workflow step."""
+        workflow = self._require_workflow(workflow_id)
+
+        if workflow.status == WorkflowStatus.CANCELLED:
+            return StepResult.fail(
+                "Workflow is cancelled",
+                workflow_status=workflow.status,
+            )
 
         if workflow.is_complete:
-            return StepResult(
-                success=False,
-                error="Workflow already complete",
+            workflow.sync_status()
+            return StepResult.fail(
+                "Workflow already complete",
+                workflow_status=workflow.status,
             )
 
         step = workflow.current_step
-        if not step:
-            return StepResult(
-                success=False,
-                error="No more steps",
+        if step is None:
+            workflow.sync_status()
+            return StepResult.fail(
+                "No current step available",
+                workflow_status=workflow.status,
             )
 
-        workflow.status = WorkflowStatus.RUNNING
-        workflow.touch()
-        step.status = StepStatus.RUNNING
-        step.started_at = utc_now_rfc3339()
+        if step.status == StepStatus.SKIPPED:
+            workflow.advance()
+            workflow.sync_status()
+            return StepResult.ok(
+                next=self._generate_next(workflow, workflow.current_step),
+                workflow_status=workflow.status,
+            )
 
         merged_args = {**step.arguments}
         if arguments:
             merged_args.update(arguments)
+
         workflow.context["last_args"] = merged_args
+        workflow.context["last_step_id"] = step.id
+
+        step.mark_running()
+        workflow.status = WorkflowStatus.RUNNING
+        workflow.touch()
 
         try:
-            if self._policy_engine and not workflow.context.get("confirmation_granted"):
-                decision = await self._policy_engine.evaluate(
-                    step.capability_name,
-                    merged_args,
-                    {"workflow_id": workflow_id},
-                )
-                if decision.effect == PolicyEffect.DENY:
-                    step.status = StepStatus.FAILED
-                    step.error = decision.reason
-                    step.completed_at = utc_now_rfc3339()
-                    workflow.status = WorkflowStatus.FAILED
-                    workflow.touch()
-                    return StepResult(
-                        success=False,
-                        error=decision.reason,
-                    )
-                if decision.effect == PolicyEffect.ASK:
-                    step.status = StepStatus.AWAITING_CONFIRMATION
-                    workflow.status = WorkflowStatus.PAUSED
-                    workflow.touch()
-                    return StepResult(
-                        success=False,
-                        requires_confirmation=True,
-                        next={
-                            "action": "confirm",
-                            "workflow_id": workflow_id,
-                            "message": decision.reason,
-                        },
-                    )
+            policy_result = await self._evaluate_policy(workflow, step, merged_args)
+            if policy_result is not None:
+                return policy_result
 
             result = await self._provider.execute(
                 step.capability_name,
                 merged_args,
-                {"workflow_id": workflow_id},
+                {
+                    "workflow_id": workflow_id,
+                    "workflow_name": workflow.name,
+                    "step_id": step.id,
+                    "kind": workflow.context.get("kind"),
+                    "tenant_id": workflow.context.get("tenant_id"),
+                },
             )
 
-            step.status = StepStatus.COMPLETED
-            step.result = result
-            step.completed_at = utc_now_rfc3339()
+            step.mark_completed(result)
+            workflow.advance()
+            workflow.sync_status()
 
-            workflow.current_step_index += 1
-            workflow.status = (
-                WorkflowStatus.COMPLETED if workflow.is_complete else WorkflowStatus.RUNNING
-            )
-            workflow.touch()
-
-            next_step = workflow.current_step
-            return StepResult(
-                success=True,
+            return StepResult.ok(
                 result=result,
-                next=self._generate_next(workflow, next_step),
+                next=self._generate_next(workflow, workflow.current_step),
+                step_id=step.id,
+                workflow_status=workflow.status,
             )
 
-        except Exception as e:
-            step.status = StepStatus.FAILED
-            step.error = str(e)
-            step.completed_at = utc_now_rfc3339()
-            workflow.status = WorkflowStatus.FAILED
-            workflow.touch()
-            return StepResult(
-                success=False,
-                error=str(e),
-            )
+        except Exception as exc:
+            step.mark_failed(str(exc))
+            workflow.sync_status()
 
-    def _generate_next(
-        self,
-        workflow: WorkflowState,
-        next_step: Step | None,
-    ) -> dict[str, Any] | None:
-        if next_step:
-            return {
-                "action": "execute_step",
-                "workflow_id": workflow.id,
-                "capability": next_step.capability_name,
-                "hint": f"Next step: {next_step.capability_name}",
-            }
-        if workflow.is_complete:
-            return {
-                "action": "complete",
-                "workflow_id": workflow.id,
-                "summary": f"Workflow '{workflow.name}' completed",
-            }
-        return None
+            return StepResult.fail(
+                str(exc),
+                next={
+                    "action": "retry_step",
+                    "workflow_id": workflow.id,
+                    "step_id": step.id,
+                    "hint": f"Retry step '{step.capability_name}' after inspecting the failure.",
+                },
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
 
     async def confirm_and_continue(
         self,
@@ -195,100 +183,115 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         confirmed: bool,
         modified_arguments: dict[str, Any] | None = None,
     ) -> StepResult:
-        workflow = self._workflows.get(workflow_id)
-        if not workflow:
-            raise WorkflowError(f"Workflow not found: {workflow_id}")
-
+        """Continue after a confirmation checkpoint."""
+        workflow = self._require_workflow(workflow_id)
         step = workflow.current_step
-        if step and step.status == StepStatus.AWAITING_CONFIRMATION:
-            if not confirmed:
-                step.status = StepStatus.SKIPPED
-                workflow.current_step_index += 1
-                workflow.status = (
-                    WorkflowStatus.COMPLETED if workflow.is_complete else WorkflowStatus.RUNNING
-                )
-                workflow.touch()
-                return StepResult(
-                    success=True,
-                    result=None,
-                    next=self._generate_next(workflow, workflow.current_step),
-                )
 
-            args = modified_arguments or workflow.context.get("last_args", {})
-            workflow.context["confirmation_granted"] = True
-            try:
-                return await self.execute_step(workflow_id, args)
-            finally:
-                workflow.context.pop("confirmation_granted", None)
+        if step is None or step.status != StepStatus.AWAITING_CONFIRMATION:
+            return StepResult.fail(
+                "No confirmation needed",
+                workflow_status=workflow.status,
+            )
 
-        return StepResult(success=False, error="No confirmation needed")
+        if not confirmed:
+            step.mark_skipped()
+            workflow.advance()
+            workflow.sync_status()
+            return StepResult.ok(
+                next=self._generate_next(workflow, workflow.current_step),
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        confirmed_args = modified_arguments or workflow.context.get("last_args", {}) or {}
+        workflow.context["confirmation_granted"] = True
+        try:
+            step.status = StepStatus.PENDING
+            step.started_at = None
+            step.completed_at = None
+            workflow.sync_status()
+            return await self.execute_step(workflow_id, confirmed_args)
+        finally:
+            workflow.context.pop("confirmation_granted", None)
 
     async def skip_step(self, workflow_id: str) -> StepResult:
-        workflow = self._workflows.get(workflow_id)
-        if not workflow:
-            raise WorkflowError(f"Workflow not found: {workflow_id}")
-
+        """Skip the current step."""
+        workflow = self._require_workflow(workflow_id)
         step = workflow.current_step
-        if step:
-            step.status = StepStatus.SKIPPED
 
-        workflow.current_step_index += 1
-        workflow.status = WorkflowStatus.COMPLETED if workflow.is_complete else WorkflowStatus.RUNNING
-        workflow.touch()
+        if step is None:
+            return StepResult.fail(
+                "No current step to skip",
+                workflow_status=workflow.status,
+            )
 
-        return StepResult(
-            success=True,
+        if step.is_terminal:
+            return StepResult.fail(
+                f"Cannot skip step in terminal status '{step.status.value}'",
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        step.mark_skipped()
+        workflow.advance()
+        workflow.sync_status()
+
+        return StepResult.ok(
             next=self._generate_next(workflow, workflow.current_step),
+            step_id=step.id,
+            workflow_status=workflow.status,
         )
 
     async def retry_step(self, workflow_id: str) -> StepResult:
-        workflow = self._workflows.get(workflow_id)
-        if not workflow:
-            raise WorkflowError(f"Workflow not found: {workflow_id}")
-
+        """Retry the current failed step."""
+        workflow = self._require_workflow(workflow_id)
         step = workflow.current_step
-        if step and step.status == StepStatus.FAILED:
-            step.status = StepStatus.PENDING
-            step.error = None
-            step.started_at = None
-            step.completed_at = None
-            workflow.status = WorkflowStatus.PENDING
-            workflow.touch()
-            return await self.execute_step(workflow_id)
 
-        return StepResult(success=False, error="No failed step to retry")
+        if step is None:
+            return StepResult.fail(
+                "No current step to retry",
+                workflow_status=workflow.status,
+            )
+
+        if step.status != StepStatus.FAILED:
+            return StepResult.fail(
+                "No failed step to retry",
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        step.status = StepStatus.PENDING
+        step.error = None
+        step.result = None
+        step.started_at = None
+        step.completed_at = None
+        workflow.sync_status()
+
+        retry_args = workflow.context.get("last_args", {}) or step.arguments
+        return await self.execute_step(workflow_id, retry_args)
 
     async def cancel_workflow(self, workflow_id: str) -> bool:
+        """Cancel a workflow."""
         workflow = self._workflows.get(workflow_id)
-        if workflow is not None:
-            workflow.status = WorkflowStatus.CANCELLED
-            workflow.touch()
-            return True
-        return False
+        if workflow is None:
+            return False
+
+        workflow.status = WorkflowStatus.CANCELLED
+        workflow.touch()
+        return True
 
     async def pause_for_approval(
         self,
         workflow_id: str,
         approval_request_id: str,
     ) -> WorkflowState:
-        """Pause a workflow for approval.
-
-        Args:
-            workflow_id: ID of the workflow to pause
-            approval_request_id: ID of the approval request
-
-        Returns:
-            Updated workflow state
-        """
-        workflow = self._workflows.get(workflow_id)
-        if not workflow:
-            raise WorkflowError(f"Workflow not found: {workflow_id}")
+        """Pause a workflow for approval."""
+        workflow = self._require_workflow(workflow_id)
+        step = workflow.current_step
 
         workflow.status = WorkflowStatus.PAUSED_FOR_APPROVAL
         workflow.metadata["approval_request_id"] = approval_request_id
-
-        step = workflow.current_step
-        if step:
+        if step is not None:
             step.status = StepStatus.AWAITING_APPROVAL
 
         workflow.touch()
@@ -299,34 +302,169 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         workflow_id: str,
         approved: bool,
     ) -> StepResult:
-        """Resume a workflow after approval decision.
-
-        Args:
-            workflow_id: ID of the workflow to resume
-            approved: Whether the step was approved
-
-        Returns:
-            StepResult from executing the step (if approved)
-        """
-        workflow = self._workflows.get(workflow_id)
-        if not workflow:
-            raise WorkflowError(f"Workflow not found: {workflow_id}")
+        """Resume a workflow after approval decision."""
+        workflow = self._require_workflow(workflow_id)
 
         if workflow.status != WorkflowStatus.PAUSED_FOR_APPROVAL:
-            raise WorkflowError(f"Workflow not paused for approval: {workflow_id}")
-
-        if not approved:
-            workflow.status = WorkflowStatus.CANCELLED
-            workflow.touch()
-            return StepResult(success=False, error="Approval denied")
+            raise WorkflowError(
+                f"Workflow not paused for approval: {workflow_id}",
+                workflow_id=workflow_id,
+            )
 
         step = workflow.current_step
-        if step:
-            step.status = StepStatus.PENDING
+        if step is None:
+            raise WorkflowError(
+                f"Workflow has no current step: {workflow_id}",
+                workflow_id=workflow_id,
+            )
 
-        workflow.status = WorkflowStatus.RUNNING
-        workflow.touch()
-        return await self.execute_step(workflow_id)
+        if not approved:
+            step.mark_failed("Approval denied")
+            workflow.status = WorkflowStatus.CANCELLED
+            workflow.touch()
+            return StepResult.fail(
+                "Approval denied",
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        workflow.metadata.pop("approval_request_id", None)
+        workflow.context["approval_granted"] = True
+        step.status = StepStatus.PENDING
+        step.started_at = None
+        step.completed_at = None
+        workflow.sync_status()
+
+        try:
+            return await self.execute_step(workflow_id)
+        finally:
+            workflow.context.pop("approval_granted", None)
 
     async def list_workflows(self) -> list[WorkflowState]:
+        """List all workflows."""
         return list(self._workflows.values())
+
+    def _require_workflow(self, workflow_id: str) -> WorkflowState:
+        """Get workflow or raise."""
+        workflow = self._workflows.get(workflow_id)
+        if workflow is None:
+            raise WorkflowError(
+                f"Workflow not found: {workflow_id}",
+                workflow_id=workflow_id,
+            )
+        return workflow
+
+    async def _evaluate_policy(
+        self,
+        workflow: WorkflowState,
+        step: Step,
+        arguments: dict[str, Any],
+    ) -> StepResult | None:
+        """Evaluate policy for a step. Return a StepResult when execution must stop."""
+        if self._policy_engine is None:
+            return None
+
+        if workflow.context.get("confirmation_granted") or workflow.context.get("approval_granted"):
+            return None
+
+        decision = await self._policy_engine.evaluate(
+            step.capability_name,
+            arguments,
+            {
+                "workflow_id": workflow.id,
+                "workflow_name": workflow.name,
+                "step_id": step.id,
+                "kind": workflow.context.get("kind", "action"),
+                "tenant_id": workflow.context.get("tenant_id"),
+                "tags": workflow.context.get("tags", []),
+            },
+        )
+
+        if decision.effect == PolicyEffect.DENY:
+            step.mark_failed(decision.reason)
+            workflow.sync_status()
+            return StepResult.fail(
+                decision.reason,
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        if decision.effect == PolicyEffect.LIMIT:
+            step.mark_failed(decision.reason)
+            workflow.sync_status()
+            return StepResult.fail(
+                decision.reason,
+                next={
+                    "action": "wait",
+                    "workflow_id": workflow.id,
+                    "step_id": step.id,
+                    "hint": "This step is rate-limited. Retry later.",
+                },
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        if decision.effect == PolicyEffect.ASK:
+            if self._approval_service is not None:
+                approval_request = await self._approval_service.create_approval_request(
+                    capability_name=step.capability_name,
+                    arguments=arguments,
+                    execution_id=f"wfexec_{workflow.id}_{step.id}",
+                    workflow_id=workflow.id,
+                )
+                await self.pause_for_approval(workflow.id, approval_request.id)
+                return StepResult.fail(
+                    decision.reason,
+                    requires_approval=True,
+                    next={
+                        "action": "await_approval",
+                        "workflow_id": workflow.id,
+                        "step_id": step.id,
+                        "approval_request_id": approval_request.id,
+                        "hint": decision.reason,
+                    },
+                    step_id=step.id,
+                    workflow_status=workflow.status,
+                )
+
+            step.status = StepStatus.AWAITING_CONFIRMATION
+            workflow.status = WorkflowStatus.PAUSED
+            workflow.touch()
+            return StepResult.fail(
+                decision.reason,
+                requires_confirmation=True,
+                next={
+                    "action": "confirm",
+                    "workflow_id": workflow.id,
+                    "step_id": step.id,
+                    "hint": decision.reason,
+                },
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        return None
+
+    def _generate_next(
+        self,
+        workflow: WorkflowState,
+        next_step: Step | None,
+    ) -> dict[str, Any] | None:
+        """Generate agent guidance for the next action."""
+        if next_step is not None:
+            return {
+                "action": "execute_step",
+                "workflow_id": workflow.id,
+                "step_id": next_step.id,
+                "capability": next_step.capability_name,
+                "hint": f"Next step: {next_step.capability_name}",
+            }
+
+        if workflow.is_complete:
+            return {
+                "action": "complete",
+                "workflow_id": workflow.id,
+                "summary": f"Workflow '{workflow.name}' completed",
+            }
+
+        return None

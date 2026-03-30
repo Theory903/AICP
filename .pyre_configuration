@@ -1,0 +1,8 @@
+{
+  "source_directories": [
+    "packages/core/src",
+    "packages/runtime/src",
+    "packages/cli/src"
+  ],
+  "python_version": "3.10"
+}

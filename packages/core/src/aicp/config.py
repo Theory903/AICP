@@ -1,12 +1,22 @@
 """AICP Project Configuration.
 
 Loads and validates aicp.yaml — the single project config file
-that drives init, scan, dev, and doctor commands.
+that drives init, scan, dev, doctor, runtime, and governance behavior.
 """
 
-from pathlib import Path
+from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pathlib import Path
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+PolicyEffectName = Literal["allow", "deny", "ask", "require_approval", "limit"]
+StoreBackendName = Literal["memory", "file", "sqlite"]
+
+
+class ConfigError(ValueError):
+    """Raised when project configuration is invalid."""
 
 
 class ProjectDefaults(BaseModel):
@@ -15,15 +25,15 @@ class ProjectDefaults(BaseModel):
     These are applied when no explicit rule matches a capability.
     """
 
-    queries: str = "allow"  # allow | ask | deny
-    actions: str = "ask"  # allow | ask | deny
-    destructive: str = "require_approval"  # allow | ask | deny | require_approval
+    queries: PolicyEffectName = "allow"
+    actions: PolicyEffectName = "ask"
+    destructive: PolicyEffectName = "require_approval"
 
-    def effect_for_kind(self, kind: str, is_destructive: bool = False) -> str:
+    def effect_for_kind(self, kind: str, is_destructive: bool = False) -> PolicyEffectName:
         """Get the default policy effect for a capability kind."""
         if is_destructive:
             return self.destructive
-        if kind in ("query",):
+        if kind == "query":
             return self.queries
         return self.actions
 
@@ -34,17 +44,40 @@ class PolicyRule(BaseModel):
     Example:
         - match: notes.delete
           effect: require_approval
-        - match: "*.list"
+        - match: notes.*
           effect: allow
-        - match: search.web
+        - match: auth.login
           effect: limit
           rpm: 60
     """
 
-    match: str  # capability name or glob pattern
-    effect: str  # allow | deny | ask | require_approval | limit
-    rpm: int | None = None  # for limit effect
-    reason: str | None = None  # human-readable reason
+    match: str
+    effect: PolicyEffectName
+    rpm: int | None = None
+    reason: str | None = None
+
+    @field_validator("match")
+    @classmethod
+    def validate_match(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("match cannot be empty")
+        return value
+
+    @field_validator("rpm")
+    @classmethod
+    def validate_rpm(cls, value: int | None) -> int | None:
+        if value is not None and value <= 0:
+            raise ValueError("rpm must be > 0")
+        return value
+
+    @model_validator(mode="after")
+    def validate_limit_rule(self) -> "PolicyRule":
+        if self.effect == "limit" and self.rpm is None:
+            raise ValueError("rpm is required when effect='limit'")
+        if self.effect != "limit" and self.rpm is not None:
+            raise ValueError("rpm is only allowed when effect='limit'")
+        return self
 
 
 class RuntimeConfig(BaseModel):
@@ -53,8 +86,31 @@ class RuntimeConfig(BaseModel):
     host: str = "127.0.0.1"
     port: int = 8000
     reload: bool = True
-    store_backend: str = "memory"  # memory | file | sqlite
+    store_backend: StoreBackendName = "memory"
     store_path: str | None = None
+
+    @field_validator("host")
+    @classmethod
+    def validate_host(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("host cannot be empty")
+        return value
+
+    @field_validator("port")
+    @classmethod
+    def validate_port(cls, value: int) -> int:
+        if not (1 <= value <= 65535):
+            raise ValueError("port must be between 1 and 65535")
+        return value
+
+    @model_validator(mode="after")
+    def validate_store_path(self) -> "RuntimeConfig":
+        if self.store_backend in {"file", "sqlite"} and not self.store_path:
+            raise ValueError(
+                f"store_path is required when store_backend='{self.store_backend}'"
+            )
+        return self
 
 
 class AicpProjectConfig(BaseModel):
@@ -65,8 +121,8 @@ class AicpProjectConfig(BaseModel):
     """
 
     # App detection
-    app: str | None = None  # "fastapi:app.main:app"
-    openapi: str | None = None  # "./openapi.yaml"
+    app: str | None = None
+    openapi: str | None = None
 
     # Default policy behavior
     defaults: ProjectDefaults = Field(default_factory=ProjectDefaults)
@@ -88,13 +144,44 @@ class AicpProjectConfig(BaseModel):
     provider_url: str | None = None
     version: str = "0.1.0"
 
+    @field_validator(
+        "capabilities_dir",
+        "policies_dir",
+        "workflows_dir",
+        "fixtures_dir",
+        "provider_name",
+        "version",
+    )
+    @classmethod
+    def validate_non_empty_strings(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("value cannot be empty")
+        return value
+
+    @field_validator("provider_url")
+    @classmethod
+    def validate_provider_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            return None
+        return value
+
+    @model_validator(mode="after")
+    def validate_sources(self) -> "AicpProjectConfig":
+        if self.app and self.openapi:
+            raise ValueError("only one of 'app' or 'openapi' may be set")
+        return self
+
     def find_rule(self, capability_name: str) -> PolicyRule | None:
         """Find the first matching rule for a capability name.
 
         Supports exact match and glob patterns:
-        - "notes.delete" matches exactly
-        - "notes.*" matches any capability in the notes namespace
-        - "*.list" matches any .list capability
+        - notes.delete matches exactly
+        - notes.* matches any capability in the notes namespace
+        - *.list matches any .list capability
         """
         import fnmatch
 
@@ -104,72 +191,87 @@ class AicpProjectConfig(BaseModel):
         return None
 
     def effective_effect(
-        self, capability_name: str, kind: str, is_destructive: bool = False
-    ) -> str:
+        self,
+        capability_name: str,
+        kind: str,
+        is_destructive: bool = False,
+    ) -> PolicyEffectName:
         """Get the effective policy effect for a capability.
 
         First checks explicit rules, then falls back to defaults.
         """
         rule = self.find_rule(capability_name)
-        if rule:
+        if rule is not None:
             return rule.effect
         return self.defaults.effect_for_kind(kind, is_destructive)
 
+    def effective_rpm(self, capability_name: str) -> int | None:
+        """Get rate limit for a capability if a matching limit rule exists."""
+        rule = self.find_rule(capability_name)
+        if rule and rule.effect == "limit":
+            return rule.rpm
+        return None
 
-# --- Loader functions ---
+    def resolve_dir(self, root: str | Path, attr_name: str) -> Path:
+        """Resolve a configured directory against a project root."""
+        value = getattr(self, attr_name)
+        return Path(root) / value
 
 
 def load_project_config(path: str | Path | None = None) -> AicpProjectConfig:
-    """Load project config from aicp.yaml.
+    """Load project config from disk.
 
-    Searches for config in this order:
+    Search order:
     1. Explicit path if provided
     2. aicp.yaml in current directory
     3. .aicp.yaml in current directory
     4. aicp.yml in current directory
-
-    Returns default config if no file found.
+    5. .aicp.yml in current directory
     """
-    if path:
+    if path is not None:
         config_path = Path(path)
-        if config_path.exists():
-            return _parse_config(config_path)
-        raise FileNotFoundError(f"Config file not found: {config_path}")
+        if not config_path.exists():
+            raise FileNotFoundError(f"Config file not found: {config_path}")
+        return _parse_config(config_path)
 
-    # Search in current directory
-    candidates = [
-        Path("aicp.yaml"),
-        Path(".aicp.yaml"),
-        Path("aicp.yml"),
-        Path(".aicp.yml"),
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return _parse_config(candidate)
+    found = find_config_file(".")
+    if found is not None:
+        return _parse_config(found)
 
     return AicpProjectConfig()
 
 
 def _parse_config(path: Path) -> AicpProjectConfig:
-    """Parse a config file into AicpProjectConfig."""
+    """Parse a YAML config file into AicpProjectConfig."""
     try:
         import yaml
-    except ImportError:
+    except ImportError as exc:
         raise ImportError(
             "PyYAML is required for config loading. Install with: pip install pyyaml"
-        )
+        ) from exc
 
-    with open(path) as f:
-        raw = yaml.safe_load(f)
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f)
+    except OSError as exc:
+        raise ConfigError(f"Failed to read config file '{path}': {exc}") from exc
+    except yaml.YAMLError as exc:
+        raise ConfigError(f"Invalid YAML in config file '{path}': {exc}") from exc
 
-    if not raw:
+    if raw is None:
         return AicpProjectConfig()
 
-    return AicpProjectConfig.model_validate(raw)
+    if not isinstance(raw, dict):
+        raise ConfigError(f"Config file '{path}' must contain a YAML mapping/object")
+
+    try:
+        return AicpProjectConfig.model_validate(raw)
+    except Exception as exc:
+        raise ConfigError(f"Invalid config in '{path}': {exc}") from exc
 
 
 def find_config_file(base_path: str | Path = ".") -> Path | None:
-    """Find an aicp.yaml config file starting from base_path."""
+    """Find an AICP config file starting from base_path."""
     base = Path(base_path)
     candidates = [
         base / "aicp.yaml",
@@ -184,24 +286,36 @@ def find_config_file(base_path: str | Path = ".") -> Path | None:
 
 
 def save_project_config(
-    config: AicpProjectConfig, path: str | Path = "aicp.yaml"
+    config: AicpProjectConfig,
+    path: str | Path = "aicp.yaml",
 ) -> Path:
     """Save project config to a YAML file."""
     try:
         import yaml
-    except ImportError:
+    except ImportError as exc:
         raise ImportError(
             "PyYAML is required for config saving. Install with: pip install pyyaml"
-        )
+        ) from exc
 
     output_path = Path(path)
-    data = config.model_dump(exclude_none=True, exclude_defaults=True)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Clean up empty collections
+    data = config.model_dump(exclude_none=True)
+
+    # Keep file clean. Humans already do enough damage without noisy config.
     if not data.get("rules"):
         data.pop("rules", None)
 
-    with open(output_path, "w") as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+    try:
+        with output_path.open("w", encoding="utf-8") as f:
+            yaml.safe_dump(
+                data,
+                f,
+                default_flow_style=False,
+                sort_keys=False,
+                allow_unicode=True,
+            )
+    except OSError as exc:
+        raise ConfigError(f"Failed to save config to '{output_path}': {exc}") from exc
 
     return output_path

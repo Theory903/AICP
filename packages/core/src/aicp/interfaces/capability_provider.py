@@ -4,6 +4,8 @@ Defines the contract for capability discovery and retrieval. Multiple sources
 can provide capabilities: OpenAPI specs, MCP servers, code decorators, etc.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -13,13 +15,21 @@ from aicp.capability import Capability, CapabilityKind
 class DiscoveryError(Exception):
     """Raised when capability discovery fails."""
 
-    pass
+    def __init__(self, message: str, provider_name: str | None = None):
+        self.provider_name = provider_name
+        super().__init__(message)
 
 
 class CapabilityNotFoundError(Exception):
     """Raised when a requested capability cannot be found."""
 
-    pass
+    def __init__(self, capability_name: str, provider_name: str | None = None):
+        self.capability_name = capability_name
+        self.provider_name = provider_name
+        message = f"Capability not found: {capability_name}"
+        if provider_name:
+            message = f"{message} (provider={provider_name})"
+        super().__init__(message)
 
 
 class CapabilityProvider(ABC):
@@ -40,14 +50,14 @@ class CapabilityProvider(ABC):
     @property
     @abstractmethod
     def provider_type(self) -> str:
-        """The type identifier for this provider (e.g., 'openapi', 'mcp', 'code')."""
-        pass
+        """The type identifier for this provider."""
+        raise NotImplementedError
 
     @property
     @abstractmethod
     def provider_name(self) -> str:
         """Unique name for this provider instance."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def discover(self) -> list[Capability]:
@@ -59,19 +69,19 @@ class CapabilityProvider(ABC):
         Raises:
             DiscoveryError: If discovery fails.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def get_capability(self, name: str) -> Capability | None:
         """Get a specific capability by name.
 
         Args:
-            name: The capability name (may include provider prefix).
+            name: The capability name.
 
         Returns:
             The capability if found, None otherwise.
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def execute(
@@ -85,16 +95,25 @@ class CapabilityProvider(ABC):
         Args:
             capability_name: Name of the capability to execute.
             arguments: Arguments to pass to the capability.
-            context: Optional execution context (workflow ID, user info, etc.).
+            context: Optional execution context.
 
         Returns:
             The capability's result.
 
         Raises:
-            CapabilityNotFoundError: If capability doesn't exist.
-            ExecutionError: If execution fails.
+            CapabilityNotFoundError: If capability does not exist.
+            Exception: If execution fails.
         """
-        pass
+        raise NotImplementedError
+
+    async def has_capability(self, name: str) -> bool:
+        """Check whether a capability exists."""
+        return await self.get_capability(name) is not None
+
+    async def list_capability_names(self) -> list[str]:
+        """List capability names for this provider."""
+        capabilities = await self.discover()
+        return [capability.name for capability in capabilities]
 
     async def search(
         self,
@@ -104,25 +123,49 @@ class CapabilityProvider(ABC):
     ) -> list[Capability]:
         """Search for capabilities matching the query.
 
-        Default implementation does simple text matching on name and description.
+        Default implementation does simple ranking on:
+        - exact name match
+        - substring name match
+        - description match
+        - tag match
+
         Providers can override with more sophisticated search.
-
-        Args:
-            query: Search query string.
-            limit: Maximum number of results.
-            kind_filter: Optional filter by capability kinds.
-
-        Returns:
-            List of matching capabilities.
         """
-        all_caps = await self.discover()
-        query_lower = query.lower()
+        if limit <= 0:
+            return []
 
-        matches = []
-        for cap in all_caps:
-            if kind_filter and cap.kind not in kind_filter:
+        capabilities = await self.discover()
+        normalized_query = query.strip().lower()
+
+        filtered: list[tuple[int, Capability]] = []
+        for capability in capabilities:
+            if kind_filter and capability.kind not in kind_filter:
                 continue
-            if query_lower in cap.name.lower() or query_lower in cap.description.lower():
-                matches.append(cap)
 
-        return matches[:limit]
+            if not normalized_query:
+                filtered.append((0, capability))
+                continue
+
+            score = 0
+            name = capability.name.lower()
+            description = capability.description.lower() if capability.description else ""
+            tags = [tag.lower() for tag in capability.tags]
+
+            if name == normalized_query:
+                score += 100
+            elif name.startswith(normalized_query):
+                score += 60
+            elif normalized_query in name:
+                score += 40
+
+            if normalized_query in description:
+                score += 20
+
+            if any(normalized_query in tag for tag in tags):
+                score += 15
+
+            if score > 0:
+                filtered.append((score, capability))
+
+        filtered.sort(key=lambda item: (-item[0], item[1].name))
+        return [capability for _, capability in filtered[:limit]]
