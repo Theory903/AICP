@@ -62,7 +62,7 @@ class TestCapabilityBenchmarks:
         start = time.perf_counter()
 
         for i in range(1000):
-            cap = Capability(
+            Capability(
                 name=f"test.action_{i}",
                 description=f"Test action {i}",
                 kind=CapabilityKind.ACTION,
@@ -102,7 +102,7 @@ class TestRegistryBenchmarks:
 
         start = time.perf_counter()
         for _ in range(100):
-            discovery = registry.discovery_response()
+            registry.discovery_response()
 
         duration_ms = (time.perf_counter() - start) * 1000
         benchmark_results.record("registry_discovery_100", duration_ms)
@@ -132,7 +132,7 @@ class TestRegistryBenchmarks:
 
         start = time.perf_counter()
         for _ in range(1000):
-            caps = registry.list_capabilities()
+            registry.list_capabilities()
 
         duration_ms = (time.perf_counter() - start) * 1000
         benchmark_results.record("registry_list_1000", duration_ms)
@@ -148,7 +148,7 @@ class TestPolicyBenchmarks:
         start = time.perf_counter()
 
         for i in range(1000):
-            policy = Policy(
+            Policy(
                 name=f"test.policy_{i}",
                 description=f"Test policy {i}",
                 effect=PolicyEffect.ALLOW,
@@ -177,7 +177,7 @@ class TestPolicyBenchmarks:
 
         start = time.perf_counter()
         for _ in range(1000):
-            decision = await engine.evaluate("test.action", {}, {})
+            await engine.evaluate("test.action", {}, {})
 
         duration_ms = (time.perf_counter() - start) * 1000
         benchmark_results.record("policy_evaluation_1000", duration_ms)
@@ -226,7 +226,7 @@ class TestExecutorBenchmarks:
 
         start = time.perf_counter()
         for _ in range(1000):
-            result = await executor.execute("nonexistent", {})
+            await executor.execute("nonexistent", {})
 
         duration_ms = (time.perf_counter() - start) * 1000
         benchmark_results.record("executor_not_found_1000", duration_ms)
@@ -247,7 +247,7 @@ class TestWorkflowBenchmarks:
 
         start = time.perf_counter()
         for i in range(100):
-            workflow = await runtime.create_workflow(
+            await runtime.create_workflow(
                 name=f"workflow_{i}",
                 description=f"Test workflow {i}",
                 steps=[

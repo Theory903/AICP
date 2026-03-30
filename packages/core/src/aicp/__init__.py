@@ -21,6 +21,36 @@ except ImportError:
     HttpExecutionAdapter = None
     McpAdapter = None
 
+# API
+from aicp.api import (
+    APIVersion,
+    DependencyHealthCheck,
+    GracefulShutdown,
+    HealthCheckBase,
+    HealthCheckRouter,
+    LivenessHealthCheck,
+    ReadinessHealthCheck,
+    VersionConfig,
+    VersionManager,
+    lifespan_context,
+)
+
+# Authentication
+from aicp.auth import (
+    ApiKeyAuth,
+    Auth,
+    BasicAuth,
+    BearerAuth,
+    OAuth2Auth,
+    OAuth2WithRefresh,
+)
+
+# Cache
+from aicp.cache import (
+    CacheDecorator,
+    RateLimiterRedis,
+    RedisCache,
+)
 from aicp.capability import (
     Capability,
     CapabilityKind,
@@ -70,123 +100,92 @@ from aicp.interfaces import (
     WorkflowState,
     WorkflowStatus,
 )
-from aicp.registry import AicpRegistry, TagSearchStrategy
-from aicp.validator import AicpValidator
-from aicp.validator import ValidationError as SchemaValidationError
 
-# Authentication
-from aicp.auth import (
-    Auth,
-    ApiKeyAuth,
-    BasicAuth,
-    BearerAuth,
-    OAuth2Auth,
-    OAuth2WithRefresh,
+# Notifications
+from aicp.notifications import (
+    EmailChannel,
+    Notification,
+    NotificationChannel,
+    NotificationService,
+    SlackChannel,
+    WebhookChannel,
 )
 
-# Variable handling
-from aicp.variables import (
-    VariableNotFoundError,
-    VariableSubstitutor,
-    load_dotenv,
-    DotEnvLoader,
-)
-
-# Security
-from aicp.security import (
-    RateLimitExceeded,
-    RateLimiter,
-    ApiKeyRotator,
-    AuditSigner,
-    SecureAuditLog,
+# Observability
+from aicp.observability import (
+    HealthCheck,
+    MetricsCollector,
+    StructuredLogger,
+    Tracer,
+    get_logger,
+    get_metrics,
+    get_tracer,
 )
 
 # Plugin system
 from aicp.plugins import (
-    Plugin,
-    PluginMetadata,
-    TransportPlugin,
     AuthProviderPlugin,
     CapabilitySourcePlugin,
+    Plugin,
+    PluginMetadata,
     PluginRegistry,
+    TransportPlugin,
     get_plugin_registry,
-    register_transport,
     register_auth_provider,
     register_capability_source,
+    register_transport,
+)
+from aicp.registry import AicpRegistry, TagSearchStrategy
+
+# Reliability
+from aicp.reliability import (
+    BackoffStrategy,
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitBreakerManager,
+    CircuitBreakerOpenError,
+    RetryConfig,
+    RetryExhaustedError,
+    retry_async,
+    retry_sync,
+)
+
+# Secrets & Cloud
+from aicp.secrets import (
+    AWSSecretsManagerStore,
+    CloudAuditStorage,
+    EnvSecretStore,
+    HashiCorpVaultStore,
+    SecretManager,
+    SecretStore,
+)
+
+# Security
+from aicp.security import (
+    ApiKeyRotator,
+    AuditSigner,
+    RateLimiter,
+    RateLimitError,
+    SecureAuditLog,
 )
 
 # Multi-tenancy
 from aicp.tenancy import (
     Tenant,
-    TenantQuota,
     TenantContext,
-    TenantManager,
     TenantIsolation,
+    TenantManager,
+    TenantQuota,
 )
+from aicp.validator import AicpValidator
+from aicp.validator import ValidationError as SchemaValidationError
 
-# Reliability
-from aicp.reliability import (
-    RetryConfig,
-    RetryExhausted,
-    retry_async,
-    retry_sync,
-    BackoffStrategy,
-    CircuitBreaker,
-    CircuitBreakerConfig,
-    CircuitBreakerOpen,
-    CircuitBreakerManager,
-)
-
-# Observability
-from aicp.observability import (
-    StructuredLogger,
-    get_logger,
-    MetricsCollector,
-    get_metrics,
-    Tracer,
-    get_tracer,
-    HealthCheck,
-)
-
-# Notifications
-from aicp.notifications import (
-    Notification,
-    NotificationChannel,
-    WebhookChannel,
-    SlackChannel,
-    EmailChannel,
-    NotificationService,
-)
-
-# Secrets & Cloud
-from aicp.secrets import (
-    SecretStore,
-    EnvSecretStore,
-    HashiCorpVaultStore,
-    AWSSecretsManagerStore,
-    SecretManager,
-    CloudAuditStorage,
-)
-
-# Cache
-from aicp.cache import (
-    RedisCache,
-    CacheDecorator,
-    RateLimiterRedis,
-)
-
-# API
-from aicp.api import (
-    APIVersion,
-    VersionConfig,
-    VersionManager,
-    HealthCheckBase,
-    LivenessHealthCheck,
-    ReadinessHealthCheck,
-    DependencyHealthCheck,
-    HealthCheckRouter,
-    GracefulShutdown,
-    lifespan_context,
+# Variable handling
+from aicp.variables import (
+    DotEnvLoader,
+    VariableNotFoundError,
+    VariableSubstitutor,
+    load_dotenv,
 )
 
 __all__ = [
@@ -252,7 +251,7 @@ __all__ = [
     "load_dotenv",
     "DotEnvLoader",
     # Security
-    "RateLimitExceeded",
+    "RateLimitError",
     "RateLimiter",
     "ApiKeyRotator",
     "AuditSigner",
@@ -276,13 +275,13 @@ __all__ = [
     "TenantIsolation",
     # Reliability
     "RetryConfig",
-    "RetryExhausted",
+    "RetryExhaustedError",
     "retry_async",
     "retry_sync",
     "BackoffStrategy",
     "CircuitBreaker",
     "CircuitBreakerConfig",
-    "CircuitBreakerOpen",
+    "CircuitBreakerOpenError",
     "CircuitBreakerManager",
     # Observability
     "StructuredLogger",

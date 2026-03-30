@@ -62,7 +62,7 @@ class BearerAuth(Auth):
 
 class OAuth2Auth(Auth):
     """OAuth2 client credentials flow authentication.
-    
+
     Supports client credentials grant type for machine-to-machine authentication.
     """
 
@@ -87,21 +87,21 @@ class OAuth2Auth(Auth):
 
     async def fetch_token(self) -> str:
         """Fetch OAuth2 token from token URL.
-        
+
         Returns:
             Access token string.
-            
+
         Raises:
             ValueError: If token fetch fails.
         """
         import aiohttp
-        
+
         data = {
             "grant_type": "client_credentials",
             "client_id": self.client_id,
             "client_secret": self.client_secret,
         }
-        
+
         if self.scopes:
             data["scope"] = " ".join(self.scopes)
         if self.audience:
@@ -112,7 +112,7 @@ class OAuth2Auth(Auth):
                 if response.status != 200:
                     text = await response.text()
                     raise ValueError(f"OAuth2 token fetch failed: {response.status} - {text}")
-                
+
                 token_data = await response.json()
                 self._cached_token = token_data.get("access_token")
                 return self._cached_token
@@ -120,7 +120,7 @@ class OAuth2Auth(Auth):
 
 class OAuth2WithRefresh(OAuth2Auth):
     """OAuth2 with refresh token support.
-    
+
     Supports authorization code and refresh token flows for user-based auth.
     """
 
@@ -138,12 +138,12 @@ class OAuth2WithRefresh(OAuth2Auth):
 
     async def refresh_access_token(self) -> str:
         """Refresh the access token using refresh token.
-        
+
         Returns:
             New access token string.
         """
         import aiohttp
-        
+
         data = {
             "grant_type": "refresh_token",
             "client_id": self.client_id,
@@ -155,7 +155,7 @@ class OAuth2WithRefresh(OAuth2Auth):
             async with session.post(self.token_url, data=data) as response:
                 if response.status != 200:
                     raise ValueError(f"OAuth2 refresh failed: {response.status}")
-                
+
                 token_data = await response.json()
                 self._cached_token = token_data.get("access_token")
                 self.refresh_token = token_data.get("refresh_token", self.refresh_token)

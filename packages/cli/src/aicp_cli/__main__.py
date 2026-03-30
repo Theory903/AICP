@@ -39,7 +39,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # list command
-    list_parser = subparsers.add_parser("list", help="List capabilities")
+    subparsers.add_parser("list", help="List capabilities")
 
     # call command
     call_parser = subparsers.add_parser("call", help="Call a capability")
@@ -47,7 +47,7 @@ def create_parser() -> argparse.ArgumentParser:
     call_parser.add_argument("--args", default="{}", help="JSON arguments")
 
     # discover command
-    discover_parser = subparsers.add_parser("discover", help="Discover capabilities")
+    subparsers.add_parser("discover", help="Discover capabilities")
 
     # execute command (P0)
     execute_parser = subparsers.add_parser("execute", help="Execute a capability")

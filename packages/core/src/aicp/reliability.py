@@ -6,10 +6,10 @@ Provides resilient execution with automatic recovery.
 import asyncio
 import random
 import time
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, TypeVar
-
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -22,9 +22,9 @@ class BackoffStrategy(Enum):
     FIBONACCI = "fibonacci"
 
 
-class RetryExhausted(Exception):
+class RetryExhaustedError(Exception):
     """Raised when all retry attempts are exhausted."""
-    
+
     def __init__(self, attempts: int, last_error: Exception):
         self.attempts = attempts
         self.last_error = last_error
@@ -57,12 +57,12 @@ def calculate_delay(
         delay = config.initial_delay * fibonacci(attempt)
     else:
         delay = config.initial_delay
-        
+
     delay = min(delay, config.max_delay)
-    
+
     if config.jitter:
         delay = delay * (0.5 + random.random())
-        
+
     return delay
 
 
@@ -84,25 +84,25 @@ async def retry_async(
     **kwargs,
 ) -> T:
     """Retry an async function with exponential backoff.
-    
+
     Args:
         func: Async function to retry.
         *args: Positional arguments for func.
         config: Retry configuration.
         should_retry: Function to determine if exception should retry.
         **kwargs: Keyword arguments for func.
-        
+
     Returns:
         Result of successful function call.
-        
+
     Raises:
-        RetryExhausted: If all attempts fail.
+        RetryExhaustedError: If all attempts fail.
     """
     config = config or RetryConfig()
     should_retry = should_retry or (lambda e: True)
-    
+
     last_error = None
-    
+
     for attempt in range(1, config.max_attempts + 1):
         try:
             if asyncio.iscoroutinefunction(func):
@@ -110,14 +110,14 @@ async def retry_async(
             return func(*args, **kwargs)
         except Exception as e:
             last_error = e
-            
+
             if attempt == config.max_attempts or not should_retry(e):
-                raise RetryExhausted(attempt, e) from e
-                
+                raise RetryExhaustedError(attempt, e) from e
+
             delay = calculate_delay(attempt, config)
             await asyncio.sleep(delay)
-            
-    raise RetryExhausted(config.max_attempts, last_error)
+
+    raise RetryExhaustedError(config.max_attempts, last_error)
 
 
 def retry_sync(
@@ -130,22 +130,22 @@ def retry_sync(
     """Retry a sync function with exponential backoff."""
     config = config or RetryConfig()
     should_retry = should_retry or (lambda e: True)
-    
+
     last_error = None
-    
+
     for attempt in range(1, config.max_attempts + 1):
         try:
             return func(*args, **kwargs)
         except Exception as e:
             last_error = e
-            
+
             if attempt == config.max_attempts or not should_retry(e):
-                raise RetryExhausted(attempt, e) from e
-                
+                raise RetryExhaustedError(attempt, e) from e
+
             delay = calculate_delay(attempt, config)
             time.sleep(delay)
-            
-    raise RetryExhausted(config.max_attempts, last_error)
+
+    raise RetryExhaustedError(config.max_attempts, last_error)
 
 
 class CircuitState(Enum):
@@ -164,17 +164,17 @@ class CircuitBreakerConfig:
     excluded_exceptions: tuple = ()
 
 
-class CircuitBreakerOpen(Exception):
+class CircuitBreakerOpenError(Exception):
     """Raised when circuit is open."""
     pass
 
 
 class CircuitBreaker:
     """Circuit breaker pattern implementation.
-    
+
     Prevents cascading failures by failing fast when service is down.
     """
-    
+
     def __init__(self, name: str, config: CircuitBreakerConfig | None = None):
         self.name = name
         self.config = config or CircuitBreakerConfig()
@@ -182,7 +182,7 @@ class CircuitBreaker:
         self._failure_count = 0
         self._success_count = 0
         self._last_failure_time = 0.0
-        
+
     @property
     def state(self) -> CircuitState:
         """Get current circuit state."""
@@ -190,16 +190,16 @@ class CircuitBreaker:
             if time.time() - self._last_failure_time >= self.config.timeout:
                 self._state = CircuitState.HALF_OPEN
         return self._state
-    
+
     def is_available(self) -> bool:
         """Check if circuit allows requests."""
         return self.state != CircuitState.OPEN
-    
+
     async def call(self, func: Callable[..., T], *args, **kwargs) -> T:
         """Execute function with circuit breaker protection."""
         if not self.is_available():
-            raise CircuitBreakerOpen(f"Circuit {self.name} is open")
-            
+            raise CircuitBreakerOpenError(f"Circuit {self.name} is open")
+
         try:
             if asyncio.iscoroutinefunction(func):
                 result = await func(*args, **kwargs)
@@ -212,7 +212,7 @@ class CircuitBreaker:
                 raise
             self._on_failure()
             raise
-    
+
     def _on_success(self) -> None:
         """Handle successful call."""
         if self._state == CircuitState.HALF_OPEN:
@@ -223,25 +223,25 @@ class CircuitBreaker:
                 self._success_count = 0
         else:
             self._failure_count = 0
-            
+
     def _on_failure(self) -> None:
         """Handle failed call."""
         self._failure_count += 1
         self._last_failure_time = time.time()
-        
+
         if self._state == CircuitState.HALF_OPEN:
             self._state = CircuitState.OPEN
             self._success_count = 0
         elif self._failure_count >= self.config.failure_threshold:
             self._state = CircuitState.OPEN
-            
+
     def reset(self) -> None:
         """Manually reset circuit breaker."""
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._success_count = 0
         self._last_failure_time = 0.0
-        
+
     def get_state(self) -> dict[str, Any]:
         """Get circuit breaker state for monitoring."""
         return {
@@ -255,16 +255,16 @@ class CircuitBreaker:
 
 class CircuitBreakerManager:
     """Manages multiple circuit breakers."""
-    
+
     def __init__(self):
         self._breakers: dict[str, CircuitBreaker] = {}
-        
+
     def get_or_create(self, name: str, config: CircuitBreakerConfig | None = None) -> CircuitBreaker:
         """Get or create a circuit breaker."""
         if name not in self._breakers:
             self._breakers[name] = CircuitBreaker(name, config)
         return self._breakers[name]
-    
+
     def get_all_states(self) -> list[dict[str, Any]]:
         """Get state of all circuit breakers."""
         return [cb.get_state() for cb in self._breakers.values()]

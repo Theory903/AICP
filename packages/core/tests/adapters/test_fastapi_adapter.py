@@ -1,8 +1,8 @@
 """Tests for FastAPI adapter."""
 
-from typing import Optional
 
-from fastapi import FastAPI, Query, Path as PathParam
+from fastapi import FastAPI, Query
+from fastapi import Path as PathParam
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
@@ -12,7 +12,7 @@ from aicp.adapters.framework.fastapi.inspect import infer_capability_name, inspe
 
 class ItemCreate(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class ItemResponse(BaseModel):
@@ -296,7 +296,7 @@ class TestQueryAndPathParams:
         def list_items(
             limit: int = Query(10),
             offset: int = Query(0),
-            search: Optional[str] = Query(None),
+            search: str | None = Query(None),
         ):
             return []
 
@@ -324,7 +324,7 @@ class TestQueryAndPathParams:
         app = FastAPI()
 
         @app.post("/items/search")
-        def search_items(q: str = Query(...), filters: Optional[dict] = None):
+        def search_items(q: str = Query(...), filters: dict | None = None):
             return []
 
         routes = inspect_routes(app)
@@ -372,7 +372,7 @@ class TestEdgeCases:
         app = FastAPI()
 
         @app.get("/items")
-        def list_items(name: Optional[str] = None):
+        def list_items(name: str | None = None):
             return []
 
         routes = inspect_routes(app)

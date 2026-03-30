@@ -7,6 +7,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import smtplib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
@@ -27,7 +28,7 @@ class Notification:
 
 class NotificationChannel(ABC):
     """Base class for notification channels."""
-    
+
     @abstractmethod
     async def send(self, notification: Notification) -> bool:
         """Send notification."""
@@ -36,7 +37,7 @@ class NotificationChannel(ABC):
 
 class WebhookChannel(NotificationChannel):
     """Webhook notification channel."""
-    
+
     def __init__(
         self,
         url: str,
@@ -48,7 +49,7 @@ class WebhookChannel(NotificationChannel):
         self.secret = secret
         self.headers = headers or {}
         self.timeout = timeout
-        
+
     async def send(self, notification: Notification) -> bool:
         """Send notification via webhook."""
         payload = {
@@ -59,14 +60,14 @@ class WebhookChannel(NotificationChannel):
             "data": notification.data,
             "priority": notification.priority,
         }
-        
+
         headers = self.headers.copy()
         headers["Content-Type"] = "application/json"
-        
+
         if self.secret:
             payload["signature"] = self._sign(payload)
             headers["X-Webhook-Signature"] = payload["signature"]
-            
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -78,7 +79,7 @@ class WebhookChannel(NotificationChannel):
                     return response.status >= 200 and response.status < 300
         except Exception:
             return False
-            
+
     def _sign(self, payload: dict) -> str:
         """Sign webhook payload."""
         content = json.dumps(payload, sort_keys=True)
@@ -91,11 +92,11 @@ class WebhookChannel(NotificationChannel):
 
 class SlackChannel(NotificationChannel):
     """Slack notification channel."""
-    
+
     def __init__(self, webhook_url: str, channel: str | None = None):
         self.webhook_url = webhook_url
         self.channel = channel
-        
+
     async def send(self, notification: Notification) -> bool:
         """Send notification to Slack."""
         color = {
@@ -104,7 +105,7 @@ class SlackChannel(NotificationChannel):
             "high": "#f5a623",
             "urgent": "#e53935",
         }.get(notification.priority, "#4a90e2")
-        
+
         payload = {
             "attachments": [
                 {
@@ -118,10 +119,10 @@ class SlackChannel(NotificationChannel):
                 }
             ]
         }
-        
+
         if self.channel:
             payload["channel"] = self.channel
-            
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -135,7 +136,7 @@ class SlackChannel(NotificationChannel):
 
 class EmailChannel(NotificationChannel):
     """Email notification channel."""
-    
+
     def __init__(
         self,
         smtp_host: str,
@@ -151,18 +152,17 @@ class EmailChannel(NotificationChannel):
         self.password = password
         self.from_address = from_address
         self.use_tls = use_tls
-        
+
     async def send(self, notification: Notification) -> bool:
         """Send notification via email."""
-        import smtplib
-        from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
-        
+        from email.mime.text import MIMEText
+
         msg = MIMEMultipart()
         msg["From"] = self.from_address
         msg["To"] = ",".join(notification.data.get("recipients", []))
         msg["Subject"] = notification.title
-        
+
         body = f"""
 {notification.message}
 
@@ -173,7 +173,7 @@ Additional Data:
 {json.dumps(notification.data, indent=2)}
 """
         msg.attach(MIMEText(body, "plain"))
-        
+
         try:
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
@@ -185,7 +185,7 @@ Additional Data:
             return True
         except Exception:
             return False
-            
+
     def _send_sync(self, msg, recipients: list[str]) -> None:
         """Send email synchronously."""
         with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
@@ -198,22 +198,22 @@ Additional Data:
 
 class NotificationService:
     """Central notification service."""
-    
+
     def __init__(self):
         self._channels: dict[str, NotificationChannel] = {}
         self._event_subscriptions: dict[str, list[str]] = {}  # event -> channel names
-        
+
     def add_channel(self, name: str, channel: NotificationChannel) -> None:
         """Add a notification channel."""
         self._channels[name] = channel
-        
+
     def subscribe(self, event_type: str, channel_name: str) -> None:
         """Subscribe channel to event type."""
         if event_type not in self._event_subscriptions:
             self._event_subscriptions[event_type] = []
         if channel_name not in self._event_subscriptions[event_type]:
             self._event_subscriptions[event_type].append(channel_name)
-            
+
     async def notify(
         self,
         event_type: str,
@@ -224,7 +224,7 @@ class NotificationService:
     ) -> dict[str, bool]:
         """Send notification to all subscribed channels."""
         import secrets
-        
+
         notification = Notification(
             id=secrets.token_hex(8),
             event_type=event_type,
@@ -233,25 +233,25 @@ class NotificationService:
             data=data,
             priority=priority,
         )
-        
+
         channel_names = self._event_subscriptions.get(event_type, [])
         results = {}
-        
+
         for name in channel_names:
             channel = self._channels.get(name)
             if channel:
                 success = await channel.send(notification)
                 results[name] = success
-                
+
         return results
 
 
 def create_webhook_handler(app, notification_service: NotificationService, path: str = "/webhooks") -> None:
     """Create webhook endpoint for external triggers."""
-    from fastapi import APIRouter, Request, HTTPException
-    
+    from fastapi import APIRouter, HTTPException, Request
+
     router = APIRouter()
-    
+
     @router.post(path)
     async def handle_webhook(request: Request):
         """Handle incoming webhook."""
@@ -259,11 +259,11 @@ def create_webhook_handler(app, notification_service: NotificationService, path:
             payload = await request.json()
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid JSON")
-            
+
         event_type = payload.get("event")
         if not event_type:
             raise HTTPException(status_code=400, detail="Missing event type")
-            
+
         await notification_service.notify(
             event_type=event_type,
             title=payload.get("title", "Webhook Event"),
@@ -271,7 +271,7 @@ def create_webhook_handler(app, notification_service: NotificationService, path:
             data=payload.get("data", payload),
             priority=payload.get("priority", "normal"),
         )
-        
+
         return {"status": "received"}
-        
+
     app.include_router(router)

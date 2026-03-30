@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from aicp_connect_fastapi import AicpConfig, mount_aicp
-from aicp_connect_fastapi.inspect import infer_capability_name, inspect_routes
+from aicp_connect_fastapi.inspect import inspect_routes
 
 
 def test_connect_fastapi_inspects_routes() -> None:

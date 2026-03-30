@@ -56,7 +56,7 @@ async def run_platform_demo(store_path: str | Path) -> dict:
         ],
     )
 
-    paused_result = await workflow_service.execute_step(workflow.id, {"requester": "agent-demo"})
+    await workflow_service.execute_step(workflow.id, {"requester": "agent-demo"})
     approval = (await approval_service.list_approvals())[0]
     resumed_result = await workflow_service.resume_after_approval(
         workflow.id,

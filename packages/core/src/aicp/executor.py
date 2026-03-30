@@ -4,7 +4,8 @@ Default executor implementation with policy enforcement and result normalization
 """
 
 import time
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from aicp.capability import Capability
 from aicp.interfaces.capability_provider import CapabilityProvider
@@ -219,14 +220,14 @@ class AicpExecutor(Executor):
         context: dict[str, Any] | None = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Execute a capability with streaming support.
-        
+
         Checks if provider supports streaming, otherwise falls back to regular execution.
-        
+
         Yields:
             Streaming chunks with type, data, and metadata.
         """
         yield {"type": "start", "capability": capability_name}
-        
+
         capability = await self._provider.get_capability(capability_name)
         if not capability:
             yield {
@@ -235,18 +236,18 @@ class AicpExecutor(Executor):
                 "error_code": "capability_not_found",
             }
             return
-            
+
         if self._policy_engine:
             decision = await self._policy_engine.evaluate(
                 capability_name,
                 arguments,
                 {"kind": capability.kind, **(context or {})},
             )
-            
+
             if decision.effect == PolicyEffect.DENY:
                 yield {"type": "error", "error": decision.reason, "error_code": "policy_denied"}
                 return
-                
+
             if decision.effect == PolicyEffect.ASK:
                 yield {
                     "type": "approval_required",
@@ -255,7 +256,7 @@ class AicpExecutor(Executor):
                     "arguments": arguments,
                 }
                 return
-        
+
         try:
             provider = self._provider
             if hasattr(provider, 'execute_streaming'):
@@ -266,5 +267,5 @@ class AicpExecutor(Executor):
                 yield {"type": "result", "status": result.status.value, "data": result.data}
         except Exception as e:
             yield {"type": "error", "error": str(e), "error_code": "execution_failed"}
-        
+
         yield {"type": "end"}
