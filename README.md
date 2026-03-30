@@ -15,10 +15,7 @@
   <a href="https://pypi.org/project/aicp-core/"><img src="https://img.shields.io/pypi/v/aicp-core?color=blue&style=flat" alt="PyPI Version"></a>
   <a href="https://pypi.org/project/aicp-core/"><img src="https://img.shields.io/pypi/dm/aicp-core?color=green&style=flat" alt="PyPI Downloads"></a>
   <a href="https://github.com/aicp-ai/aicp/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/aicp-core?color=orange&style=flat" alt="License"></a>
-  <a href="https://discord.gg/aicp"><img src="https://img.shields.io/discord/123456789?color=purple&style=flat" alt="Discord"></a>
 </p>
-
-[Website](https://aicp.ai) • [Documentation](https://docs.aicp.ai) • [API Reference](https://docs.aicp.ai/reference) • [Examples](https://github.com/aicp-ai/aicp/tree/main/examples) • [Blog](https://aicp.ai/blog)
 
 </div>
 
@@ -248,23 +245,6 @@ We welcome contributions! Please see our [Contributing Guide](https://github.com
 
 - 📖 [Code of Conduct](https://github.com/aicp-ai/aicp/blob/main/governance/CODE_OF_CONDUCT.md)
 - 🐛 [Issue Tracker](https://github.com/aicp-ai/aicp/issues)
-- 💬 [Discord](https://discord.gg/aicp)
-
----
-
-## Community
-
-<p align="center">
-  <a href="https://discord.gg/aicp">
-    <img src="https://img.shields.io/discord/123456789?label=Discord&style=for-the-badge" alt="Discord">
-  </a>
-  <a href="https://twitter.com/aicp_ai">
-    <img src="https://img.shields.io/twitter/follow/aicp_ai?label=Twitter&style=for-the-badge" alt="Twitter">
-  </a>
-  <a href="https://linkedin.com/company/aicp-ai">
-    <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin" alt="LinkedIn">
-  </a>
-</p>
 
 ---
 
