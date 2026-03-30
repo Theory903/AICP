@@ -1,0 +1,45 @@
+name: notes.create
+kind: action
+description: Create a new note.
+tags:
+- fastapi
+- risk:low
+input_schema:
+  type: object
+  properties:
+    title:
+      type: string
+    content:
+      type: string
+    tags:
+      type: string
+  required:
+  - title
+  - content
+output_schema:
+  type: object
+  properties:
+    id:
+      type: integer
+    title:
+      type: string
+    content:
+      type: string
+    tags:
+      type: string
+    completed:
+      type: boolean
+    created_at:
+      type: string
+    updated_at:
+      type: string
+continuation:
+  can_continue: true
+  next_capabilities:
+  - notes.delete
+  - notes.get
+  - notes.list
+  next_hint: View or list notes after creation
+provider:
+  name: aicp
+  type: fastapi

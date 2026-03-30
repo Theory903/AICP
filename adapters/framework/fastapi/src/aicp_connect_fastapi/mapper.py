@@ -1,4 +1,10 @@
-"""Map FastAPI routes to AICP capabilities."""
+"""Map FastAPI routes to AICP capabilities.
+
+Enhanced to:
+- Propagate risk levels and destructive flags from route inspection
+- Auto-generate continuation hints linking CRUD operations
+- Extract and apply route tags
+"""
 
 from typing import Any
 
@@ -38,6 +44,9 @@ def map_routes_to_capabilities(app: FastAPI, config: AicpConfig) -> list[Capabil
                 kind=default["kind"],
                 input_schema=default.get("input_schema", {}),
                 output_schema=default.get("output_schema", {}),
+                risk=default.get("risk", "low"),
+                destructive=default.get("destructive", False),
+                tags=default.get("tags", []),
             )
 
     capabilities = []
@@ -60,14 +69,49 @@ def map_routes_to_capabilities(app: FastAPI, config: AicpConfig) -> list[Capabil
         if "properties" not in output_schema:
             output_schema["properties"] = {}
 
+        # Build tags with risk and destructive info
+        tags = list(mapping.tags) if mapping.tags else ["fastapi"]
+        if mapping.risk:
+            tags.append(f"risk:{mapping.risk}")
+        if mapping.destructive:
+            tags.append("destructive")
+
+        # Auto-generate continuation hints for CRUD operations
+        continuation = None
+        cap_parts = mapping.capability_name.rsplit(".", 1)
+        if len(cap_parts) == 2:
+            namespace, action = cap_parts
+            # Find sibling capabilities in the same namespace
+            siblings = [
+                name for name in capability_mappings
+                if name.startswith(f"{namespace}.") and name != mapping.capability_name
+            ]
+            if siblings:
+                continuation = {
+                    "can_continue": True,
+                    "next_capabilities": sorted(siblings)[:3],
+                }
+                if action == "create":
+                    continuation["next_hint"] = f"View or list {namespace} after creation"
+                elif action in ("update", "patch"):
+                    continuation["next_hint"] = f"Get updated {namespace} or list all"
+                elif action == "delete":
+                    continuation["next_hint"] = f"List remaining {namespace}"
+
         capability = Capability(
             name=mapping.capability_name,
             description=mapping.description or f"Auto-mapped from {mapping.route_path}",
             kind=kind,
             input_schema=input_schema,
             output_schema=output_schema,
+            tags=tags,
             provider=ProviderInfo(name=config.provider_name, type="fastapi", url=config.provider_url),
         )
+
+        # Attach continuation if generated
+        if continuation:
+            capability.continuation = continuation
+
         capabilities.append(capability)
 
     return capabilities

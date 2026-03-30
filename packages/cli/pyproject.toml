@@ -18,7 +18,11 @@ dependencies = [
     "aicp-connect-postman>=0.1.0",
     "aicp-connect-har>=0.1.0",
     "aicp-connect-curl>=0.1.0",
+    "click>=8.1.0",
+    "pyyaml>=6.0",
+    "rich>=13.0.0",
 ]
 
 [project.scripts]
-aicp = "aicp_cli.__main__:main"
+aicp = "aicp_cli.main:cli"
+

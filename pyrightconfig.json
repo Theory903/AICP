@@ -1,0 +1,8 @@
+{
+    "extraPaths": [
+        "packages/core/src",
+        "packages/runtime/src",
+        "packages/cli/src",
+        "adapters/framework/fastapi/src"
+    ]
+}

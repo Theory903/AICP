@@ -6,26 +6,44 @@ This guide covers all features of the AICP (AI Capability Protocol) platform.
 
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
-2. [Core Concepts](#core-concepts)
-3. [Authentication](#authentication)
-4. [Variable Substitution](#variable-substitution)
-5. [Capability Registry & Search](#capability-registry--search)
-6. [Execution & Streaming](#execution--streaming)
-7. [Plugin System](#plugin-system)
-8. [Security Features](#security-features)
-9. [Multi-Tenancy](#multi-tenancy)
-10. [Reliability Patterns](#reliability-patterns)
-11. [Observability](#observability)
-12. [Notifications](#notifications)
-13. [Secrets Management](#secrets-management)
-14. [Caching](#caching)
-15. [Production API Features](#production-api-features)
-16. [Transport Adapters](#transport-adapters)
+### Part 1: The CLI Workflow
+1. [The Fast Path: Bootstrapping](#the-fast-path-bootstrapping)
+2. [CLI Full Reference](CLI_REFERENCE.md)
+
+### Part 2: Advanced Programmatic Engine
+3. [Core Programmatic Usage](#core-programmatic-usage)
+4. [Authentication](#authentication)
+5. [Variable Substitution](#variable-substitution)
+6. [Capability Registry & Search](#capability-registry--search)
+7. [Execution & Streaming](#execution--streaming)
+8. [Plugin System](#plugin-system)
+9. [Security Features](#security-features)
+10. [Multi-Tenancy](#multi-tenancy)
+11. [Reliability Patterns](#reliability-patterns)
+12. [Observability](#observability)
+13. [Notifications](#notifications)
+14. [Secrets Management](#secrets-management)
+15. [Caching](#caching)
+16. [Production API Features](#production-api-features)
+17. [Transport Adapters](#transport-adapters)
 
 ---
 
-## Quick Start
+## The Fast Path: Bootstrapping
+
+If you are trying to expose an existing FastAPI or Node application to AI agents safely, **you usually don't need to write any Python code.**
+
+AICP acts as a configuration-first governance layer. Using the CLI, you simply scan your app, preview your actions, modify your risk profiles, and start the engine in front of it!
+
+> **→ Complete Guide:** Please refer to the [**CLI Reference Guide**](CLI_REFERENCE.md) to master `aicp bootstrap`, `aicp preview`, and `aicp protect`. 
+
+---
+
+## Core Programmatic Usage
+
+While the CLI manages standard execution, developers building complex, distributed AI systems or customized protocol adapters can interact with the raw Python `aicp-core` SDK.
+
+Below is the traditional way to programmatically assemble an Executor without using the CLI configurations.
 
 ```python
 from aicp import (
@@ -35,7 +53,7 @@ from aicp import (
     InMemoryCapabilityRepository,
 )
 
-# 1. Create a capability
+# 1. Provide capability mappings manually in memory without Yaml
 capability = Capability(
     name="payments.transfer",
     description="Transfer money between accounts",
@@ -48,7 +66,7 @@ capability = Capability(
 repo = InMemoryCapabilityRepository()
 repo.register(capability)
 
-# 3. Execute
+# 3. Execute payload
 executor = AicpExecutor(repo)
 result = await executor.execute("payments.transfer", {"amount": 100})
 print(result.status)  # "success"

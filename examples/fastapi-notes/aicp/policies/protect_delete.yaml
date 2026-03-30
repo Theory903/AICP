@@ -1,0 +1,18 @@
+# Policy: Protect Delete Operations
+# 
+# This policy requires human approval before any note
+# can be deleted. The agent must submit an approval request
+# and wait for a human to approve or reject it.
+
+name: protect-delete
+description: Require human approval before deleting any note
+effect: ask
+subject:
+  capability_name: notes.delete
+condition:
+  require_confirmation: true
+  autonomous_execution: false
+priority: 10
+metadata:
+  author: aicp-init
+  reason: "Deleting notes is irreversible — require human confirmation"

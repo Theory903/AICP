@@ -1,11 +1,20 @@
-"""Inspect FastAPI routes and extract capability information."""
+"""Inspect FastAPI routes and extract capability information.
+
+Enhanced to extract:
+- Response model schemas from return type annotations
+- Risk levels from HTTP method and capability name
+- Route tags from FastAPI route definitions
+- Destructive flags from HTTP method and name patterns
+"""
 
 import inspect
-from typing import Any, get_args, get_origin
+from typing import Any, get_args, get_origin, get_type_hints
 
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from pydantic import BaseModel
+
+from aicp.risk import RiskLevel, infer_risk, is_destructive, risk_to_default_effect
 
 
 def inspect_routes(app: FastAPI) -> list[dict[str, Any]]:
@@ -100,6 +109,55 @@ def inspect_routes(app: FastAPI) -> list[dict[str, Any]]:
         if "GET" in methods:
             kind = "query"
 
+        # Extract response model schema from return type hints
+        output_schema: dict[str, Any] = {"type": "object"}
+        try:
+            hints = get_type_hints(endpoint)
+            return_type = hints.get("return")
+            if return_type and isinstance(return_type, type) and issubclass(return_type, BaseModel):
+                output_props = {}
+                for field_name, field_info in return_type.model_fields.items():
+                    ft = field_info.annotation
+                    if ft is str:
+                        jt = "string"
+                    elif ft is int:
+                        jt = "integer"
+                    elif ft is float:
+                        jt = "number"
+                    elif ft is bool:
+                        jt = "boolean"
+                    elif ft is list:
+                        jt = "array"
+                    elif ft is dict:
+                        jt = "object"
+                    else:
+                        jt = "string"
+                    output_props[field_name] = {"type": jt}
+                output_schema = {
+                    "type": "object",
+                    "properties": output_props,
+                }
+        except Exception:
+            pass
+
+        # Infer risk from HTTP method and function name
+        primary_method = methods[0] if methods else "GET"
+        risk = infer_risk(
+            func_name,
+            kind=kind,
+            http_method=primary_method,
+            func_name=func_name,
+        )
+        destructive = is_destructive(
+            func_name,
+            http_method=primary_method,
+            func_name=func_name,
+        )
+        default_effect = risk_to_default_effect(risk)
+
+        # Extract route tags from FastAPI
+        route_tags = list(route.tags) if hasattr(route, "tags") and route.tags else []
+
         routes.append(
             {
                 "path": path,
@@ -112,8 +170,12 @@ def inspect_routes(app: FastAPI) -> list[dict[str, Any]]:
                     "properties": input_props,
                     "required": required if required else None,
                 },
-                "output_schema": {"type": "object"},
+                "output_schema": output_schema,
                 "endpoint": endpoint,
+                "risk": risk.value,
+                "destructive": destructive,
+                "default_effect": default_effect,
+                "tags": route_tags,
             }
         )
 
@@ -174,4 +236,8 @@ def create_default_mapping(route: dict[str, Any]) -> dict[str, Any]:
         "kind": route.get("kind", "action"),
         "input_schema": route.get("input_schema", {}),
         "output_schema": route.get("output_schema", {}),
+        "risk": route.get("risk", "low"),
+        "destructive": route.get("destructive", False),
+        "default_effect": route.get("default_effect", "allow"),
+        "tags": route.get("tags", []),
     }

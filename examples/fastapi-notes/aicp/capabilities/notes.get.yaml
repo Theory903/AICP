@@ -1,0 +1,39 @@
+name: notes.get
+kind: query
+description: Get a note by its ID.
+tags:
+- fastapi
+- risk:low
+input_schema:
+  type: object
+  properties:
+    note_id:
+      type: integer
+  required:
+  - note_id
+output_schema:
+  type: object
+  properties:
+    id:
+      type: integer
+    title:
+      type: string
+    content:
+      type: string
+    tags:
+      type: string
+    completed:
+      type: boolean
+    created_at:
+      type: string
+    updated_at:
+      type: string
+continuation:
+  can_continue: true
+  next_capabilities:
+  - notes.create
+  - notes.delete
+  - notes.list
+provider:
+  name: aicp
+  type: fastapi

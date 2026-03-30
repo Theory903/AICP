@@ -1,0 +1,9 @@
+name: ping.list
+kind: query
+description: Health check endpoint.
+tags:
+- fastapi
+- risk:low
+provider:
+  name: aicp
+  type: fastapi

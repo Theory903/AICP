@@ -13,6 +13,32 @@ Main exports:
 
 __version__ = "0.1.0"
 
+# Project config
+from aicp.config import (
+    AicpProjectConfig,
+    PolicyRule,
+    ProjectDefaults,
+    RuntimeConfig,
+    find_config_file,
+    load_project_config,
+    save_project_config,
+)
+
+# Risk inference
+from aicp.risk import (
+    RiskLevel,
+    infer_risk,
+    is_destructive,
+    risk_to_default_effect,
+)
+
+# Capability export
+from aicp.export import (
+    capability_to_dict,
+    export_all_capabilities,
+    export_capability_yaml,
+)
+
 # Capability models
 # Adapters
 try:
@@ -204,6 +230,23 @@ from aicp.variables import (
 __all__ = [
     # Version
     "__version__",
+    # Project config
+    "AicpProjectConfig",
+    "PolicyRule",
+    "ProjectDefaults",
+    "RuntimeConfig",
+    "find_config_file",
+    "load_project_config",
+    "save_project_config",
+    # Risk inference
+    "RiskLevel",
+    "infer_risk",
+    "is_destructive",
+    "risk_to_default_effect",
+    # Capability export
+    "capability_to_dict",
+    "export_all_capabilities",
+    "export_capability_yaml",
     # Capability models
     "Capability",
     "CapabilityKind",

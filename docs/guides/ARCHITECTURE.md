@@ -54,7 +54,17 @@ Responsibilities:
 - metadata organization,
 - and schema retrieval.
 
-### 2. Planner / Resolver
+### 2. Configuration Control Plane (e.g. CLI)
+
+Extracts and manages application capability state into persistent, declarative formats (like `aicp.yaml` and `.yaml` capability definitions) to ensure policy is auditable outside the runtime logic.
+
+Responsibilities:
+- scan endpoints,
+- generate specification contracts,
+- lint security risk statically,
+- and enforce human-in-the-loop limits globally.
+
+### 3. Planner / Resolver
 
 Maps user intent or agent context to relevant capabilities and possible workflows.
 

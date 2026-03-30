@@ -16,6 +16,20 @@ class RouteMapping(BaseModel):
     input_schema: dict[str, Any] = Field(default_factory=dict)
     output_schema: dict[str, Any] = Field(default_factory=dict)
 
+    # Risk & governance metadata
+    risk: str = "low"  # low | medium | high | critical
+    destructive: bool = False
+    approval: str = "none"  # none | optional | required
+    tags: list[str] = Field(default_factory=list)
+
+
+class PolicyDefaults(BaseModel):
+    """Default policy effects by capability kind."""
+
+    queries: str = "allow"  # allow | ask | deny
+    actions: str = "ask"  # allow | ask | deny
+    destructive: str = "require_approval"  # allow | ask | deny | require_approval
+
 
 class AicpConfig(BaseModel):
     """Configuration for AICP on a FastAPI app."""
@@ -36,3 +50,6 @@ class AicpConfig(BaseModel):
 
     default_render_format: str = "json"
     default_continuation_hint: str | None = None
+
+    # Policy defaults (mirrors aicp.yaml defaults section)
+    defaults: PolicyDefaults = Field(default_factory=PolicyDefaults)

@@ -1,0 +1,24 @@
+name: notes.list
+kind: query
+description: List all notes with optional filtering.
+tags:
+- fastapi
+- risk:low
+input_schema:
+  type: object
+  properties:
+    skip:
+      type: integer
+    limit:
+      type: integer
+    tag:
+      type: string
+continuation:
+  can_continue: true
+  next_capabilities:
+  - notes.create
+  - notes.delete
+  - notes.get
+provider:
+  name: aicp
+  type: fastapi

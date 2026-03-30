@@ -1,0 +1,24 @@
+name: notes.delete
+kind: action
+description: Delete a note by its ID.
+tags:
+- fastapi
+- risk:medium
+- destructive
+input_schema:
+  type: object
+  properties:
+    note_id:
+      type: integer
+  required:
+  - note_id
+continuation:
+  can_continue: true
+  next_capabilities:
+  - notes.create
+  - notes.get
+  - notes.list
+  next_hint: List remaining notes
+provider:
+  name: aicp
+  type: fastapi

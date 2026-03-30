@@ -1,0 +1,48 @@
+name: notes.update
+kind: action
+description: Update an existing note.
+tags:
+- fastapi
+- risk:medium
+input_schema:
+  type: object
+  properties:
+    note_id:
+      type: integer
+    title:
+      type: string
+    content:
+      type: string
+    tags:
+      type: string
+    completed:
+      type: string
+  required:
+  - note_id
+output_schema:
+  type: object
+  properties:
+    id:
+      type: integer
+    title:
+      type: string
+    content:
+      type: string
+    tags:
+      type: string
+    completed:
+      type: boolean
+    created_at:
+      type: string
+    updated_at:
+      type: string
+continuation:
+  can_continue: true
+  next_capabilities:
+  - notes.create
+  - notes.delete
+  - notes.get
+  next_hint: Get updated notes or list all
+provider:
+  name: aicp
+  type: fastapi

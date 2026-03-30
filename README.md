@@ -80,93 +80,69 @@ AICP is designed so **even small language models** can complete real-world tasks
 
 ---
 
-## Quick Start
+## Quick Start (3-Minutes)
 
-### Installation
+Get your existing application fully AI-ready without writing complex wrapper code. AICP's CLI scans your app, exports governing schemas, and starts a managed capability runtime.
+
+### 1. Installation
 
 ```bash
-# Core package
-pip install aicp-core
-
-# With all features
-pip install aicp-core[all]
-
-# Development version
-pip install git+https://github.com/aicp-ai/aicp.git
+# Install the core runtime, visual CLI, and your framework adapter
+pip install "aicp-core[all]" aicp-cli aicp-connect-fastapi
 ```
 
-### Your First Capability
+### 2. Bootstrap Your App
 
-```python
-from aicp import (
-    Capability,
-    CapabilityKind,
-    AicpExecutor,
-    InMemoryCapabilityRepository,
-)
+Use `aicp bootstrap` to instantly scaffold an AICP configuration for an existing application.
 
-# 1. Define a capability
-transfer = Capability(
-    name="payments.transfer",
-    description="Transfer funds between accounts",
-    kind=CapabilityKind.ACTION,
-    input_schema={
-        "type": "object",
-        "properties": {
-            "from_account": {"type": "string"},
-            "to_account": {"type": "string"},
-            "amount": {"type": "number"}
-        },
-        "required": ["from_account", "to_account", "amount"]
-    },
-    tags=["finance", "payments"],
-)
+```bash
+> aicp bootstrap fastapi server.main:app
 
-# 2. Register it
-repo = InMemoryCapabilityRepository()
-repo.register(transfer)
+🚀 Bootstrapping AICP for server.main:app
 
-# 3. Execute
-executor = AicpExecutor(repo)
-result = await executor.execute("payments.transfer", {
-    "from_account": "acc_123",
-    "to_account": "acc_456",
-    "amount": 100.00
-})
-
-print(result.status)           # "success"
-print(result.data)             # {"transfer_id": "txn_789", ...}
-print(result.next)             # {"action": "complete", "hint": None}
+  ✓ Initialized local AICP environment
+  ✓ Scanned 12 Capabilities from routes
+  ✓ Extracted input/output schemas & types
+  ✓ Auto-detected destructive risk levels
+  
+✨ Bootstrap complete! Your project is AICP-ready.
 ```
 
-### With Policy Governance
+Every endpoint is converted into a fully documented, governing standard output in `aicp/capabilities/`.
 
-```python
-from aicp import Policy, PolicyCondition, PolicyEffect
+### 3. Review & Govern Capabilities
 
-# Require approval for transfers over $10,000
-policy = Policy(
-    name="transfer-approval",
-    effect=PolicyEffect.ASK,
-    condition=PolicyCondition(
-        field="arguments.amount",
-        operator=">",
-        value=10000,
-    ),
-    reason="Transfers over $10,000 require manager approval",
-)
+Inspect a specific capability in the terminal to view its full prompt and enforcement rules—no staring at YAML required.
 
-# Add to executor
-executor = AicpExecutor(repo, policy_engine)
-result = await executor.execute("payments.transfer", {...})
+```bash
+> aicp preview payments.transfer
 
-# If amount > 10000, returns approval-required response:
-# {
-#   "status": "failure",
-#   "error_code": "requires_confirmation",
-#   "next": {"action": "confirm", "hint": "..."}
-# }
+💳 Capability: payments.transfer
+─────────────────────────────────
+Kind: Action  |  Risk: Critical
+Tags: [finance, destructive]
+
+Governing Policy:
+  ↳ Effect: requires_approval
+  ↳ Reason: "Destructive operations must have Human-in-the-loop sign-off"
 ```
+
+Is a sensitive action unprotected? Add governance directly from the CLI.
+
+```bash
+# Force any AI calling this tool to pause and wait for a human approval hook
+aicp protect payments.transfer
+
+# Apply a global rate limit across the entire users module
+aicp limit "users.*" --rpm 60
+```
+
+### 4. Start the Runtime
+
+```bash
+aicp dev
+```
+The AICP engine mounts securely over your app! Your Agents can now dynamically execute tasks, safely halt for required approvals, and understand exact error states instantly.
 
 ---
 

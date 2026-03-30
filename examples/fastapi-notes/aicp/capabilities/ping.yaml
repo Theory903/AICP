@@ -1,0 +1,16 @@
+name: ping
+kind: query
+description: Health check endpoint
+tags:
+  - health
+  - risk:low
+input_schema:
+  type: object
+  properties: {}
+output_schema:
+  type: object
+  properties:
+    status:
+      type: string
+    service:
+      type: string
