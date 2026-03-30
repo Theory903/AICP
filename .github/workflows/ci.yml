@@ -53,6 +53,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ./packages/core
+          pip install -e ./packages/cli
+          pip install -e ./adapters/framework/fastapi
           pip install pytest pytest-asyncio fastapi httpx
 
       - name: Run tests
@@ -74,6 +76,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ./packages/core
+          pip install -e ./packages/cli
+          pip install -e ./adapters/framework/fastapi
           pip install pytest referencing
 
       - name: Run conformance tests
@@ -95,6 +99,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ./packages/core
+          pip install -e ./packages/cli
+          pip install -e ./adapters/framework/fastapi
           pip install pytest pytest-asyncio fastapi httpx
 
       - name: Run benchmarks
@@ -116,6 +122,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ./packages/core
+          pip install -e ./packages/cli
+          pip install -e ./adapters/framework/fastapi
           pip install -e ./examples/food-ordering
           pip install -e ./examples/payment-transfer
 
