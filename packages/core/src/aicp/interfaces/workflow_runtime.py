@@ -5,10 +5,16 @@ confirmation handling, and continuation semantics.
 """
 
 from abc import ABC, abstractmethod
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+def utc_now_rfc3339() -> str:
+    """Return the current UTC time in RFC3339 format."""
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 class StepStatus(str, Enum):
@@ -22,6 +28,17 @@ class StepStatus(str, Enum):
     AWAITING_CONFIRMATION = "awaiting_confirmation"
 
 
+class WorkflowStatus(str, Enum):
+    """Overall workflow status."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
 class Step(BaseModel):
     """A single step in a workflow."""
 
@@ -31,8 +48,8 @@ class Step(BaseModel):
     status: StepStatus = StepStatus.PENDING
     result: Any | None = None
     error: str | None = None
-    started_at: float | None = None
-    completed_at: float | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
 
 
 class WorkflowState(BaseModel):
@@ -41,10 +58,13 @@ class WorkflowState(BaseModel):
     id: str
     name: str
     description: str = ""
-    steps: list[Step] = []
+    steps: list[Step] = Field(default_factory=list)
     current_step_index: int = 0
-    context: dict[str, Any] = {}
-    metadata: dict[str, Any] = {}
+    context: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    status: WorkflowStatus = WorkflowStatus.PENDING
+    created_at: str = Field(default_factory=utc_now_rfc3339)
+    updated_at: str = Field(default_factory=utc_now_rfc3339)
 
     @property
     def current_step(self) -> Step | None:
@@ -56,12 +76,18 @@ class WorkflowState(BaseModel):
     @property
     def is_complete(self) -> bool:
         """Check if workflow is complete."""
-        return all(s.status in (StepStatus.COMPLETED, StepStatus.SKIPPED) for s in self.steps)
+        return bool(self.steps) and all(
+            s.status in (StepStatus.COMPLETED, StepStatus.SKIPPED) for s in self.steps
+        )
 
     @property
     def is_failed(self) -> bool:
         """Check if workflow has failed."""
         return any(s.status == StepStatus.FAILED for s in self.steps)
+
+    def touch(self) -> None:
+        """Refresh the workflow update timestamp."""
+        self.updated_at = utc_now_rfc3339()
 
 
 class StepResult(BaseModel):

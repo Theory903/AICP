@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/approval-decision.json",
+  "title": "AICP Approval Decision",
+  "description": "Response to an approval request. Represents the human decision to approve, deny, or delegate a pending approval request.",
+  "type": "object",
+  "required": ["id", "request_id", "decision", "decided_at"],
+  "properties": {
+    "id": {"type": "string"},
+    "request_id": {"type": "string"},
+    "decision": {"type": "string", "enum": ["approved", "denied", "delegated", "expired"]},
+    "approver": {"type": "string"},
+    "approver_context": {"type": "object", "properties": {"user_id": {"type": "string"}, "email": {"type": "string"}, "role": {"type": "string"}}},
+    "reason": {"type": "string"},
+    "modified_arguments": {"type": "object"},
+    "delegated_to": {"type": "string"},
+    "delegation_reason": {"type": "string"},
+    "approval_channel": {"type": "string", "enum": ["api", "ui", "email", "webhook", "automated"]},
+    "ip_address": {"type": "string"},
+    "metadata": {"type": "object"},
+    "decided_at": {"type": "string", "format": "date-time"},
+    "received_at": {"type": "string", "format": "date-time"}
+  }
+}

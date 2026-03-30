@@ -4,7 +4,6 @@ A workflow runtime that manages multi-step execution with state,
 confirmation handling, and agent guidance.
 """
 
-import time
 import uuid
 from typing import Any
 
@@ -17,6 +16,8 @@ from aicp.interfaces.workflow_runtime import (
     WorkflowError,
     WorkflowRuntime,
     WorkflowState,
+    WorkflowStatus,
+    utc_now_rfc3339,
 )
 
 
@@ -88,8 +89,10 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
                 error="No more steps",
             )
 
+        workflow.status = WorkflowStatus.RUNNING
+        workflow.touch()
         step.status = StepStatus.RUNNING
-        step.started_at = time.time()
+        step.started_at = utc_now_rfc3339()
 
         merged_args = {**step.arguments}
         if arguments:
@@ -97,7 +100,7 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         workflow.context["last_args"] = merged_args
 
         try:
-            if self._policy_engine:
+            if self._policy_engine and not workflow.context.get("confirmation_granted"):
                 decision = await self._policy_engine.evaluate(
                     step.capability_name,
                     merged_args,
@@ -106,12 +109,17 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
                 if decision.effect == PolicyEffect.DENY:
                     step.status = StepStatus.FAILED
                     step.error = decision.reason
+                    step.completed_at = utc_now_rfc3339()
+                    workflow.status = WorkflowStatus.FAILED
+                    workflow.touch()
                     return StepResult(
                         success=False,
                         error=decision.reason,
                     )
                 if decision.effect == PolicyEffect.ASK:
                     step.status = StepStatus.AWAITING_CONFIRMATION
+                    workflow.status = WorkflowStatus.PAUSED
+                    workflow.touch()
                     return StepResult(
                         success=False,
                         requires_confirmation=True,
@@ -130,9 +138,13 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
 
             step.status = StepStatus.COMPLETED
             step.result = result
-            step.completed_at = time.time()
+            step.completed_at = utc_now_rfc3339()
 
             workflow.current_step_index += 1
+            workflow.status = (
+                WorkflowStatus.COMPLETED if workflow.is_complete else WorkflowStatus.RUNNING
+            )
+            workflow.touch()
 
             next_step = workflow.current_step
             return StepResult(
@@ -144,7 +156,9 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         except Exception as e:
             step.status = StepStatus.FAILED
             step.error = str(e)
-            step.completed_at = time.time()
+            step.completed_at = utc_now_rfc3339()
+            workflow.status = WorkflowStatus.FAILED
+            workflow.touch()
             return StepResult(
                 success=False,
                 error=str(e),
@@ -185,6 +199,10 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
             if not confirmed:
                 step.status = StepStatus.SKIPPED
                 workflow.current_step_index += 1
+                workflow.status = (
+                    WorkflowStatus.COMPLETED if workflow.is_complete else WorkflowStatus.RUNNING
+                )
+                workflow.touch()
                 return StepResult(
                     success=True,
                     result=None,
@@ -192,7 +210,11 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
                 )
 
             args = modified_arguments or workflow.context.get("last_args", {})
-            return await self.execute_step(workflow_id, args)
+            workflow.context["confirmation_granted"] = True
+            try:
+                return await self.execute_step(workflow_id, args)
+            finally:
+                workflow.context.pop("confirmation_granted", None)
 
         return StepResult(success=False, error="No confirmation needed")
 
@@ -206,6 +228,8 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
             step.status = StepStatus.SKIPPED
 
         workflow.current_step_index += 1
+        workflow.status = WorkflowStatus.COMPLETED if workflow.is_complete else WorkflowStatus.RUNNING
+        workflow.touch()
 
         return StepResult(
             success=True,
@@ -221,13 +245,19 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         if step and step.status == StepStatus.FAILED:
             step.status = StepStatus.PENDING
             step.error = None
+            step.started_at = None
+            step.completed_at = None
+            workflow.status = WorkflowStatus.PENDING
+            workflow.touch()
             return await self.execute_step(workflow_id)
 
         return StepResult(success=False, error="No failed step to retry")
 
     async def cancel_workflow(self, workflow_id: str) -> bool:
-        if workflow_id in self._workflows:
-            del self._workflows[workflow_id]
+        workflow = self._workflows.get(workflow_id)
+        if workflow is not None:
+            workflow.status = WorkflowStatus.CANCELLED
+            workflow.touch()
             return True
         return False
 

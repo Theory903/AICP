@@ -12,6 +12,12 @@ description = "AICP CLI - Command-line interface"
 requires-python = ">=3.10"
 dependencies = [
     "aicp-core>=0.1.0",
+    "aicp-connect-openapi>=0.1.0",
+    "aicp-connect-fastapi>=0.1.0",
+    "aicp-connect-mcp>=0.1.0",
+    "aicp-connect-postman>=0.1.0",
+    "aicp-connect-har>=0.1.0",
+    "aicp-connect-curl>=0.1.0",
 ]
 
 [project.scripts]

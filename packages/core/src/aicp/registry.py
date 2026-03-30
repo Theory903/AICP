@@ -9,6 +9,69 @@ from aicp.capability import Capability
 from aicp.interfaces.policy_engine import Policy
 
 
+class TagSearchStrategy:
+    """Tag-based search strategy for capabilities.
+    
+    Ranks capabilities by tag match score and keyword relevance.
+    """
+    
+    def __init__(self, registry: "AicpRegistry"):
+        self._registry = registry
+        
+    def search(
+        self,
+        query: str,
+        tags: list[str] | None = None,
+        limit: int = 10,
+    ) -> list[Capability]:
+        """Search capabilities by query and optional tags.
+        
+        Args:
+            query: Natural language search query.
+            tags: Optional list of required tags (any match).
+            limit: Maximum results to return.
+            
+        Returns:
+            Ranked list of matching capabilities.
+        """
+        query_lower = query.lower()
+        query_terms = query_lower.split()
+        
+        capabilities = self._registry.list_capabilities()
+        scored = []
+        
+        for cap in capabilities:
+            score = 0
+            
+            if tags:
+                if any(tag in cap.tags for tag in tags):
+                    score += 50
+                else:
+                    continue
+                    
+            if cap.name.lower().startswith(query_lower):
+                score += 100
+            elif query_lower in cap.name.lower():
+                score += 50
+                
+            if query_lower in cap.description.lower():
+                score += 30
+                
+            for term in query_terms:
+                if term in cap.name.lower():
+                    score += 20
+                if term in cap.description.lower():
+                    score += 10
+                if any(term in tag.lower() for tag in cap.tags):
+                    score += 15
+                    
+            if score > 0:
+                scored.append((score, cap))
+                
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [cap for _, cap in scored[:limit]]
+
+
 class AicpRegistry:
     """Central registry for AICP resources.
 
@@ -31,6 +94,27 @@ class AicpRegistry:
     def list_capabilities(self) -> list[Capability]:
         """List all registered capabilities."""
         return list(self._capabilities.values())
+
+    def search_capabilities(
+        self,
+        query: str,
+        tags: list[str] | None = None,
+        limit: int = 10,
+    ) -> list[Capability]:
+        """Search capabilities by query and optional tags.
+        
+        Uses TagSearchStrategy for ranking results.
+        
+        Args:
+            query: Natural language search query.
+            tags: Optional list of required tags.
+            limit: Maximum results to return.
+            
+        Returns:
+            Ranked list of matching capabilities.
+        """
+        strategy = TagSearchStrategy(self)
+        return strategy.search(query, tags, limit)
 
     def unregister_capability(self, name: str) -> bool:
         """Unregister a capability."""

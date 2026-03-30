@@ -28,6 +28,7 @@ from aicp.interfaces.workflow_runtime import (
     WorkflowError,
     WorkflowRuntime,
     WorkflowState,
+    WorkflowStatus,
 )
 
 __all__ = [
@@ -47,6 +48,7 @@ __all__ = [
     "Step",
     "StepResult",
     "StepStatus",
+    "WorkflowStatus",
     # Executor
     "Executor",
     "ExecutionResult",

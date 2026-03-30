@@ -2,6 +2,9 @@
   "id": "checkout_flow",
   "name": "checkout_flow",
   "description": "E-commerce checkout with conditionals",
+  "status": "pending",
+  "created_at": "2026-03-30T12:00:00Z",
+  "updated_at": "2026-03-30T12:00:00Z",
   "steps": [
     {
       "id": "validate_cart",

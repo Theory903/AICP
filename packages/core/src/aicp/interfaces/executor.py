@@ -6,7 +6,7 @@ Executors handle the actual invocation and provide consistent output format.
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from pydantic import BaseModel
 
@@ -112,3 +112,30 @@ class Executor(ABC):
             )
             results.append(result)
         return results
+
+    async def execute_streaming(
+        self,
+        capability_name: str,
+        arguments: dict[str, Any],
+        context: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Execute a capability with streaming results.
+        
+        Override this method to implement streaming execution.
+        Default implementation returns a single chunk.
+        
+        Args:
+            capability_name: Name of the capability to execute.
+            arguments: Arguments for the capability.
+            context: Optional execution context.
+            
+        Yields:
+            Streaming chunks with data and metadata.
+        """
+        result = await self.execute(capability_name, arguments, context)
+        yield {
+            "type": "result",
+            "status": result.status.value,
+            "data": result.data,
+            "error": result.error,
+        }

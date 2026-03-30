@@ -4,7 +4,7 @@ Default executor implementation with policy enforcement and result normalization
 """
 
 import time
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from aicp.capability import Capability
 from aicp.interfaces.capability_provider import CapabilityProvider
@@ -211,3 +211,60 @@ class AicpExecutor(Executor):
     def _elapsed_ms(self, start_time: float) -> float:
         """Calculate elapsed time in milliseconds."""
         return (time.time() - start_time) * 1000
+
+    async def execute_streaming(
+        self,
+        capability_name: str,
+        arguments: dict[str, Any],
+        context: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Execute a capability with streaming support.
+        
+        Checks if provider supports streaming, otherwise falls back to regular execution.
+        
+        Yields:
+            Streaming chunks with type, data, and metadata.
+        """
+        yield {"type": "start", "capability": capability_name}
+        
+        capability = await self._provider.get_capability(capability_name)
+        if not capability:
+            yield {
+                "type": "error",
+                "error": f"Capability not found: {capability_name}",
+                "error_code": "capability_not_found",
+            }
+            return
+            
+        if self._policy_engine:
+            decision = await self._policy_engine.evaluate(
+                capability_name,
+                arguments,
+                {"kind": capability.kind, **(context or {})},
+            )
+            
+            if decision.effect == PolicyEffect.DENY:
+                yield {"type": "error", "error": decision.reason, "error_code": "policy_denied"}
+                return
+                
+            if decision.effect == PolicyEffect.ASK:
+                yield {
+                    "type": "approval_required",
+                    "reason": decision.reason,
+                    "capability": capability_name,
+                    "arguments": arguments,
+                }
+                return
+        
+        try:
+            provider = self._provider
+            if hasattr(provider, 'execute_streaming'):
+                async for chunk in provider.execute_streaming(capability_name, arguments, context):
+                    yield chunk
+            else:
+                result = await self.execute(capability_name, arguments, context)
+                yield {"type": "result", "status": result.status.value, "data": result.data}
+        except Exception as e:
+            yield {"type": "error", "error": str(e), "error_code": "execution_failed"}
+        
+        yield {"type": "end"}

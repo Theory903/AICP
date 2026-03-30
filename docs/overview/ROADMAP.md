@@ -4,156 +4,166 @@
 
 AICP should grow in layers, not in chaos.
 
-**Every feature is designed for AI ease-of-use.** Even mini-LLMs should process AICP without complex reasoning.
+## The product sequence
 
-## Phase 0: Foundation ✓ (Complete)
+1. Make It Real
+2. Make It Safe
+3. Make It Adoptable Everywhere
+4. Make It Intelligent
 
-### Deliverables
+## Phase 0: Narrative & Protocol Reset
 
-- [x] Vision document (`docs/VISION.md`)
-- [x] PRD (`docs/PRD.md`)
-- [x] MVP definition (`docs/MVP.md`)
-- [x] Use case narratives (`docs/USE_CASES.md`)
-- [x] Architecture doc (`docs/ARCHITECTURE.md`)
-- [x] Technical spec (`docs/TECH_SPEC.md`)
-- [x] Agentic Experience design (`docs/AGENTIC_EXPERIENCE.md`)
-- [ ] Security model draft
-- [x] Repository setup
-
-### Outcome
-
-A coherent public project foundation.
-
-## Phase 1: Agentic Protocol Core (v0.1)
-
-### Focus: AI-First Response Design
-
-Every response includes:
-- `next` with suggested actions
-- structured errors with `fix_hint`
-- workflow state
-- policy explicitly stated
+### Goals
+- freeze naming
+- freeze product stack
+- freeze core abstractions
+- align docs to new positioning
 
 ### Deliverables
+- final positioning statement
+- canonical terminology
+- protocol object inventory
+- architecture diagram
+- updated roadmap
+- product stack doc
+- shipped-schema inventory vs deferred schema areas
 
-- [ ] capability schema (with `next` hints)
-- [ ] policy schema (with autonomous_execution flag)
-- [ ] workflow state schema
-- [ ] execution result schema (with required `next` field)
-- [ ] error schema (with `fix_hint` field)
-- [ ] pagination schema
-- [ ] render schema
-- [ ] discovery contract (`GET /.well-known/aicp`)
-- [ ] documentation site
-- [ ] TypeScript reference implementation
+### Exit criteria
+- all overview docs use the same language
+- AIUI removed from primary docs
+- Protocol / Runtime / Connect / Studio clearly separated
+- shipped protocol artifacts are explicitly distinguished from roadmap protocol areas
 
-### Outcome
+## Phase 1: Make It Real
 
-The protocol becomes real, inspectable, testable — and **AI-friendly**.
+### Goal
+Have a working AICP Runtime that can expose and execute capabilities reliably.
 
-## Phase 2: Reference Runtime
+### Build
+- runtime server
+- capability registry
+- discovery endpoint
+- execution endpoint
+- typed I/O validation
+- normalized execution results
+- structured errors with fix hints
+- basic continuation hints
+- OpenAPI mapper
+- FastAPI mapper
+- CLI for map/serve/discover/execute
 
-### Deliverables
+### Key commands
+- `aicp map openapi`
+- `aicp map fastapi`
+- `aicp serve`
+- `aicp discover`
+- `aicp execute`
 
-- registry
-- validator
-- executor contract
-- policy evaluator contract
-- result normalization
-- CLI tooling
-- conformance tests
+### Exit criteria
+- import an existing API into AICP in minutes
+- discover capabilities from runtime
+- execute capabilities with normalized results
+- all core schemas validated by conformance tests
+- at least 2 strong examples work end-to-end
 
-### Outcome
+## Phase 2: Make It Safe
 
-AICP becomes executable rather than only descriptive.
+### Goal
+Turn the runtime from a demo into something enterprises can trust.
 
-## Phase 3: Example Systems
+### Build
+- policy engine
+- policy outcomes: allow / deny / ask / require_approval / limit
+- ApprovalRequest object
+- ApprovalDecision object
+- paused execution state
+- workflow pause and resume
+- approval endpoints
+- immutable audit journal
+- session-level execution journal
+- actor/identity context basics
+- threshold-based approvals
+- structured policy reasons
 
-### Deliverables
+### Add
+- GET /approval-requests
+- POST /approval-requests/{id}/approve
+- POST /approval-requests/{id}/reject
+- POST /workflows/{id}/resume
 
-- food ordering example
-- payment transfer example
-- form filling example
-- ticket booking example
+### Exit criteria
+- a payment/order/booking flow can pause for approval and resume correctly
+- all major actions are journaled
+- policy decisions are inspectable
+- failure and approval trails are auditable
 
-### Outcome
+## Phase 3: Make It Adoptable Everywhere
 
-The real value of workflow-aware AI execution becomes visible.
+### Goal
+Meet teams where their systems already are.
 
-## Phase 4: Framework Adapters
+### Build
+- Postman mapper
+- HAR mapper
+- cURL mapper
+- MCP bridge
+- Python SDK polish
+- TypeScript SDK polish
+- LangChain adapter
+- CrewAI adapter
+- stronger packaging and install flow
+- better codegen/types from schemas
 
-### First Targets
+### Exit criteria
+- users can onboard from at least 5 source types
+- adapters work with major agent ecosystems
+- reference SDKs feel production-grade
+- import-to-runtime flow is smooth
 
-- Express
-- NestJS
-- Spring Boot
-- LangChain
+## Phase 4: Make It Intelligent
 
-### Outcome
+### Goal
+Make AICP better at guidance, recovery, and orchestration.
 
-Adoption becomes practical for real systems.
+### Build
+- continuation graph
+- rollback graph
+- branch-aware workflows
+- richer render packets
+- session workspace state
+- multi-agent coordination primitives
+- cost/risk metadata
+- confidence/ambiguity signaling
+- richer identity and delegation model
+- RBAC and enterprise policy packs
 
-## Phase 5: Expansion
+### Later
+- GraphQL mapper
+- gRPC mapper
+- deeper SaaS integrations
+- advanced Studio features
 
-### Deliverables
+### Exit criteria
+- runtime can guide agents through complex multi-step flows
+- workflows have recovery branches
+- capability graph improves planning quality
+- enterprise governance model is robust
 
-- Next.js adapter
-- Go adapter
-- Rust adapter
-- OpenAPI ingest/export
-- MCP adapter
+## Workstreams
 
-### Outcome
+- Product and docs
+- Protocol and schemas
+- Runtime
+- Connect
+- Developer experience
+- Studio
+- Examples
+- Integration and QA
 
-AICP begins to sit above a broader ecosystem.
+## What to deprioritize
 
-## Phase 6: Advanced Features
-
-### Potential Features
-
-- richer planner contract,
-- approval workflows,
-- async orchestration,
-- dry-run standard,
-- signed manifests,
-- policy receipts,
-- identity-layer integration.
-
-### Outcome
-
-AICP matures into a broad execution standard.
-
-## Deferred for Later Consideration
-
-- universal AI login,
-- portable identity,
-- cross-client shared memory,
-- agent marketplace,
-- wallet systems,
-- multi-tenant federated trust.
-
-## Release Philosophy
-
-Each release should satisfy three conditions:
-
-1. clearer than the previous one,
-2. more useful than the previous one,
-3. still small enough to be adopted.
-
-## Version Timeline
-
-| Version | Focus | Target |
-|---------|-------|--------|
-| 0.1 | Protocol core schemas | Q2 2026 |
-| 0.2 | Reference runtime | Q3 2026 |
-| 0.3 | Example systems | Q4 2026 |
-| 1.0 | First stable release | Q1 2027 |
-
-## Success Criteria
-
-Each phase is considered successful when:
-
-- documentation is complete for delivered features,
-- reference implementations pass conformance tests,
-- at least one working example demonstrates the capability,
-- community feedback is collected and incorporated.
+- too many brand variations
+- fancy Studio UI before runtime governance exists
+- GraphQL/gRPC before core mappers are solid
+- overdesigning multi-agent features too early
+- novel notation experiments unless they directly help adoption

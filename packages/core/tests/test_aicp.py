@@ -1,5 +1,7 @@
 """Tests for AICP core implementations."""
 
+from datetime import datetime
+
 import pytest
 
 from aicp import AicpExecutor, Capability, CapabilityKind, InputSchema, OutputSchema
@@ -92,6 +94,9 @@ class TestWorkflowRuntime:
         )
         assert workflow.name == "transfer_funds"
         assert len(workflow.steps) == 2
+        assert workflow.status == "pending"
+        assert datetime.fromisoformat(workflow.created_at.replace("Z", "+00:00"))
+        assert datetime.fromisoformat(workflow.updated_at.replace("Z", "+00:00"))
 
     async def test_execute_workflow_with_confirmation(self, workflow_runtime, sample_capability):
         workflow_runtime._provider.add_capability(sample_capability)
@@ -111,6 +116,10 @@ class TestWorkflowRuntime:
 
         result = await workflow_runtime.execute_step(workflow.id)
         assert result.requires_confirmation is True
+        workflow = await workflow_runtime.get_workflow(workflow.id)
+        assert workflow is not None
+        assert workflow.status == "paused"
+        assert datetime.fromisoformat(workflow.updated_at.replace("Z", "+00:00"))
 
     async def test_workflow_completion(self, workflow_runtime, sample_capability):
         workflow_runtime._provider.add_capability(sample_capability)
@@ -124,6 +133,10 @@ class TestWorkflowRuntime:
         assert result.success is True
         assert result.next is not None
         assert result.next.get("action") == "complete"
+        workflow = await workflow_runtime.get_workflow(workflow.id)
+        assert workflow is not None
+        assert workflow.status == "completed"
+        assert datetime.fromisoformat(workflow.updated_at.replace("Z", "+00:00"))
 
 
 class TestCapabilityValidation:

@@ -1,33 +1,36 @@
 """Payment Transfer Demo.
 
-Demonstrates policy-driven payment execution.
+Demonstrates full approval workflow with policy thresholds, approval requests, and audit trails.
 """
 
 import asyncio
-import json
 
 from aicp import AicpRegistry, Policy, PolicyEffect, PolicySubject, PolicyCondition
-from payment_transfer.capabilities import create_payment_capabilities, PaymentSimulator
+from payment_transfer.capabilities import (
+    create_payment_capabilities,
+    PaymentSimulator,
+    ApprovalSimulator,
+)
+
+APPROVAL_THRESHOLD = 1000.0
 
 
 async def main():
-    print("=" * 60)
-    print("AICP Payment Transfer Demo")
-    print("=" * 60)
+    print("=" * 70)
+    print("AICP Payment Transfer - Full Approval Flow Demo")
+    print("=" * 70)
 
-    # Set up
     simulator = PaymentSimulator()
+    approval_sim = ApprovalSimulator()
     registry = AicpRegistry()
 
-    # Register capabilities
     for cap in create_payment_capabilities():
         registry.register_capability(cap)
 
-    # Register policies
     registry.register_policy(
         Policy(
-            name="transfer_confirmation",
-            description="Transfers over $100 require confirmation",
+            name="high_value_approval",
+            description=f"Transfers over ${APPROVAL_THRESHOLD} require approval",
             effect=PolicyEffect.ASK,
             subject=PolicySubject(capability_name="payments.transfer"),
             condition=PolicyCondition(require_confirmation=True),
@@ -37,71 +40,137 @@ async def main():
     registry.register_policy(
         Policy(
             name="daily_limit",
-            description="Maximum $1000 per day",
+            description="Maximum $5000 per day",
             effect=PolicyEffect.LIMIT,
             subject=PolicySubject(capability_name="payments.transfer"),
-            condition=PolicyCondition(max_amount=1000),
+            condition=PolicyCondition(max_amount=5000),
         )
     )
 
-    # Show capabilities and policies
     print("\n1. AVAILABLE CAPABILITIES")
-    print("-" * 40)
+    print("-" * 50)
     for cap in registry.list_capabilities():
-        print(f"  - {cap.name}: {cap.description}")
+        print(f"  - {cap.name}")
 
     print("\n2. POLICIES")
-    print("-" * 40)
+    print("-" * 50)
     for pol in registry.list_policies():
         print(f"  - {pol.name}: {pol.description}")
         print(f"    Effect: {pol.effect}")
 
-    # Execute workflow
-    print("\n3. PAYMENT WORKFLOW")
-    print("-" * 40)
-
-    # Check balance
-    print("\n  Step 1: Check balance (user123)")
+    print("\n3. INITIAL STATE")
+    print("-" * 50)
     result = await simulator.get_balance("user123")
-    print(f"    Balance: ${result['balance']} {result['currency']}")
-    print("    Hint: Transfer funds using payments.transfer")
+    print(f"  user123 balance: ${result['balance']} {result['currency']}")
+    result = await simulator.get_balance("merchant456")
+    print(f"  merchant456 balance: ${result['balance']} {result['currency']}")
 
-    # Small transfer (no confirmation needed)
-    print("\n  Step 2: Transfer $50 (under $100 - no confirmation)")
-    result = await simulator.transfer("user123", "merchant456", 50.00)
-    print(f"    Result: {json.dumps(result, indent=4)}")
-    print("    Hint: View transaction history")
+    print("\n4. TRANSFER WORKFLOW")
+    print("-" * 50)
 
-    # Large transfer (requires confirmation)
-    print("\n  Step 3: Transfer $200 (over $100 - requires confirmation)")
-    print("    Policy check: 'transfer_confirmation' triggers ASK effect")
-    print("    (Simulated user confirmation)")
-    result = await simulator.transfer("user123", "merchant456", 200.00)
-    print(f"    Result: {json.dumps(result, indent=4)}")
+    print("\n  [4.1] Transfer $500 (under ${} - no approval needed)".format(APPROVAL_THRESHOLD))
+    result = await simulator.transfer("user123", "merchant456", 500.00)
+    print(f"      Status: {result.get('status', 'completed')}")
+    print(f"      Transaction ID: {result.get('id')}")
 
-    # Get transactions
-    print("\n  Step 4: View transaction history")
+    print("\n  [4.2] Transfer $2,000 (OVER ${} - requires approval!)".format(APPROVAL_THRESHOLD))
+    print("      Policy: high_value_approval triggers ASK effect")
+
+    transfer_args = {
+        "from_account": "user123",
+        "to_account": "merchant456",
+        "amount": 2000.00,
+    }
+
+    approval_req = approval_sim.create_approval_request(
+        capability="payments.transfer",
+        arguments=transfer_args,
+        amount=2000.00,
+        requester="user123",
+    )
+    print(f"      Approval Request Created: {approval_req.id}")
+    print(f"      Status: {approval_req.status}")
+
+    print("\n  [4.3] Check pending approvals")
+    pending = approval_sim.list_pending_requests()
+    print(f"      Pending requests: {len(pending)}")
+    for p in pending:
+        print(f"        - {p.id}: ${p.amount} ({p.status})")
+
+    print("\n  [4.4] Approve the request (as manager)")
+    approved = approval_sim.approve_request(
+        approval_req.id,
+        approver="manager1",
+        reason="Verified with customer via phone",
+    )
+    print(f"      Approved: {approved.id}")
+    print(f"      Status: {approved.status}")
+    print(f"      Approver: {approved.approver}")
+
+    result = await simulator.transfer("user123", "merchant456", 2000.00)
+    print(f"      Transfer completed: {result.get('id')}")
+
+    print("\n  [4.5] Reject workflow demo (another high-value transfer)")
+    transfer_args2 = {
+        "from_account": "user123",
+        "to_account": "merchant456",
+        "amount": 5000.00,
+    }
+    approval_req2 = approval_sim.create_approval_request(
+        capability="payments.transfer",
+        arguments=transfer_args2,
+        amount=5000.00,
+        requester="user123",
+    )
+    print(f"      Approval Request: {approval_req2.id}")
+
+    rejected = approval_sim.reject_request(
+        approval_req2.id,
+        approver="manager1",
+        reason="Suspicious activity - requires additional verification",
+    )
+    print(f"      Rejected: {rejected.id}")
+    print(f"      Status: {rejected.status}")
+    print(f"      Reason: {rejected.reason}")
+
+    print("\n5. AUDIT TRAIL")
+    print("-" * 50)
+    audit_entries = approval_sim.get_audit_trail()
+    print(f"  Total audit entries: {len(audit_entries)}")
+    for entry in audit_entries:
+        print(f"    [{entry.timestamp[:19]}] {entry.action} by {entry.user}")
+
+    print("\n6. FINAL STATE")
+    print("-" * 50)
+    result = await simulator.get_balance("user123")
+    print(f"  user123 balance: ${result['balance']} {result['currency']}")
+    result = await simulator.get_balance("merchant456")
+    print(f"  merchant456 balance: ${result['balance']} {result['currency']}")
+
     result = await simulator.get_transactions("user123")
-    print("    Transactions:")
+    print(f"\n  Transactions: {len(result['transactions'])}")
     for tx in result["transactions"]:
-        print(f"      - {tx['id']}: ${tx['amount']} to {tx['to']}")
+        print(f"    - {tx['id']}: ${tx['amount']} -> {tx['to']} ({tx['status']})")
 
-    print("\n4. FINAL BALANCES")
-    print("-" * 40)
-    for acc_id in ["user123", "merchant456"]:
-        result = await simulator.get_balance(acc_id)
-        print(f"  {acc_id}: ${result['balance']} {result['currency']}")
-
-    print("\n5. CAPABILITY WITH CONTINUATION")
-    print("-" * 40)
+    print("\n7. CAPABILITY CONTINUATION CHAINS")
+    print("-" * 50)
     cap = registry.get_capability("payments.transfer")
     print(f"  {cap.name}:")
     print(f"    can_continue: {cap.continuation.can_continue}")
     print(f"    next_capabilities: {cap.continuation.next_capabilities}")
 
-    print("\n" + "=" * 60)
-    print("Demo Complete!")
-    print("=" * 60)
+    cap = registry.get_capability("payments.approve_request")
+    print(f"\n  {cap.name}:")
+    print(f"    can_continue: {cap.continuation.can_continue}")
+    print(f"    next_capabilities: {cap.continuation.next_capabilities}")
+
+    print("\n" + "=" * 70)
+    print("Demo Complete! Full approval flow demonstrated:")
+    print("  - Threshold policy (${})".format(APPROVAL_THRESHOLD))
+    print("  - Approval request creation")
+    print("  - Approve/Reject workflow")
+    print("  - Audit trail logging")
+    print("=" * 70)
 
 
 if __name__ == "__main__":

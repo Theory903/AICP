@@ -35,6 +35,9 @@
       "id": "user_onboarding",
       "name": "user_onboarding",
       "description": "Complete user onboarding flow",
+      "status": "pending",
+      "created_at": "2026-03-30T12:00:00Z",
+      "updated_at": "2026-03-30T12:00:00Z",
       "steps": [
         {"id": "step1", "capability_name": "users.create", "arguments": {}},
         {"id": "step2", "capability_name": "welcome.send", "arguments": {}}

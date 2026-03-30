@@ -28,6 +28,7 @@ from aicp.capability import (
     InputSchema,
     OutputSchema,
     PolicyRef,
+    ProviderInfo,
     RenderSpec,
 )
 
@@ -67,10 +68,126 @@ from aicp.interfaces import (
     StepResult,
     WorkflowRuntime,
     WorkflowState,
+    WorkflowStatus,
 )
-from aicp.registry import AicpRegistry
+from aicp.registry import AicpRegistry, TagSearchStrategy
 from aicp.validator import AicpValidator
 from aicp.validator import ValidationError as SchemaValidationError
+
+# Authentication
+from aicp.auth import (
+    Auth,
+    ApiKeyAuth,
+    BasicAuth,
+    BearerAuth,
+    OAuth2Auth,
+    OAuth2WithRefresh,
+)
+
+# Variable handling
+from aicp.variables import (
+    VariableNotFoundError,
+    VariableSubstitutor,
+    load_dotenv,
+    DotEnvLoader,
+)
+
+# Security
+from aicp.security import (
+    RateLimitExceeded,
+    RateLimiter,
+    ApiKeyRotator,
+    AuditSigner,
+    SecureAuditLog,
+)
+
+# Plugin system
+from aicp.plugins import (
+    Plugin,
+    PluginMetadata,
+    TransportPlugin,
+    AuthProviderPlugin,
+    CapabilitySourcePlugin,
+    PluginRegistry,
+    get_plugin_registry,
+    register_transport,
+    register_auth_provider,
+    register_capability_source,
+)
+
+# Multi-tenancy
+from aicp.tenancy import (
+    Tenant,
+    TenantQuota,
+    TenantContext,
+    TenantManager,
+    TenantIsolation,
+)
+
+# Reliability
+from aicp.reliability import (
+    RetryConfig,
+    RetryExhausted,
+    retry_async,
+    retry_sync,
+    BackoffStrategy,
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitBreakerOpen,
+    CircuitBreakerManager,
+)
+
+# Observability
+from aicp.observability import (
+    StructuredLogger,
+    get_logger,
+    MetricsCollector,
+    get_metrics,
+    Tracer,
+    get_tracer,
+    HealthCheck,
+)
+
+# Notifications
+from aicp.notifications import (
+    Notification,
+    NotificationChannel,
+    WebhookChannel,
+    SlackChannel,
+    EmailChannel,
+    NotificationService,
+)
+
+# Secrets & Cloud
+from aicp.secrets import (
+    SecretStore,
+    EnvSecretStore,
+    HashiCorpVaultStore,
+    AWSSecretsManagerStore,
+    SecretManager,
+    CloudAuditStorage,
+)
+
+# Cache
+from aicp.cache import (
+    RedisCache,
+    CacheDecorator,
+    RateLimiterRedis,
+)
+
+# API
+from aicp.api import (
+    APIVersion,
+    VersionConfig,
+    VersionManager,
+    HealthCheckBase,
+    LivenessHealthCheck,
+    ReadinessHealthCheck,
+    DependencyHealthCheck,
+    HealthCheckRouter,
+    GracefulShutdown,
+    lifespan_context,
+)
 
 __all__ = [
     # Version
@@ -82,6 +199,7 @@ __all__ = [
     "InputSchema",
     "OutputSchema",
     "PolicyRef",
+    "ProviderInfo",
     "RenderSpec",
     # Error classes
     "AicpError",
@@ -108,15 +226,99 @@ __all__ = [
     "StepResult",
     "WorkflowRuntime",
     "WorkflowState",
+    "WorkflowStatus",
     # Implementations
     "InMemoryCapabilityRepository",
     "DefaultPolicyEngine",
     "DefaultWorkflowRuntime",
     # Core components
     "AicpRegistry",
+    "TagSearchStrategy",
     "AicpValidator",
     "AicpExecutor",
     # Adapters
     "HttpExecutionAdapter",
     "McpAdapter",
+    # Authentication
+    "Auth",
+    "ApiKeyAuth",
+    "BasicAuth",
+    "BearerAuth",
+    "OAuth2Auth",
+    "OAuth2WithRefresh",
+    # Variables
+    "VariableNotFoundError",
+    "VariableSubstitutor",
+    "load_dotenv",
+    "DotEnvLoader",
+    # Security
+    "RateLimitExceeded",
+    "RateLimiter",
+    "ApiKeyRotator",
+    "AuditSigner",
+    "SecureAuditLog",
+    # Plugin system
+    "Plugin",
+    "PluginMetadata",
+    "TransportPlugin",
+    "AuthProviderPlugin",
+    "CapabilitySourcePlugin",
+    "PluginRegistry",
+    "get_plugin_registry",
+    "register_transport",
+    "register_auth_provider",
+    "register_capability_source",
+    # Multi-tenancy
+    "Tenant",
+    "TenantQuota",
+    "TenantContext",
+    "TenantManager",
+    "TenantIsolation",
+    # Reliability
+    "RetryConfig",
+    "RetryExhausted",
+    "retry_async",
+    "retry_sync",
+    "BackoffStrategy",
+    "CircuitBreaker",
+    "CircuitBreakerConfig",
+    "CircuitBreakerOpen",
+    "CircuitBreakerManager",
+    # Observability
+    "StructuredLogger",
+    "get_logger",
+    "MetricsCollector",
+    "get_metrics",
+    "Tracer",
+    "get_tracer",
+    "HealthCheck",
+    # Notifications
+    "Notification",
+    "NotificationChannel",
+    "WebhookChannel",
+    "SlackChannel",
+    "EmailChannel",
+    "NotificationService",
+    # Secrets & Cloud
+    "SecretStore",
+    "EnvSecretStore",
+    "HashiCorpVaultStore",
+    "AWSSecretsManagerStore",
+    "SecretManager",
+    "CloudAuditStorage",
+    # Cache
+    "RedisCache",
+    "CacheDecorator",
+    "RateLimiterRedis",
+    # API
+    "APIVersion",
+    "VersionConfig",
+    "VersionManager",
+    "HealthCheckBase",
+    "LivenessHealthCheck",
+    "ReadinessHealthCheck",
+    "DependencyHealthCheck",
+    "HealthCheckRouter",
+    "GracefulShutdown",
+    "lifespan_context",
 ]

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aicp-connect-fastapi"
+version = "0.1.0"
+description = "AICP Connect FastAPI adapter"
+requires-python = ">=3.10"
+dependencies = ["aicp-core>=0.1.0", "fastapi>=0.110"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "httpx>=0.27"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

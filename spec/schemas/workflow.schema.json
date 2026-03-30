@@ -4,7 +4,7 @@
   "title": "AICP Workflow State",
   "description": "State of a multi-step workflow execution.",
   "type": "object",
-  "required": ["id", "name", "steps"],
+  "required": ["id", "name", "steps", "status", "created_at", "updated_at"],
   "properties": {
     "id": {
       "type": "string",
@@ -38,7 +38,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["pending", "running", "completed", "failed", "cancelled"],
+      "enum": ["pending", "running", "paused", "completed", "failed", "cancelled"],
       "description": "Overall workflow status"
     },
     "created_at": {

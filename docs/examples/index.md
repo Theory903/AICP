@@ -4,6 +4,10 @@ This directory contains working examples of AICP in action.
 
 ## Available Examples
 
+## Platform-Level Walkthrough
+
+- [Platform Demo](PLATFORM_DEMO.md) - the current end-to-end Runtime + Connect + CLI + Studio path
+
 ### Food Ordering
 Location: `/examples/food-ordering/`
 
@@ -20,14 +24,19 @@ python -m food_ordering.demo
 ### Payment Transfer
 Location: `/examples/payment-transfer/`
 
-Payment transfer capabilities with:
-- Input/output schema validation
-- Error handling with fix hints
-- Execution result normalization
+Payment transfer example with two paths:
+- original simulator demo
+- newer runtime-backed platform demo with approvals, audit, and durable state
 
 ```bash
 pip install -e ./examples/payment-transfer
 python -m payment_transfer.demo
+```
+
+Runtime-backed version:
+
+```bash
+PYTHONPATH="packages/core/src:packages/runtime/src:examples/payment-transfer/src" python -m payment_transfer.platform_demo
 ```
 
 ### FastAPI Adapter Demo

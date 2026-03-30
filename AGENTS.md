@@ -6,14 +6,16 @@ This file provides guidance to AI coding agents working in the AICP repository.
 
 ## 1. Project Overview
 
-AICP (AI Capability Protocol) is a standard for capability-aware, workflow-aware, and policy-aware AI execution. It enables agents to safely understand, plan, and complete multi-step real-world tasks.
+AICP (AI Capability Protocol) is the governed action runtime for AI agents. It turns APIs, apps, and workflows into discoverable, policy-enforced, stateful capabilities that agents can use safely in production.
 
 **Core concepts:**
-- **Capability**: A meaningful action the system can perform (e.g., `payments.transfer`)
+- **Action Surface**: The agent-facing surface of software
+- **Capability**: A governed action with typed input/output and policy
 - **Workflow**: A multi-step process made from one or more capabilities
-- **Policy**: Rules defining what is allowed, restricted, or requires confirmation
+- **Policy**: Rules defining what is allowed, denied, or requires approval
 - **Execution**: The actual invocation of a capability with result normalization
-- **Render**: Metadata telling the UI how to display progress and outcomes
+- **ApprovalRequest**: A protocol checkpoint triggered by policy ask
+- **AuditEntry**: An immutable record of execution, policy, or approval events
 
 ---
 
@@ -34,7 +36,7 @@ aicp/
 │   ├── typescript/               # TypeScript SDK packages
 │   └── python/                   # Python SDK
 ├── adapters/                     # Framework & protocol adapters
-│   ├── protocol/                 # HTTP, MCP, OpenAPI, GraphQL
+│   ├── protocol/                 # HTTP, MCP, OpenAPI, GraphQL, mappers
 │   ├── framework/                # FastAPI, Express, NestJS
 │   └── agent/                    # LangChain, LangGraph
 ├── mcp/                          # MCP Server implementations
@@ -465,3 +467,11 @@ Examples: LangChain tools, LangGraph, CrewAI
 - **Document public APIs**: All public interfaces need docstrings/type annotations
 - **Adapter thinness**: Adapters should translate, not reinvent core logic
 - **Core imports**: `/packages/core` should never import from `/packages/runtime` or adapters
+
+## 11. Product Framing Rules
+
+- Public stack: Protocol / Runtime / Connect / Studio
+- Public term: Action Surface
+- Do not use AIUI as a primary public term
+- Governance is protocol-native, not middleware
+- Studio is control plane, not core runtime

@@ -6,7 +6,7 @@ The core AICP capability definition with rich metadata for AI agents.
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class CapabilityKind(str, Enum):
@@ -61,6 +61,14 @@ class ContinuationSpec(BaseModel):
     next_hint: str | None = None
 
 
+class ProviderInfo(BaseModel):
+    """Information about the capability provider."""
+
+    name: str | None = None
+    type: str | None = None
+    url: str | None = None
+
+
 class Capability(BaseModel):
     """An AICP capability.
 
@@ -98,10 +106,28 @@ class Capability(BaseModel):
     continuation: ContinuationSpec | None = None
 
     # Provider info
-    provider_name: str | None = None
-    provider_type: str | None = None
+    provider: ProviderInfo | None = None
 
     # Metadata
     version: str | None = None
     deprecated: bool = False
     deprecation_message: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_provider_fields(cls, data: Any) -> Any:
+        """Accept legacy flat provider fields but normalize to provider object."""
+        if not isinstance(data, dict):
+            return data
+
+        provider = data.get("provider")
+        provider_name = data.pop("provider_name", None)
+        provider_type = data.pop("provider_type", None)
+
+        if provider is None and (provider_name is not None or provider_type is not None):
+            data["provider"] = {
+                "name": provider_name,
+                "type": provider_type,
+            }
+
+        return data
