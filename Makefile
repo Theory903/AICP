@@ -10,6 +10,19 @@ install:
 	@echo "Installing AICP core..."
 	@cd packages/core && pip install -e .
 
+.PHONY: install-ci
+install-ci:
+	@echo "Installing all local AICP packages for CI..."
+	@pip install -e ./packages/core \
+		-e ./packages/runtime \
+		-e ./adapters/framework/fastapi \
+		-e ./adapters/protocol/openapi \
+		-e ./adapters/protocol/mcp \
+		-e ./adapters/importers/postman \
+		-e ./adapters/importers/har \
+		-e ./adapters/importers/curl \
+		-e ./packages/cli
+
 # === Tests ===
 
 .PHONY: test
