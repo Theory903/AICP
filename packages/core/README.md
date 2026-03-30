@@ -7,11 +7,6 @@
 # AICP Core
 
 ### Python Implementation of the AI Capability Protocol
-
-[![PyPI Version](https://img.shields.io/pypi/v/aicp-core?color=blue&style=flat)](https://pypi.org/project/aicp-core/)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/aicp-core?color=green&style=flat)](https://pypi.org/project/aicp-core/)
-[![License](https://img.shields.io/pypi/l/aicp-core?color=orange&style=flat)](https://pypi.org/project/aicp-core/)
-
 </div>
 
 ---
