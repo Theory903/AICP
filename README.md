@@ -10,13 +10,6 @@
 ### AI Capability Protocol
 
 **_The governed action runtime for AI agents_**
-
-<p align="center">
-  <a href="https://pypi.org/project/aicp-core/"><img src="https://img.shields.io/pypi/v/aicp-core?color=blue&style=flat" alt="PyPI Version"></a>
-  <a href="https://pypi.org/project/aicp-core/"><img src="https://img.shields.io/pypi/dm/aicp-core?color=green&style=flat" alt="PyPI Downloads"></a>
-  <a href="https://github.com/aicp-ai/aicp/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/aicp-core?color=orange&style=flat" alt="License"></a>
-</p>
-
 </div>
 
 ---
