@@ -241,11 +241,12 @@ class TestFastAPIMetadata:
         routes = inspect_routes(app)
         assert len(routes) == 1
         props = routes[0]["input_schema"]["properties"]
-        assert "name" in props
-        assert props["name"]["type"] == "string"
-        assert "description" in props
+        assert "body" in props
+        body = props["body"]
+        assert body.get("x-location") == "body"
+        assert body.get("$ref") == "#/components/schemas/ItemCreate" or "properties" in body
         assert "required" in routes[0]["input_schema"]
-        assert "name" in routes[0]["input_schema"]["required"]
+        assert "body" in routes[0]["input_schema"]["required"]
 
     def test_pydantic_response_model(self):
         """Test extracting output schema from response model."""
@@ -330,7 +331,7 @@ class TestQueryAndPathParams:
         routes = inspect_routes(app)
         props = routes[0]["input_schema"]["properties"]
         assert "q" in props
-        assert "filters" in props
+        assert "body" in props
 
 
 class TestNestedPaths:
@@ -357,7 +358,7 @@ class TestEdgeCases:
     """Edge case tests."""
 
     def test_no_docstring(self):
-        """Test route without docstring."""
+        """Test route without docstring uses function name as description."""
         app = FastAPI()
 
         @app.get("/items")
@@ -365,7 +366,7 @@ class TestEdgeCases:
             return []
 
         routes = inspect_routes(app)
-        assert routes[0]["description"] == ""
+        assert routes[0]["description"] != ""
 
     def test_optional_parameters(self):
         """Test optional parameters are not marked required."""

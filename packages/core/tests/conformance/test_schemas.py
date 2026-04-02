@@ -132,6 +132,25 @@ class TestCapabilitySchemaConformance:
         valid, errors = validate_against_schema("capability.schema.json", data)
         assert valid, f"Capability does not conform: {errors}"
 
+    def test_async_capability_with_polling_continuation_conforms(self):
+        """Test capability polling continuation metadata conforms to schema."""
+        capability = Capability(
+            name="exports.create",
+            description="Start export job",
+            kind=CapabilityKind.ASYNC_ACTION,
+            continuation={
+                "can_continue": True,
+                "next_hint": "Poll for completion.",
+                "poll_capability": "exports.get",
+                "poll_after_ms": 1500,
+                "poll_argument": "job_id",
+            },
+        )
+        data = capability.model_dump(exclude_none=True, mode="json")
+
+        valid, errors = validate_against_schema("capability.schema.json", data)
+        assert valid, f"Capability does not conform: {errors}"
+
 
 class TestWorkflowSchemaConformance:
     """Test Workflow model conformance to JSON schema."""
@@ -276,6 +295,27 @@ class TestExecutionResultSchemaConformance:
                 "action": "retry",
                 "capability": "test.action",
                 "hint": "Check the input schema and ensure arguments match",
+            },
+            can_continue=True,
+        )
+        data = result.model_dump(exclude_none=True, mode="json")
+
+        valid, errors = validate_against_schema("execution-result.schema.json", data)
+        assert valid, f"Result does not conform: {errors}"
+
+    def test_success_result_with_polling_hints_conforms(self):
+        """Test that async polling hints conform to the execution result schema."""
+        result = ExecutionResult(
+            status=ExecutionStatus.SUCCESS,
+            data={"job_id": "job-123"},
+            execution_time_ms=12.0,
+            next={
+                "action": "wait",
+                "capability": "exports.get",
+                "arguments": {"job_id": "job-123"},
+                "hint": "Poll for completion.",
+                "poll_after_ms": 2000,
+                "poll_url": "https://example.com/jobs/job-123",
             },
             can_continue=True,
         )

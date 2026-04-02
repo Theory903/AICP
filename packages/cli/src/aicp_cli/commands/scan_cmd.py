@@ -10,236 +10,382 @@ Supports:
 Writes discovered capabilities to aicp/capabilities/*.yaml
 """
 
+from __future__ import annotations
+
+import asyncio
+import importlib
+import json
+import sys
 from pathlib import Path
+from typing import Any
 
 import click
 
 
 @click.group()
-def scan():
-    """Auto-detect capabilities from your application.
-
-    Scans your API surface and generates AICP capability
-    definitions in aicp/capabilities/.
-
-    Examples:
-        aicp scan fastapi app:app
-        aicp scan openapi ./openapi.yaml
-    """
-    pass
+def scan() -> None:
+    """Auto-detect capabilities from your application."""
+    ...
 
 
 @scan.command("fastapi")
 @click.argument("module_app")
-@click.option("--output", "-o", default=None, help="Output directory (default: from aicp.yaml)")
+@click.option(
+    "--output", "-o", default=None, help="Output directory (default: from aicp.yaml)"
+)
 @click.option("--write/--no-write", default=True, help="Write capability YAML files")
-def scan_fastapi(module_app, output, write):
-    """Scan a FastAPI application for capabilities.
-
-    MODULE_APP is the import path like 'app:app' or 'mypackage.main:app'
-
-    Examples:
-        aicp scan fastapi app:app
-        aicp scan fastapi server:app --output ./custom/
-    """
-    import asyncio
-
+def scan_fastapi(module_app: str, output: str | None, write: bool) -> None:
+    """Scan a FastAPI application for capabilities."""
     asyncio.run(_scan_fastapi(module_app, output, write))
 
 
-async def _scan_fastapi(module_app, output, write):
-    """Inspect FastAPI routes and generate capabilities."""
-    import importlib
-    import sys
+@scan.command("openapi")
+@click.argument("file", type=click.Path(exists=True, path_type=Path))
+@click.option("--name", help="Source name")
+@click.option("--base-url", help="Override base URL")
+@click.option("--output", "-o", default=None, help="Output directory")
+@click.option("--write/--no-write", default=True, help="Write capability YAML files")
+def scan_openapi(
+    file: Path,
+    name: str | None,
+    base_url: str | None,
+    output: str | None,
+    write: bool,
+) -> None:
+    """Scan an OpenAPI specification for capabilities."""
+    asyncio.run(_scan_openapi(file, name, base_url, output, write))
 
 
+@scan.command("postman")
+@click.argument("file", type=click.Path(exists=True, path_type=Path))
+@click.option("--name", help="Source name")
+@click.option("--output", "-o", default=None, help="Output directory")
+@click.option("--write/--no-write", default=True, help="Write capability YAML files")
+def scan_postman(
+    file: Path,
+    name: str | None,
+    output: str | None,
+    write: bool,
+) -> None:
+    """Scan a Postman collection for capabilities."""
+    asyncio.run(_scan_postman(file, name, output, write))
+
+
+def _load_config():
     from aicp.config import load_project_config
-    from aicp.export import export_all_capabilities
+
+    return load_project_config()
+
+
+def _resolve_output_dir(output: str | None, config: Any | None = None) -> Path:
+    active_config = config if config is not None else _load_config()
+    return Path(output) if output else Path(active_config.capabilities_dir)
+
+
+def _write_capabilities(
+    capabilities: list[Any], output: str | None, config: Any | None = None
+) -> None:
+    from aicp.export import CapabilityExportError, export_all_capabilities
+
+    output_dir = _resolve_output_dir(output, config)
+    try:
+        written = export_all_capabilities(capabilities, output_dir)
+    except CapabilityExportError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo()
+    click.secho(
+        f"✓ Written {len(written)} capability files to {output_dir}/", fg="green"
+    )
+
+
+def _render_capabilities_table(
+    capabilities: list[Any],
+    *,
+    title: str,
+    effects_enabled: bool = True,
+    config: Any | None = None,
+) -> None:
     from aicp.risk import infer_risk
 
-    # Parse module:app format
-    if ":" in module_app:
-        module_name, app_name = module_app.rsplit(":", 1)
-    else:
-        module_name = module_app
-        app_name = "app"
+    active_config = config if config is not None else _load_config()
 
-    # Add cwd to path for local imports
-    if "." not in sys.path:
-        sys.path.insert(0, ".")
-
-    try:
-        module = importlib.import_module(module_name)
-    except ImportError as e:
-        click.secho(f"Error: Cannot import module '{module_name}': {e}", fg="red")
-        click.echo("Make sure you're in the project root directory.")
-        return
-
-    app = getattr(module, app_name, None)
-    if app is None:
-        click.secho(f"Error: No attribute '{app_name}' in module '{module_name}'", fg="red")
-        return
-
-    # Use FastAPI adapter to inspect routes
-    try:
-        from aicp_connect_fastapi.inspect import inspect_routes
-        from aicp_connect_fastapi.mapper import map_routes_to_capabilities
-    except ImportError:
-        click.secho("Error: aicp-connect-fastapi not installed", fg="red")
-        return
-
-
-    click.echo(f"Scanning {module_name}:{app_name}...")
-    click.echo()
-
-    # Enrich with risk inference
-    config = load_project_config()
-
-    # Inspect and map
-    try:
-        from aicp_connect_fastapi.types import AicpConfig
-    except ImportError:
-        click.secho("Error: aicp-connect-fastapi not installed", fg="red")
-        return
-
-    routes = inspect_routes(app)
-    fastapi_config = AicpConfig(provider_name=config.provider_name)
-    capabilities = map_routes_to_capabilities(app, fastapi_config)
-
-    if not capabilities:
-        click.secho("No capabilities detected.", fg="yellow")
-        return
-
-    # Display results
     try:
         from rich.console import Console
         from rich.table import Table
 
         console = Console()
-        table = Table(title=f"Detected {len(capabilities)} Capabilities", show_lines=False)
+        table = Table(title=title, show_lines=False)
         table.add_column("#", style="dim", width=3)
         table.add_column("Capability", style="cyan bold")
         table.add_column("Kind", style="green")
         table.add_column("Risk", style="yellow")
-        table.add_column("Default Policy")
-        table.add_column("Source Route", style="dim")
+        if effects_enabled:
+            table.add_column("Default Policy")
 
-        for i, cap in enumerate(capabilities, 1):
+        for index, cap in enumerate(capabilities, 1):
             risk = infer_risk(cap.name, cap.kind)
-            effect = config.effective_effect(cap.name, cap.kind.value, False)
+            risk_style = {
+                "low": "green",
+                "medium": "yellow",
+                "high": "red",
+                "critical": "bold red",
+            }.get(risk.value, "white")
 
-            risk_style = {"low": "green", "medium": "yellow", "high": "red", "critical": "bold red"}.get(risk.value, "white")
-            effect_style = {"allow": "green", "ask": "yellow", "require_approval": "red", "deny": "bold red"}.get(effect, "white")
-
-            # Find original route path
-            route_path = ""
-            for r in routes:
-                if r.get("capability_name") == cap.name or cap.name.endswith(r.get("function_name", "")):
-                    route_path = f"{r.get('method', '?')} {r.get('path', '?')}"
-                    break
-
-            table.add_row(
-                str(i),
+            row = [
+                str(index),
                 cap.name,
                 cap.kind.value,
                 f"[{risk_style}]{risk.value}[/{risk_style}]",
-                f"[{effect_style}]{effect}[/{effect_style}]",
-                route_path,
-            )
+            ]
+
+            if effects_enabled:
+                effect = active_config.effective_effect(
+                    capability_name=cap.name,
+                    kind=cap.kind.value,
+                    is_destructive=getattr(cap, "is_destructive", False),
+                )
+                effect_style = {
+                    "allow": "green",
+                    "ask": "yellow",
+                    "require_approval": "red",
+                    "deny": "bold red",
+                    "limit": "magenta",
+                }.get(effect, "white")
+                row.append(f"[{effect_style}]{effect}[/{effect_style}]")
+
+            table.add_row(*row)
 
         console.print(table)
+
     except ImportError:
-        click.echo(f"Detected {len(capabilities)} capabilities:")
+        click.echo(title)
         for cap in capabilities:
             risk = infer_risk(cap.name, cap.kind)
-            click.echo(f"  • {cap.name} ({cap.kind.value}) — risk: {risk.value}")
+            line = f"  • {cap.name} ({cap.kind.value}) — risk: {risk.value}"
+            if effects_enabled:
+                effect = active_config.effective_effect(
+                    capability_name=cap.name,
+                    kind=cap.kind.value,
+                    is_destructive=getattr(cap, "is_destructive", False),
+                )
+                line += f" — policy: {effect}"
+            click.echo(line)
 
-    # Write capability files
+
+def _show_next_steps() -> None:
+    click.echo()
+    click.echo("  Next steps:")
+    click.echo("    1. Review generated files in aicp/capabilities/")
+    click.echo("    2. Customize risk levels and descriptions")
+    click.echo("    3. aicp dev — start the runtime")
+
+
+def _parse_module_app(module_app: str) -> tuple[str, str]:
+    if ":" in module_app:
+        module_name, app_name = module_app.rsplit(":", 1)
+        return module_name, app_name
+    return module_app, "app"
+
+
+def _import_module(module_name: str):
+    if "." not in sys.path:
+        sys.path.insert(0, ".")
+
+    try:
+        return importlib.import_module(module_name)
+    except Exception as exc:
+        raise click.ClickException(
+            f"Cannot import module '{module_name}': {exc}\n"
+            "Make sure you're in the project root directory and the app imports cleanly."
+        ) from exc
+
+
+def _handle_scan_results(
+    capabilities: list[Any],
+    *,
+    title: str,
+    output: str | None,
+    write: bool,
+    show_next_steps: bool = False,
+    config: Any | None = None,
+) -> None:
+    if not capabilities:
+        click.secho("No capabilities detected.", fg="yellow")
+        return
+
+    _render_capabilities_table(
+        capabilities,
+        title=title,
+        effects_enabled=True,
+        config=config,
+    )
+
     if write:
-        output_dir = Path(output) if output else Path(config.capabilities_dir)
-        written = export_all_capabilities(capabilities, output_dir)
-        click.echo()
-        click.secho(f"✓ Written {len(written)} capability files to {output_dir}/", fg="green")
-        click.echo()
-        click.echo("  Next steps:")
-        click.echo("    1. Review generated files in aicp/capabilities/")
-        click.echo("    2. Customize risk levels and descriptions")
-        click.echo("    3. aicp dev — start the runtime")
+        _write_capabilities(capabilities, output, config)
+        if show_next_steps:
+            _show_next_steps()
 
 
-@scan.command("openapi")
-@click.argument("file", type=click.Path(exists=True))
-@click.option("--name", help="Source name")
-@click.option("--base-url", help="Override base URL")
-@click.option("--output", "-o", default=None, help="Output directory")
-@click.option("--write/--no-write", default=True, help="Write capability YAML files")
-def scan_openapi(file, name, base_url, output, write):
-    """Scan an OpenAPI specification for capabilities.
+async def _scan_fastapi(module_app: str, output: str | None, write: bool) -> None:
+    """Inspect FastAPI routes and generate capabilities."""
+    module_name, app_name = _parse_module_app(module_app)
+    module = _import_module(module_name)
+    app = getattr(module, app_name, None)
 
-    Example: aicp scan openapi ./openapi.yaml
-    """
-    import asyncio
+    if app is None:
+        raise click.ClickException(
+            f"No attribute '{app_name}' in module '{module_name}'"
+        )
 
-    asyncio.run(_scan_openapi(file, name, base_url, output, write))
+    config = _load_config()
+    click.echo(f"Scanning {module_name}:{app_name}...")
+    click.echo()
+
+    try:
+        capabilities = await _discover_fastapi_capabilities(
+            app,
+            provider_name=config.provider_name,
+            base_url=config.provider_url or f"http://{config.runtime.host}:{config.runtime.port}",
+        )
+    except Exception as exc:
+        raise click.ClickException(f"Failed to inspect FastAPI app: {exc}") from exc
+
+    _handle_scan_results(
+        capabilities,
+        title=f"Detected {len(capabilities)} Capabilities",
+        output=output,
+        write=write,
+        show_next_steps=True,
+        config=config,
+    )
 
 
-async def _scan_openapi(file, name, base_url, output, write):
-    from aicp.config import load_project_config
-    from aicp.export import export_all_capabilities
-    from aicp.risk import infer_risk
+async def _discover_fastapi_capabilities(
+    app: Any,
+    *,
+    provider_name: str,
+    base_url: str | None = None,
+) -> list[Any]:
+    """Discover FastAPI capabilities, preferring the app's OpenAPI schema."""
+    openapi_callable = getattr(app, "openapi", None)
+    if callable(openapi_callable):
+        try:
+            from aicp_connect_openapi import OpenAPIDiscoverySource
 
+            spec = openapi_callable()
+            if isinstance(spec, dict):
+                source = OpenAPIDiscoverySource(
+                    name=provider_name,
+                    spec=spec,
+                    base_url=base_url,
+                )
+                return await source.discover()
+        except ImportError:
+            pass
+
+    try:
+        from aicp_connect_fastapi.mapper import map_routes_to_capabilities
+        from aicp_connect_fastapi.types import AicpConfig
+    except ImportError as exc:
+        raise click.ClickException("aicp-connect-fastapi is not installed") from exc
+
+    fastapi_config = AicpConfig(provider_name=provider_name)
+    return map_routes_to_capabilities(app, fastapi_config)
+
+
+async def _scan_openapi(
+    file: Path,
+    name: str | None,
+    base_url: str | None,
+    output: str | None,
+    write: bool,
+) -> None:
     try:
         from aicp_connect_openapi import OpenAPIDiscoverySource
-    except ImportError:
-        click.secho("Error: aicp-connect-openapi not installed", fg="red")
-        return
-
-    source = OpenAPIDiscoverySource(file, name=name, base_url=base_url)
-    capabilities = await source.discover()
-
-    click.echo(f"Discovered {len(capabilities)} capabilities from OpenAPI spec:")
-    for cap in capabilities:
-        risk = infer_risk(cap.name, cap.kind)
-        click.echo(f"  • {cap.name} ({cap.kind.value}) — risk: {risk.value}")
-
-    if write:
-        config = load_project_config()
-        output_dir = Path(output) if output else Path(config.capabilities_dir)
-        written = export_all_capabilities(capabilities, output_dir)
-        click.echo(f"\n✓ Written {len(written)} capability files to {output_dir}/")
-
-
-@scan.command("postman")
-@click.argument("file", type=click.Path(exists=True))
-@click.option("--name", help="Source name")
-@click.option("--output", "-o", default=None, help="Output directory")
-@click.option("--write/--no-write", default=True, help="Write capability YAML files")
-def scan_postman(file, name, output, write):
-    """Scan a Postman collection for capabilities."""
-    import asyncio
-
-    asyncio.run(_scan_postman(file, name, output, write))
-
-
-async def _scan_postman(file, name, output, write):
-    from aicp.config import load_project_config
-    from aicp.export import export_all_capabilities
+    except ImportError as exc:
+        raise click.ClickException("aicp-connect-openapi is not installed") from exc
 
     try:
-        from aicp_connect_postman import PostmanDiscoverySource
-    except ImportError:
-        click.secho("Error: aicp-connect-postman not installed", fg="red")
-        return
+        if file.suffix.lower() in {".yaml", ".yml"}:
+            try:
+                import yaml
+            except ImportError as exc:
+                raise click.ClickException(
+                    "PyYAML is required to read YAML OpenAPI specs"
+                ) from exc
 
-    source = PostmanDiscoverySource(file, name=name)
-    capabilities = await source.discover()
+            with file.open("r", encoding="utf-8") as f:
+                spec = yaml.safe_load(f)
+        else:
+            with file.open("r", encoding="utf-8") as f:
+                spec = json.load(f)
+    except Exception as exc:
+        raise click.ClickException(f"Failed to read OpenAPI spec: {exc}") from exc
 
-    click.echo(f"Discovered {len(capabilities)} capabilities from Postman collection:")
-    for cap in capabilities:
-        click.echo(f"  • {cap.name} ({cap.kind.value})")
+    if not isinstance(spec, dict):
+        raise click.ClickException("OpenAPI spec root must be an object")
 
-    if write:
-        config = load_project_config()
-        output_dir = Path(output) if output else Path(config.capabilities_dir)
-        written = export_all_capabilities(capabilities, output_dir)
-        click.echo(f"\n✓ Written {len(written)} capability files to {output_dir}/")
+    source_name = name or file.stem
+
+    try:
+        source = OpenAPIDiscoverySource(
+            name=source_name,
+            spec=spec,
+            spec_url=str(file),
+            base_url=base_url,
+        )
+        capabilities = await source.discover()
+    except Exception as exc:
+        raise click.ClickException(f"Failed to scan OpenAPI spec: {exc}") from exc
+
+    warnings = getattr(source, "warnings", []) or []
+    for warning in warnings:
+        click.secho(f"Warning: {warning}", fg="yellow")
+
+    _handle_scan_results(
+        capabilities,
+        title=f"Discovered {len(capabilities)} capabilities from OpenAPI spec",
+        output=output,
+        write=write,
+        config=_load_config(),
+    )
+
+
+async def _scan_postman(
+    file: Path,
+    name: str | None,
+    output: str | None,
+    write: bool,
+) -> None:
+    try:
+        from aicp_connect_postman import PostmanCollectionImporter
+    except ImportError as exc:
+        raise click.ClickException("aicp-connect-postman is not installed") from exc
+
+    try:
+        with file.open("r", encoding="utf-8") as f:
+            collection = json.load(f)
+    except json.JSONDecodeError as exc:
+        raise click.ClickException(f"Invalid Postman collection JSON: {exc}") from exc
+    except OSError as exc:
+        raise click.ClickException(f"Failed to read Postman collection: {exc}") from exc
+
+    if not isinstance(collection, dict):
+        raise click.ClickException("Postman collection root must be an object")
+
+    source_name = name or collection.get("info", {}).get("name") or file.stem
+
+    try:
+        source = PostmanCollectionImporter(name=source_name, collection=collection)
+        capabilities = await source.discover()
+    except Exception as exc:
+        raise click.ClickException(f"Failed to scan Postman collection: {exc}") from exc
+
+    _handle_scan_results(
+        capabilities,
+        title=f"Discovered {len(capabilities)} capabilities from Postman collection",
+        output=output,
+        write=write,
+        config=_load_config(),
+    )

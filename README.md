@@ -9,22 +9,28 @@
 
 ### AI Capability Protocol
 
-**_The governed action runtime for AI agents_**
+**_An AI-first application control plane that lets agents operate real apps_**
 </div>
 
 ---
 
 ## What is AICP?
 
-**AICP (AI Capability Protocol)** is a standard for **capability-aware**, **workflow-aware**, and **policy-aware** AI execution. It transforms APIs, applications, and workflows into **discoverable**, **policy-enforced**, and **stateful capabilities** that AI agents can use safely in production.
+**AICP (AI Capability Protocol)** is a protocol and runtime model for turning applications into governed action spaces that AI agents can operate through structured capabilities, stateful workflows, policy enforcement, and human supervision.
 
-AICP is designed so **even small language models** can complete real-world tasks without complex reasoning. Every response tells the AI:
+Instead of humans clicking through apps, AICP turns applications into **structured action spaces** that AI agents can safely operate end-to-end.
 
-- ✅ **What happened** — explicit execution status
-- ✅ **What went wrong** — structured errors with fix hints  
-- ✅ **What to do next** — built-in next action suggestions
-- ✅ **Where we are** — workflow state tracking
-- ✅ **If it's safe to proceed** — explicit policy evaluation
+AICP sits between:
+1. **LLM / agent** — the "user" of the app
+2. **Application capabilities** — structured, AI-safe actions
+3. **Workflow engine** — multi-step orchestration
+4. **State/session store** — resumable execution context
+5. **Human approval layer** — governance, not friction
+6. **UX plane** — monitoring, intervention, replay, debugging
+
+The frontend is not "for humans to do the task." It is **"for humans to supervise the AI doing the task."**
+
+> **Note:** AICP is the protocol and runtime model. The Python runtime in this repository is the reference implementation, not the full boundary of the architecture. See [STATUS.md](STATUS.md) for current implementation status.
 
 ---
 
@@ -40,113 +46,95 @@ AICP is designed so **even small language models** can complete real-world tasks
 
 ---
 
-## Features
+## Quick Start
 
-### 🤖 Agentic Execution
-- **Agentic-ready responses** — Every response includes `next` with suggested actions
-- **Built-in fix hints** — Errors tell AI exactly how to recover
-- **Workflow state** — Track multi-step processes automatically
-
-### 🛡️ Governance & Policy
-- **Policy evaluation** — Enforce allow/deny/confirmation rules
-- **Human-in-the-loop** — Approval workflows for sensitive operations
-- **Audit logging** — Complete execution history with cryptographic signing
-
-### 🔌 Multi-Protocol Support
-- HTTP / HTTPS
-- WebSocket (real-time streaming)
-- SSE (Server-Sent Events)
-- GraphQL
-- MCP (Model Context Protocol)
-- OpenAPI / Swagger import
-- Postman / HAR / cURL import
-
-### 🏢 Production-Ready
-- **Multi-tenancy** — Tenant isolation with quotas
-- **Rate limiting** — Per-tenant and per-endpoint limits
-- **OAuth2** — Full authN/authZ support
-- **Secrets management** — Vault, AWS Secrets Manager integration
-
-### 📊 Observability
-- Structured JSON logging
-- Prometheus metrics
-- Distributed tracing
-- Health checks & liveness probes
-
-### ⚡ Reliability
-- Retry with exponential backoff
-- Circuit breaker pattern
-- Graceful shutdown
-
----
-
-## Quick Start (3-Minutes)
-
-Get your existing application fully AI-ready without writing complex wrapper code. AICP's CLI scans your app, exports governing schemas, and starts a managed capability runtime.
-
-### 1. Installation
+### Available Today
 
 ```bash
-# Install the core runtime, visual CLI, and your framework adapter
-pip install "aicp-core[all]" aicp-cli aicp-connect-fastapi
+# Install from source (or PyPI when published)
+cd AICP
+pip install -e "packages/core[dev]" -e packages/runtime -e packages/cli -e adapters/framework/fastapi
 ```
 
-### 2. Bootstrap Your App
-
-Use `aicp bootstrap` to instantly scaffold an AICP configuration for an existing application.
-
 ```bash
-> aicp bootstrap fastapi server.main:app
+# Bootstrap your app
+aicp bootstrap fastapi server.main:app
 
-🚀 Bootstrapping AICP for server.main:app
+# Scan capabilities from OpenAPI
+aicp scan --openapi http://localhost:8000/openapi.json
 
-  ✓ Initialized local AICP environment
-  ✓ Scanned 12 Capabilities from routes
-  ✓ Extracted input/output schemas & types
-  ✓ Auto-detected destructive risk levels
-  
-✨ Bootstrap complete! Your project is AICP-ready.
-```
+# Preview a capability
+aicp preview payments.transfer
 
-Every endpoint is converted into a fully documented, governing standard output in `aicp/capabilities/`.
-
-### 3. Review & Govern Capabilities
-
-Inspect a specific capability in the terminal to view its full prompt and enforcement rules—no staring at YAML required.
-
-```bash
-> aicp preview payments.transfer
-
-💳 Capability: payments.transfer
-─────────────────────────────────
-Kind: Action  |  Risk: Critical
-Tags: [finance, destructive]
-
-Governing Policy:
-  ↳ Effect: requires_approval
-  ↳ Reason: "Destructive operations must have Human-in-the-loop sign-off"
-```
-
-Is a sensitive action unprotected? Add governance directly from the CLI.
-
-```bash
-# Force any AI calling this tool to pause and wait for a human approval hook
+# Add governance
 aicp protect payments.transfer
-
-# Apply a global rate limit across the entire users module
 aicp limit "users.*" --rpm 60
-```
 
-### 4. Start the Runtime
-
-```bash
+# Start the runtime
 aicp dev
+
+# Execute a capability (with inline approval prompt)
+aicp run notes.create -i '{"title": "Hello"}'
+aicp run notes.create -i '{"title": "Hello"}' --yes  # auto-approve
+aicp run notes.create -i '{"title": "Hello"}' --no-input  # non-interactive
 ```
-The AICP engine mounts securely over your app! Your Agents can now dynamically execute tasks, safely halt for required approvals, and understand exact error states instantly.
+
+### Coming Next
+
+- Richer workflow DSL (YAML/JSON)
+- AI Planner and Judge integration
+- LangChain / LangGraph adapters
+- Event-driven async flows
+- Visual workflow builder
+
+See [STATUS.md](STATUS.md) for the full roadmap.
 
 ---
 
-## Architecture
+## Architecture Planes
+
+| Plane | Purpose | Key Components |
+|-------|---------|----------------|
+| **Control Plane** | Registry, policy, orchestration | Capability registry, workflow registry, policy engine, approval service, execution orchestrator, session manager |
+| **Data Plane** | Actual backend services | REST APIs, databases, external services |
+| **AI Plane** | Agent reasoning | Planner, executor, judge, memory/context builder, tool selection layer |
+| **UX Plane** | Human supervision | Operator dashboard, approval UI, replay debugger, workflow builder, audit logs |
+
+---
+
+## Core Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Action Surface** | Agent-facing surface of software — structured, typed, policy-governed actions |
+| **Capability** | Governed action with strict I/O schema, side-effect classification, approval metadata, retry policy, error codes |
+| **Workflow** | Stateful, resumable, multi-step process with branching, retries, approval checkpoints, compensation |
+| **Policy** | Rules defining what is allowed, denied, or requires approval — evaluated per capability call |
+| **Execution** | Capability invocation with result normalization, persistence, and audit |
+| **Session** | Resumable execution context with state, memory, and approval history |
+| **ApprovalRequest** | Governance checkpoint with risk assessment, impact summary, decision lifecycle |
+| **AuditEntry** | Immutable record of every execution, policy evaluation, and approval event |
+
+---
+
+## Compliance Levels
+
+Implementations declare their conformance level:
+
+| Level | Name | Requirements |
+|-------|------|-------------|
+| **0** | Capability Discovery | Capability registry, input/output schema validation, basic execution |
+| **1** | Governed Execution | Level 0 + policy evaluation, approval checkpoints, audit trail, session management |
+| **2** | Resumable Workflows | Level 1 + sequential workflows, compensation, state persistence, resume after approval |
+| **3** | Event-Driven Orchestration | Level 2 + wait-for-event, timeout branching, parallel steps, loops |
+| **4** | AI Planning Support | Level 3 + planner, judge, context builder, allowed-next-actions schema |
+| **5** | Full Orchestration | Level 4 + multi-flow orchestration, subflows, cross-flow events, supervision console |
+
+**Current reference implementation: Level 2**
+
+---
+
+## Repository Structure
 
 ```
 aicp/
@@ -160,13 +148,53 @@ aicp/
 │   ├── core/               # Protocol core (Python)
 │   └── runtime/            # Execution runtime
 ├── adapters/
-│   ├── protocol/           # HTTP, WS, SSE, GraphQL, MCP
-│   ├── framework/          # FastAPI, Express, LangChain
+│   ├── protocol/           # HTTP, MCP, OpenAPI, GraphQL, mappers
+│   ├── framework/          # FastAPI, Express, NestJS
 │   └── importers/          # OpenAPI, Postman, HAR
 ├── sdks/                   # TypeScript SDK
 ├── mcp/                    # MCP Server
 └── examples/              # Example applications
 ```
+
+---
+
+## Integrations
+
+### FastAPI ✅ Available
+
+```python
+from fastapi import FastAPI
+from aicp_connect_fastapi import mount_aicp
+
+app = FastAPI()
+mount_aicp(app)
+```
+
+### MCP ✅ Available
+
+```bash
+# MCP server implementation in /mcp/
+```
+
+### OpenAPI ✅ Available
+
+```bash
+aicp scan --openapi http://localhost:8000/openapi.json
+```
+
+### LangChain 🔜 Planned (illustrative, not yet shipped)
+
+```python
+# Planned integration — API shape subject to change
+from langchain.tools import AicpTool
+
+tool = AicpTool(capability_name="payments.transfer")
+agent = Agent(tools=[tool])
+```
+
+### Express / NestJS / Next.js / Spring Boot 🔜 Planned
+
+Adapter directories exist; implementations not yet started.
 
 ---
 
@@ -179,32 +207,6 @@ aicp/
 | [Concepts](https://docs.aicp.ai/overview) | Architecture & design |
 | [API Reference](https://docs.aicp.ai/reference) | Full API documentation |
 | [Examples](https://github.com/aicp-ai/aicp/tree/main/examples) | Runnable examples |
-
----
-
-## Integrations
-
-### FastAPI
-```python
-from fastapi import FastAPI
-from aicp.adapters.framework.fastapi import mount_aicp
-
-app = FastAPI()
-mount_aicp(app, capabilities=[...])
-```
-
-### LangChain
-```python
-from langchain.tools import AicpTool
-
-tool = AicpTool(capability_name="payments.transfer")
-agent = Agent(tools=[tool])
-```
-
-### MCP Server
-```bash
-npx @aicp/mcp-server --capabilities payments.transfer,users.list
-```
 
 ---
 

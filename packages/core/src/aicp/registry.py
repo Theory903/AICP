@@ -202,7 +202,7 @@ class AicpRegistry:
         workflows = self.list_workflow_templates()
 
         return {
-            "version": "0.1.0",
+            "version": "0.1.1",
             "capabilities": [
                 capability.model_dump(exclude_none=True) for capability in capabilities
             ],

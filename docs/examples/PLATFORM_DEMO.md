@@ -78,6 +78,8 @@ Run the thin Studio seed against the same store:
 python -c "from studio.app import create_file_backed_studio_app; import uvicorn; uvicorn.run(create_file_backed_studio_app('./.aicp-runtime'), host='127.0.0.1', port=3000)"
 ```
 
+Make sure `pip install -e ./apps/studio` has been run in the same environment first.
+
 Then open:
 
 ```text

@@ -6,16 +6,52 @@ This file provides guidance to AI coding agents working in the AICP repository.
 
 ## 1. Project Overview
 
-AICP (AI Capability Protocol) is the governed action runtime for AI agents. It turns APIs, apps, and workflows into discoverable, policy-enforced, stateful capabilities that agents can use safely in production.
+**AICP (AI Capability Protocol)** is an AI-first application control plane that lets agents operate real apps through structured capabilities, stateful workflows, policy-gated execution, and human supervision.
+
+Instead of humans clicking through apps, AICP turns applications into structured action spaces that AI agents can safely operate end-to-end.
+
+**Product definition:**
+> AICP is an AI-first application control plane that lets agents operate real apps through structured capabilities, stateful workflows, policy-gated execution, and human supervision.
+
+**Core mental model:**
+
+AICP sits between:
+1. LLM / agent (the "user" of the app)
+2. Application capabilities (structured, AI-safe actions)
+3. Workflow engine (multi-step orchestration)
+4. State/session store (resumable execution context)
+5. Human approval layer (governance, not friction)
+6. UI for monitoring, intervention, replay, and debugging
+
+The frontend is not "for humans to do the task." It is "for humans to supervise the AI doing the task."
+
+**Architecture planes:**
+
+| Plane | Purpose | Key Components |
+|-------|---------|----------------|
+| **Control Plane** | Registry, policy, orchestration | Capability registry, workflow registry, policy engine, approval service, execution orchestrator, session manager |
+| **Data Plane** | Actual backend services | REST APIs, databases, external services |
+| **AI Plane** | Agent reasoning | Planner, executor, judge, memory/context builder, tool selection layer |
+| **UX Plane** | Human supervision | Operator dashboard, approval UI, replay debugger, workflow builder, audit logs |
 
 **Core concepts:**
-- **Action Surface**: The agent-facing surface of software
-- **Capability**: A governed action with typed input/output and policy
-- **Workflow**: A multi-step process made from one or more capabilities
-- **Policy**: Rules defining what is allowed, denied, or requires approval
-- **Execution**: The actual invocation of a capability with result normalization
-- **ApprovalRequest**: A protocol checkpoint triggered by policy ask
-- **AuditEntry**: An immutable record of execution, policy, or approval events
+- **Action Surface**: The agent-facing surface of software — structured, typed, policy-governed actions
+- **Capability**: A governed action with strict input/output schema, side-effect classification, approval metadata, retry policy, and error codes
+- **Workflow**: A stateful, resumable, multi-step process with branching, retries, approval checkpoints, and compensation
+- **Policy**: Rules defining what is allowed, denied, or requires approval — evaluated per capability call
+- **Execution**: The actual invocation of a capability with result normalization, persistence, and audit
+- **Session**: Resumable execution context with state, memory, and approval history
+- **ApprovalRequest**: A governance checkpoint with risk assessment, impact summary, and decision lifecycle
+- **AuditEntry**: An immutable record of every execution, policy evaluation, and approval event
+
+**Non-negotiable engineering rules:**
+1. Every capability must be deterministic at interface level
+2. Every side effect must be logged
+3. Every action must be replayable
+4. Every risky action must be policy-gated
+5. Every workflow must be resumable
+6. Every flow must be idempotent where possible
+7. Every execution must expose "allowed next actions"
 
 ---
 
@@ -468,10 +504,155 @@ Examples: LangChain tools, LangGraph, CrewAI
 - **Adapter thinness**: Adapters should translate, not reinvent core logic
 - **Core imports**: `/packages/core` should never import from `/packages/runtime` or adapters
 
-## 11. Product Framing Rules
+---
+
+## 11. Spec Language
+
+AICP uses RFC 2119 convention for normative requirements:
+
+| Term | Meaning |
+|------|---------|
+| **MUST** | Required for compliant implementations |
+| **SHOULD** | Recommended unless strong reason otherwise |
+| **MAY** | Optional extension |
+
+Normative content lives in `/spec/schemas/`. Everything else is informative.
+
+---
+
+## 12. Architectural Invariants
+
+These are immovable rails. Violating any of these breaks the protocol.
+
+### Spec Invariants
+
+- `/spec` is authoritative for protocol structure.
+- Protocol changes MUST be documented in `/spec` before runtime implementation.
+- All implementations MUST validate protocol objects against JSON schemas.
+- Schema changes MUST maintain backward compatibility unless version bump.
+
+### Runtime Invariants
+
+1. A capability execution MUST always be policy-evaluated before side effects.
+2. A workflow run MUST always have persisted state before transition.
+3. A workflow step CANNOT be marked complete without an audit entry.
+4. An approval-gated action CANNOT execute before approval is resolved.
+5. Every execution response MUST expose allowed next actions.
+6. Session context MUST be resumable across process restarts.
+7. A workflow run has at most one active current step unless inside a declared parallel block.
+8. A resumed workflow MUST preserve prior audit lineage.
+9. A workflow terminal state is immutable except via replay/fork semantics.
+10. Every execution event MUST be attributable to agent, human, or system actor.
+
+### Package Boundary Invariants
+
+- `/packages/core` MUST remain runtime-agnostic and adapter-agnostic.
+- `/packages/core` MUST NOT import from `/packages/runtime` or adapters.
+- Adapters MUST translate only; they MUST NOT contain core orchestration logic.
+- Adapter-specific logic MUST NOT leak into core models.
+
+---
+
+## 13. Forbidden Shortcuts
+
+These shortcuts look helpful but destroy architecture. Do not do them.
+
+- Do NOT change protocol behavior in runtime code without spec updates.
+- Do NOT import from runtime into core packages.
+- Do NOT embed adapter-specific logic into core models.
+- Do NOT bypass policy evaluation for side-effecting capabilities.
+- Do NOT add hidden workflow transitions that are not representable in the spec.
+- Do NOT mark roadmap items as complete in docs unless tests and implementation exist.
+- Do NOT introduce implicit state transitions without audit entries.
+- Do NOT make adapters "smart." Adapters translate only.
+- Do NOT add determinism_class or execution_mode fields without spec updates.
+- Do NOT create new API endpoints without adding them to the spec first.
+
+---
+
+## 14. Execution Contract
+
+All runtime implementations MUST converge on a canonical execution envelope:
+
+```json
+{
+  "execution_id": "exec_...",
+  "capability_name": "orders.place",
+  "workflow_id": "wf_...",
+  "step_id": "step_...",
+  "session_id": "sess_...",
+  "policy_result": {
+    "effect": "allow",
+    "policy_name": "default_actions"
+  },
+  "approval_state": {
+    "status": "none",
+    "approval_id": null
+  },
+  "status": "completed",
+  "data": { "order_id": "ord_123" },
+  "error": null,
+  "allowed_next_actions": [
+    {
+      "kind": "capability",
+      "name": "order.track",
+      "requires_approval": false
+    }
+  ],
+  "audit_correlation_id": "corr_..."
+}
+```
+
+Every execution MUST produce this envelope. UI, planner, judge, audit, and replay all consume it.
+
+---
+
+## 15. Example Integrity
+
+- Shipped examples MUST reflect working behavior.
+- Planned APIs MUST be labeled clearly as illustrative or planned.
+- Do NOT present unimplemented adapters as available integrations.
+- Pseudocode MUST be labeled as pseudocode.
+- Integration examples MUST NOT imply adapter availability if the adapter is not implemented.
+
+---
+
+## 16. Compliance Levels
+
+Implementations declare their conformance level:
+
+| Level | Name | Requirements |
+|-------|------|-------------|
+| **0** | Capability Discovery | Capability registry, input/output schema validation, basic execution |
+| **1** | Governed Execution | Level 0 + policy evaluation, approval checkpoints, audit trail, session management |
+| **2** | Resumable Workflows | Level 1 + sequential workflows, compensation, state persistence, resume after approval |
+| **3** | Event-Driven Orchestration | Level 2 + wait-for-event, timeout branching, parallel steps, loops |
+| **4** | AI Planning Support | Level 3 + planner, judge, context builder, allowed-next-actions schema |
+| **5** | Full Orchestration | Level 4 + multi-flow orchestration, subflows, cross-flow events, supervision console |
+
+Current reference implementation: **Level 2** (core sequential runtime complete; parallel, event-driven, looped, and subflow orchestration not yet complete).
+
+---
+
+## 17. Product Framing Rules
 
 - Public stack: Protocol / Runtime / Connect / Studio
 - Public term: Action Surface
 - Do not use AIUI as a primary public term
 - Governance is protocol-native, not middleware
 - Studio is control plane, not core runtime
+- AICP is the protocol and runtime model. The Python runtime in this repository is the reference implementation, not the full boundary of the architecture.
+
+---
+
+## 18. Current State
+
+See [STATUS.md](STATUS.md) for the authoritative current-state and roadmap document.
+
+### Quick Summary
+
+**Achieved:** 9 schemas, 8 runtime services, 30+ API endpoints, 3 persistence backends, 28 CLI commands, 6 working adapters, 172 passing tests, agent console UI, approval auto-resume.
+
+**In Progress:** Semantic retrieval, encrypted sessions, richer workflow branching, SDK skeletons.
+
+**Not Started (High Priority):** AI Planner, AI Judge, AI Memory Builder, YAML Workflow DSL, Event-driven async flows, LangChain/LangGraph adapters, Food ordering reference flow.

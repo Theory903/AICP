@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aicp-connect-curl"
-version = "0.1.0"
+version = "0.1.1"
 description = "AICP Connect cURL importer"
 requires-python = ">=3.10"
 dependencies = ["aicp-core>=0.1.0"]

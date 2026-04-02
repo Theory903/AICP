@@ -3,6 +3,7 @@
 from aicp.capability import (
     Capability,
     CapabilityKind,
+    ContinuationSpec,
     InputSchema,
     OutputSchema,
     ProviderInfo,
@@ -64,3 +65,22 @@ class TestCapability:
         assert capability.provider is not None
         assert capability.provider.name == "banking_api"
         assert capability.provider.type == "http"
+
+    def test_capability_supports_polling_continuation_metadata(self):
+        """Test continuation metadata can declare polling hints."""
+        capability = Capability(
+            name="exports.create",
+            kind=CapabilityKind.ASYNC_ACTION,
+            continuation=ContinuationSpec(
+                can_continue=True,
+                next_hint="Poll for job completion.",
+                poll_capability="exports.get",
+                poll_after_ms=1500,
+                poll_argument="job_id",
+            ),
+        )
+
+        assert capability.continuation is not None
+        assert capability.continuation.poll_capability == "exports.get"
+        assert capability.continuation.poll_after_ms == 1500
+        assert capability.continuation.poll_argument == "job_id"

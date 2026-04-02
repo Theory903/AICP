@@ -16,7 +16,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
-import aiohttp
+import httpx
 
 
 class AuthError(Exception):
@@ -187,23 +187,24 @@ class OAuth2Auth(Auth):
         return self._store_token_response(token_data)
 
     async def _post_token_request(self, data: dict[str, str]) -> dict[str, Any]:
-        timeout = aiohttp.ClientTimeout(total=self.timeout_seconds)
+        timeout = httpx.Timeout(self.timeout_seconds)
 
         try:
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(self.token_url, data=data) as response:
-                    text = await response.text()
-                    if response.status != 200:
-                        raise TokenFetchError(
-                            f"OAuth2 token request failed: status={response.status}, body={text}"
-                        )
-                    try:
-                        return await response.json()
-                    except Exception as exc:
-                        raise TokenFetchError(
-                            f"OAuth2 token response was not valid JSON: {text}"
-                        ) from exc
-        except aiohttp.ClientError as exc:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(self.token_url, data=data)
+                text = response.text
+                if response.status_code != 200:
+                    raise TokenFetchError(
+                        "OAuth2 token request failed: "
+                        f"status={response.status_code}, body={text}"
+                    )
+                try:
+                    return response.json()
+                except Exception as exc:
+                    raise TokenFetchError(
+                        f"OAuth2 token response was not valid JSON: {text}"
+                    ) from exc
+        except httpx.HTTPError as exc:
             raise TokenFetchError(f"OAuth2 token request failed: {exc}") from exc
 
     def _store_token_response(self, token_data: dict[str, Any]) -> str:

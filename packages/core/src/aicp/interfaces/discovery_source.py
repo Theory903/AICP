@@ -9,7 +9,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from aicp.capability import Capability
 
@@ -44,14 +44,14 @@ class DiscoverySource(ABC):
     A discovery source is a place where capabilities come from:
     - OpenAPI specifications
     - MCP servers
-    - Code modules with decorators
-    - Manual registries
-    - Database or API endpoints
+    - code modules with decorators
+    - manual registries
+    - database or API endpoints
 
     Sources are responsible for:
-    - Converting their native format to AICP capabilities
-    - Providing metadata about the source
-    - Handling authentication if needed
+    - converting their native format to AICP capabilities
+    - providing metadata about the source
+    - handling authentication if needed
     """
 
     @property
@@ -67,10 +67,9 @@ class DiscoverySource(ABC):
         raise NotImplementedError
 
     @property
-    @abstractmethod
     def description(self) -> str:
         """Human-readable description of this source."""
-        raise NotImplementedError
+        return f"{self.source_type}:{self.source_name}"
 
     @abstractmethod
     async def discover(self) -> list[Capability]:
@@ -110,20 +109,25 @@ class DiscoverySource(ABC):
 
         Default implementation:
         1. exact name match
-        2. suffix match on segment boundary
+        2. unique suffix match on segment boundary
 
         Sources can override for efficiency.
         """
         capabilities = await self.discover()
 
-        for capability in capabilities:
-            if capability.name == name:
-                return capability
+        exact_match = next(
+            (capability for capability in capabilities if capability.name == name), None
+        )
+        if exact_match is not None:
+            return exact_match
 
         suffix = f".{name}"
-        for capability in capabilities:
-            if capability.name.endswith(suffix):
-                return capability
+        suffix_matches = [
+            capability for capability in capabilities if capability.name.endswith(suffix)
+        ]
+
+        if len(suffix_matches) == 1:
+            return suffix_matches[0]
 
         return None
 
@@ -142,11 +146,18 @@ class DiscoverySource(ABC):
             for capability in capabilities
         ]
 
+    def discovery_error(self, message: str, details: Any = None) -> DiscoveryError:
+        """Build a DiscoveryError with this source's identity attached."""
+        return DiscoveryError(
+            message=message,
+            source_name=self.source_name,
+            source_type=self.source_type,
+            details=details,
+        )
+
 
 class DiscoveredCapability(BaseModel):
     """A capability discovered from a source, with source metadata."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     capability: Capability
     source_type: str

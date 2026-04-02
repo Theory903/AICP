@@ -7,7 +7,7 @@ packages = ["src/aicp_cli"]
 
 [project]
 name = "aicp-cli"
-version = "0.1.0"
+version = "0.1.1"
 description = "AICP CLI - Command-line interface"
 requires-python = ">=3.10"
 dependencies = [
@@ -21,8 +21,8 @@ dependencies = [
     "click>=8.1.0",
     "pyyaml>=6.0",
     "rich>=13.0.0",
+    "uvicorn>=0.30,<1",
 ]
 
 [project.scripts]
 aicp = "aicp_cli.main:cli"
-

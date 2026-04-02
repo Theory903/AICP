@@ -35,3 +35,9 @@ htmlcov/
 # Build outputs
 *.tgz
 *.whl
+
+# Temporary files
+.tmp/
+session-ses_2bd1.md
+_test_target/
+debug_context.py

@@ -38,7 +38,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["pending", "running", "paused", "completed", "failed", "cancelled"],
+      "enum": ["created", "running", "waiting_approval", "waiting_event", "paused", "failed", "completed", "cancelled"],
       "description": "Overall workflow status"
     },
     "created_at": {
@@ -52,26 +52,137 @@
       "description": "Last time the workflow was updated"
     }
   },
-  "$defs": {
+    "$defs": {
     "step": {
       "type": "object",
-      "required": ["id", "capability_name"],
+      "required": ["id"],
       "properties": {
         "id": {
           "type": "string",
           "description": "Step identifier"
         },
+        "type": {
+          "type": "string",
+          "enum": ["capability", "approval", "wait_event", "branch", "parallel", "loop", "subflow", "terminal", "human_task", "transform"],
+          "default": "capability",
+          "description": "Step kind: capability (call action), approval (human gate), wait_event (async wait), branch (conditional), parallel (concurrent), loop (iteration), subflow (nested workflow), terminal (end state), human_task (manual work), transform (data mapping)"
+        },
         "capability_name": {
           "type": "string",
-          "description": "Capability to execute in this step"
+          "description": "Capability to execute in this step (for capability type)"
         },
         "arguments": {
           "type": "object",
           "description": "Arguments for the capability"
         },
+        "input_mapping": {
+          "type": "object",
+          "description": "Map workflow context variables to step input"
+        },
+        "output_mapping": {
+          "type": "object",
+          "description": "Map step output to workflow context variables"
+        },
+        "guard": {
+          "type": "object",
+          "description": "Condition that must be true before step executes",
+          "properties": {
+            "condition": { "type": "string" },
+            "on_false": { "type": "string", "enum": ["skip", "fail", "branch"] }
+          }
+        },
+        "retry_policy": {
+          "type": "object",
+          "description": "Retry configuration for this step",
+          "properties": {
+            "max_attempts": { "type": "integer", "default": 1 },
+            "backoff": { "type": "string", "enum": ["none", "fixed", "exponential"], "default": "none" },
+            "delay_ms": { "type": "integer", "default": 0 }
+          }
+        },
+        "approval_policy": {
+          "type": "object",
+          "description": "Approval requirements for this step",
+          "properties": {
+            "required": { "type": "boolean", "default": false },
+            "threshold": { "type": "number" },
+            "role": { "type": "string" }
+          }
+        },
+        "on_success": {
+          "type": "string",
+          "description": "Next step ID on success"
+        },
+        "on_failure": {
+          "type": "string",
+          "description": "Next step ID on failure"
+        },
+        "on_approved": {
+          "type": "string",
+          "description": "Next step ID after approval (for approval type)"
+        },
+        "on_rejected": {
+          "type": "string",
+          "description": "Next step ID after rejection (for approval type)"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum time before step times out"
+        },
+        "on_timeout": {
+          "type": "string",
+          "description": "Next step ID on timeout"
+        },
+        "compensation": {
+          "type": "object",
+          "description": "Compensation step to undo this step on failure",
+          "properties": {
+            "step_id": { "type": "string" },
+            "capability_name": { "type": "string" },
+            "arguments": { "type": "object" }
+          }
+        },
+        "wait_for_event": {
+          "type": "string",
+          "description": "Event name to wait for (for wait_event type)"
+        },
+        "loop_condition": {
+          "type": "object",
+          "description": "Loop iteration control (for loop type)",
+          "properties": {
+            "exit_condition": { "type": "string" },
+            "max_iterations": { "type": "integer" },
+            "items_variable": { "type": "string" }
+          }
+        },
+        "branch_conditions": {
+          "type": "array",
+          "description": "Conditional branches (for branch type)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "condition": { "type": "string" },
+              "then_step_id": { "type": "string" }
+            }
+          }
+        },
+        "parallel_steps": {
+          "type": "array",
+          "description": "Steps to run in parallel (for parallel type)",
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "subflow_id": {
+          "type": "string",
+          "description": "Sub-workflow to invoke (for subflow type)"
+        },
+        "transform_expression": {
+          "type": "string",
+          "description": "Data transformation expression (for transform type)"
+        },
         "status": {
           "type": "string",
-          "enum": ["pending", "running", "completed", "failed", "skipped", "awaiting_confirmation"],
+          "enum": ["pending", "running", "completed", "failed", "skipped", "awaiting_confirmation", "retrying", "blocked"],
           "default": "pending"
         },
         "result": {

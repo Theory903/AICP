@@ -6,43 +6,11 @@ policy/workflow abstractions, and default in-memory implementations for local us
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 # Configuration
-from .config import AicpProjectConfig, load_project_config
-
-# Capability models
-from .capability import Capability, CapabilityKind, InputSchema, OutputSchema
-
-# Registry & validation
-from .registry import AicpRegistry
-from .validator import AicpValidator
-
-# Execution
-from .executor import AicpExecutor
-from .interfaces.executor import ExecutionResult, ExecutionStatus, Executor
-
-# Policy
-from .implementations.policy import ConfigPolicyEngine, DefaultPolicyEngine
-from .interfaces.policy_engine import (
-    Policy,
-    PolicyCondition,
-    PolicyDecision,
-    PolicyEffect,
-    PolicyEngine,
-    PolicySubject,
-)
-
-# Workflow
-from .implementations.workflow import DefaultWorkflowRuntime
-from .interfaces.workflow_runtime import (
-    Step,
-    StepResult,
-    StepStatus,
-    WorkflowRuntime,
-    WorkflowState,
-    WorkflowStatus,
-)
+# API management
+from .api import VersionManager, lifespan_context
 
 # Approval (HITL)
 from .approval import (
@@ -55,17 +23,55 @@ from .approval import (
 )
 from .approval_service import ApprovalService, ApprovalStore, InMemoryApprovalStore
 
-# Project loading
-from .project_loader import LoadedProject, load_project
+# Capability models
+from .capability import (
+    AuthRequirement,
+    Capability,
+    CapabilityKind,
+    InputSchema,
+    OutputSchema,
+    ProviderInfo,
+)
+from .config import AicpProjectConfig, load_project_config
 
 # Errors
 from .errors import AicpError, DiscoveryError, ExecutionError, PolicyError, ValidationError
 
+# Execution
+from .executor import AicpExecutor
+
+# Policy
+from .implementations.policy import ConfigPolicyEngine, DefaultPolicyEngine
+
+# Workflow
+from .implementations.workflow import DefaultWorkflowRuntime
+from .interfaces.executor import ExecutionResult, ExecutionStatus, Executor
+from .interfaces.policy_engine import (
+    Policy,
+    PolicyCondition,
+    PolicyDecision,
+    PolicyEffect,
+    PolicyEngine,
+    PolicySubject,
+)
+from .interfaces.workflow_runtime import (
+    Step,
+    StepResult,
+    StepStatus,
+    WorkflowRuntime,
+    WorkflowState,
+    WorkflowStatus,
+)
+
 # Observability
 from .observability import get_logger, get_metrics, get_tracer
 
-# API management
-from .api import VersionManager, lifespan_context
+# Project loading
+from .project_loader import LoadedProject, load_project
+
+# Registry & validation
+from .registry import AicpRegistry
+from .validator import AicpValidator
 
 # Optional adapters
 try:
@@ -82,8 +88,10 @@ __all__ = [
     # Capability
     "Capability",
     "CapabilityKind",
+    "AuthRequirement",
     "InputSchema",
     "OutputSchema",
+    "ProviderInfo",
     # Registry & validation
     "AicpRegistry",
     "AicpValidator",

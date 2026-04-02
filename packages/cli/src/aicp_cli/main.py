@@ -4,29 +4,78 @@ The governed action runtime for AI agents. Turn APIs into
 discoverable, policy-enforced, stateful capabilities.
 """
 
-import click
+from __future__ import annotations
 
-# ── Import Command Modules ──────────────────────────────────────
-from aicp_cli.commands.init_cmd import init
-from aicp_cli.commands.scan_cmd import scan
+import click
+from aicp import __version__
+
+from aicp_cli.commands.approval_cmd import appr_group, appr_ls
+from aicp_cli.commands.bootstrap_cmd import bootstrap
 from aicp_cli.commands.dev_cmd import dev
 from aicp_cli.commands.doctor_cmd import doctor
-from aicp_cli.commands.bootstrap_cmd import bootstrap
-from aicp_cli.commands.policy_shortcuts import safe, ask, deny, approve, protect, limit
-
-# New modular commands
-from aicp_cli.commands.list_cmd import ls_cmd
-from aicp_cli.commands.preview_cmd import preview_cmd
 from aicp_cli.commands.execute_cmd import run_cmd
 from aicp_cli.commands.history_cmd import logs_cmd
-from aicp_cli.commands.approval_cmd import appr_group
-from aicp_cli.commands.serve_cmd import serve_cmd
 from aicp_cli.commands.import_cmd import import_group
+from aicp_cli.commands.init_cmd import init
+from aicp_cli.commands.list_cmd import ls_cmd
+from aicp_cli.commands.map_cmd import map_group
+from aicp_cli.commands.policy_shortcuts import approve, ask, deny, limit, protect, safe
+from aicp_cli.commands.preview_cmd import preview_cmd
+from aicp_cli.commands.scan_cmd import scan
+from aicp_cli.commands.serve_cmd import serve_cmd
+from aicp_cli.commands.test_cmd import (
+    test_cmd,
+    test_execute_cmd,
+    test_approvals_cmd,
+    test_approve_cmd,
+    test_review_cmd,
+    test_rank_cmd,
+    test_health_cmd,
+    test_sessions_cmd,
+    test_interactions_cmd,
+)
+
+CORE_COMMANDS = [
+    bootstrap,
+    init,
+    scan,
+    dev,
+    doctor,
+    map_group,
+]
+
+RUNTIME_COMMANDS = [
+    ls_cmd,
+    preview_cmd,
+    run_cmd,
+    logs_cmd,
+    appr_group,
+    serve_cmd,
+    import_group,
+    test_cmd,
+    test_execute_cmd,
+    test_approvals_cmd,
+    test_approve_cmd,
+    test_review_cmd,
+    test_rank_cmd,
+    test_health_cmd,
+    test_sessions_cmd,
+    test_interactions_cmd,
+]
+
+POLICY_COMMANDS = [
+    safe,
+    ask,
+    deny,
+    approve,
+    protect,
+    limit,
+]
 
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="aicp")
-def cli():
+@click.version_option(version=__version__, prog_name="aicp")
+def cli() -> None:
     """AICP — AI Capability Protocol CLI.
 
     The governed action runtime for AI agents. Turn APIs into
@@ -34,48 +83,38 @@ def cli():
 
     Getting started:
         aicp bootstrap fastapi app:app
-        aicp dev           Start the local runtime
+        aicp dev
 
     Full docs: https://aicp.dev
     """
-    pass
+    ...
 
 
-# ── Core workflow commands ──────────────────────────────────────
-cli.add_command(bootstrap)
-cli.add_command(init)
-cli.add_command(scan)
-cli.add_command(dev)
-cli.add_command(doctor)
+def _register_commands() -> None:
+    """Register command groups onto the root CLI."""
+    for command in CORE_COMMANDS:
+        cli.add_command(command)
 
-# ── Capability & Runtime commands ───────────────────────────────
-cli.add_command(ls_cmd)
-cli.add_command(preview_cmd)
-cli.add_command(run_cmd)
-cli.add_command(logs_cmd)
-cli.add_command(appr_group)
-cli.add_command(serve_cmd)
-cli.add_command(import_group)
+    for command in RUNTIME_COMMANDS:
+        cli.add_command(command)
 
-# ── Policy shortcuts ────────────────────────────────────────────
-cli.add_command(safe)
-cli.add_command(ask)
-cli.add_command(deny)
-cli.add_command(approve)
-cli.add_command(protect)
-cli.add_command(limit)
+    for command in POLICY_COMMANDS:
+        cli.add_command(command)
 
 
-# ── Backward compat aliases ─────────────────────────────────────
+_register_commands()
+
 
 @cli.command("approvals", hidden=True)
 @click.pass_context
-def approvals_alias(ctx):
-    """(Deprecated) Forward to 'aicp appr ls'."""
-    click.secho("Notice: 'aicp approvals' is deprecated. Forwarding to 'aicp appr ls'...", fg="yellow")
-    # Using ctx.invoke to properly forward to the other command
-    from aicp_cli.commands.approval_cmd import appr_ls
-    ctx.invoke(appr_ls)
+def approvals_alias(ctx: click.Context) -> None:
+    """Deprecated alias for 'aicp appr ls'."""
+    click.secho(
+        "Notice: 'aicp approvals' is deprecated. Forwarding to 'aicp appr ls'...",
+        fg="yellow",
+        err=True,
+    )
+    ctx.invoke(appr_ls, status="pending")
 
 
 if __name__ == "__main__":

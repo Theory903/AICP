@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any, cast
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,7 +18,7 @@ from .capability import Capability
 from .config import AicpProjectConfig, load_project_config
 from .executor import AicpExecutor
 from .implementations import InMemoryCapabilityRepository
-from .implementations.execution import DefaultMockExecutionHandler
+from .implementations.execution import DefaultMockExecutionHandler, HttpCapabilityHandler
 from .implementations.policy import ConfigPolicyEngine
 from .interfaces.capability_provider import CapabilityProvider
 from .interfaces.executor import Executor
@@ -116,6 +117,7 @@ def load_project(project_root: str | Path | None = None) -> LoadedProject:
     executor = AicpExecutor(
         capability_provider=repo,
         policy_engine=policy_engine,
+        default_timeout_seconds=config.execution_timeout_seconds,
     )
 
     cap_dirs = _resolve_capability_dirs(root, config.capabilities_dir)
@@ -154,13 +156,22 @@ def load_project(project_root: str | Path | None = None) -> LoadedProject:
                 continue
 
             # Keep source provenance attached for diagnostics only.
-            setattr(capability, "_source_file", str(rel_path))
+            source_capability = cast(Any, capability)
+            source_capability._source_file = str(rel_path)
 
+            if (
+                capability.provider is not None
+                and not capability.provider.url
+                and config.provider_url
+            ):
+                capability.provider.url = config.provider_url
+
+            handler = _handler_for_capability(capability, mock_handler, config)
             loaded_caps[capability.name] = capability
-            repo.add_capability(capability, handler=mock_handler)
+            repo.add_capability(capability, handler=handler)
 
         except Exception as exc:
-            raise ValueError(f"Failed to load capability {rel_path}: {exc}") from exc
+            warnings.append(f"Skipping capability file {rel_path}: {exc}")
 
     if not loaded_caps:
         warnings.append(
@@ -178,3 +189,20 @@ def load_project(project_root: str | Path | None = None) -> LoadedProject:
         capabilities=capabilities,
         warnings=warnings,
     )
+
+
+def _handler_for_capability(
+    capability: Capability,
+    mock_handler: DefaultMockExecutionHandler,
+    config: AicpProjectConfig,
+) -> Any:
+    input_extra = getattr(capability.input_schema, "model_extra", {}) or {}
+    if isinstance(input_extra, dict) and input_extra.get("x-aicp-http"):
+        return HttpCapabilityHandler(
+            capability,
+            auth_config=config.auth,
+            request_timeout_seconds=config.request_timeout_seconds,
+            circuit_breaker_threshold=config.circuit_breaker_threshold,
+            circuit_breaker_reset_seconds=config.circuit_breaker_reset_seconds,
+        )
+    return mock_handler

@@ -20,6 +20,7 @@ From the repository root:
 
 ```bash
 pip install -e ./packages/core -e ./packages/runtime -e ./packages/cli
+pip install -e ./apps/studio
 pip install -e ./adapters/protocol/openapi
 pip install -e ./adapters/framework/fastapi
 pip install -e ./adapters/protocol/mcp
@@ -139,6 +140,8 @@ Run it with the same runtime store:
 ```bash
 python -c "from studio.app import create_file_backed_studio_app; import uvicorn; uvicorn.run(create_file_backed_studio_app('./.aicp-runtime'), host='127.0.0.1', port=3000)"
 ```
+
+This assumes `aicp-studio` is installed in the active environment.
 
 Today, the seed Studio app ships with the file-backed helper path. For the smoothest Studio walkthrough, use the file-backed runtime mode. SQLite is now supported in the runtime and CLI, but Studio does not yet ship a dedicated sqlite boot helper.
 

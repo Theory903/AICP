@@ -35,12 +35,12 @@ async def test_postman_importer_maps_collection_items_to_capabilities() -> None:
 
     assert len(capabilities) == 1
     capability = capabilities[0]
-    assert capability.name == "payments.transfer_funds"
+    assert capability.name == "payments.payment_id.transfer_funds"
     assert capability.kind == "action"
     assert capability.provider is not None
     assert capability.provider.name == "payments-collection"
     assert capability.provider.type == "postman"
-    assert capability.input_schema.required == ["payment_id", "body"]
+    assert capability.input_schema.required == ["body", "payment_id"]
 
 
 @pytest.mark.asyncio
@@ -130,3 +130,47 @@ async def test_postman_importer_preserves_auth_and_header_tags() -> None:
     assert "auth:bearer" in capability.tags
     assert "header:content-type" in capability.tags
     assert "header:x-trace-id" in capability.tags
+
+
+@pytest.mark.asyncio
+async def test_postman_importer_makes_duplicate_capability_names_unique() -> None:
+    importer = PostmanCollectionImporter(
+        name="realworld-collection",
+        collection={
+            "info": {"name": "RealWorld Collection"},
+            "item": [
+                {
+                    "name": "Articles",
+                    "item": [
+                        {
+                            "name": "All Articles",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "https://api.example.com/articles",
+                                    "path": ["articles"],
+                                },
+                            },
+                        },
+                        {
+                            "name": "All Articles",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "https://api.example.com/articles",
+                                    "path": ["articles"],
+                                },
+                            },
+                        },
+                    ],
+                }
+            ],
+        },
+    )
+
+    capabilities = await importer.discover()
+
+    assert [cap.name for cap in capabilities] == [
+        "articles.all_articles",
+        "articles.all_articles_2",
+    ]

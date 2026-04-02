@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
+
+UTC = timezone.utc
 
 
 class ApprovalStatus(str, Enum):
@@ -75,6 +77,26 @@ class ApprovalContext:
             "session_id": self.session_id,
             "ip_address": self.ip_address,
             "user_agent": self.user_agent,
+        }
+
+
+@dataclass(slots=True)
+class ResumedExecution:
+    """Typed proof that execution is resuming from a valid approval."""
+
+    approval_id: str
+    workflow_id: str | None
+    authorized_by: str | None
+    authorized_at: datetime | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "approval_id": self.approval_id,
+            "workflow_id": self.workflow_id,
+            "authorized_by": self.authorized_by,
+            "authorized_at": self.authorized_at.isoformat()
+            if self.authorized_at is not None
+            else None,
         }
 
 

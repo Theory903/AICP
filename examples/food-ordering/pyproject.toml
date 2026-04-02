@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aicp-example-food-ordering"
-version = "0.1.0"
+version = "0.1.1"
 description = "AICP Food Ordering Example"
 requires-python = ">=3.10"
 dependencies = ["aiohttp"]

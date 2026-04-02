@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 PolicyEffectName = Literal["allow", "deny", "ask", "require_approval", "limit"]
 StoreBackendName = Literal["memory", "file", "sqlite"]
+AuthTypeName = Literal["bearer", "api_key", "basic", "oauth2_client_credentials"]
 
 
 class ConfigError(ValueError):
@@ -72,7 +73,7 @@ class PolicyRule(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def validate_limit_rule(self) -> "PolicyRule":
+    def validate_limit_rule(self) -> PolicyRule:
         if self.effect == "limit" and self.rpm is None:
             raise ValueError("rpm is required when effect='limit'")
         if self.effect != "limit" and self.rpm is not None:
@@ -105,11 +106,81 @@ class RuntimeConfig(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def validate_store_path(self) -> "RuntimeConfig":
+    def validate_store_path(self) -> RuntimeConfig:
         if self.store_backend in {"file", "sqlite"} and not self.store_path:
             raise ValueError(
                 f"store_path is required when store_backend='{self.store_backend}'"
             )
+        return self
+
+
+class AuthConfig(BaseModel):
+    """Authentication configuration for HTTP-backed capabilities."""
+
+    type: AuthTypeName
+    token: str | None = None
+    api_key: str | None = None
+    header_name: str | None = None
+    location: Literal["header", "query"] = "header"
+    username: str | None = None
+    password: str | None = None
+    client_id: str | None = None
+    client_secret: str | None = None
+    token_url: str | None = None
+    scopes: list[str] = Field(default_factory=list)
+    audience: str | None = None
+
+    @field_validator(
+        "token",
+        "api_key",
+        "header_name",
+        "username",
+        "password",
+        "client_id",
+        "client_secret",
+        "token_url",
+        "audience",
+        mode="before",
+    )
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+    @model_validator(mode="after")
+    def validate_required_fields(self) -> AuthConfig:
+        if self.type == "bearer" and not self.token:
+            raise ValueError("token is required when auth.type='bearer'")
+
+        if self.type == "api_key":
+            if not self.api_key:
+                raise ValueError("api_key is required when auth.type='api_key'")
+            if not self.header_name:
+                raise ValueError("header_name is required when auth.type='api_key'")
+
+        if self.type == "basic":
+            if not self.username:
+                raise ValueError("username is required when auth.type='basic'")
+            if self.password is None:
+                raise ValueError("password is required when auth.type='basic'")
+
+        if self.type == "oauth2_client_credentials":
+            missing: list[str] = []
+            if not self.client_id:
+                missing.append("client_id")
+            if not self.client_secret:
+                missing.append("client_secret")
+            if not self.token_url:
+                missing.append("token_url")
+            if missing:
+                joined = ", ".join(missing)
+                raise ValueError(
+                    "Missing required auth fields for oauth2_client_credentials: "
+                    f"{joined}"
+                )
+
         return self
 
 
@@ -142,7 +213,12 @@ class AicpProjectConfig(BaseModel):
     # Provider metadata
     provider_name: str = "aicp"
     provider_url: str | None = None
-    version: str = "0.1.0"
+    version: str = "0.1.1"
+    auth: AuthConfig | None = None
+    request_timeout_seconds: float = 30.0
+    execution_timeout_seconds: float = 35.0
+    circuit_breaker_threshold: int = 3
+    circuit_breaker_reset_seconds: float = 30.0
 
     @field_validator(
         "capabilities_dir",
@@ -169,8 +245,26 @@ class AicpProjectConfig(BaseModel):
             return None
         return value
 
+    @field_validator(
+        "request_timeout_seconds",
+        "execution_timeout_seconds",
+        "circuit_breaker_reset_seconds",
+    )
+    @classmethod
+    def validate_positive_float(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("value must be greater than 0")
+        return value
+
+    @field_validator("circuit_breaker_threshold")
+    @classmethod
+    def validate_circuit_breaker_threshold(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("circuit_breaker_threshold must be greater than 0")
+        return value
+
     @model_validator(mode="after")
-    def validate_sources(self) -> "AicpProjectConfig":
+    def validate_sources(self) -> AicpProjectConfig:
         if self.app and self.openapi:
             raise ValueError("only one of 'app' or 'openapi' may be set")
         return self

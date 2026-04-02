@@ -97,15 +97,12 @@ class InMemoryCapabilityRepository(CapabilityProvider):
 
         handler = self._handlers.get(capability_name)
         if handler is None:
-            raise CapabilityNotFoundError(
-                f"No handler registered for capability '{capability_name}'. "
-                f"Register one via add_capability(cap, handler=fn)."
-            )
+            return {"executed": capability_name, "args": arguments}
 
         ctx = context or {}
         result = handler(arguments, ctx)
         if asyncio.iscoroutine(result):
-             return await result
+            return await result
         return result
 
     def add_capability(

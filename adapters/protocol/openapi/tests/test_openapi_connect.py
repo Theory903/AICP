@@ -153,3 +153,158 @@ async def test_openapi_discovery_source_preserves_security_and_header_tags() -> 
     assert "auth:bearer" in capability.tags
     assert "auth:api_key" in capability.tags
     assert "header:x-trace-id" in capability.tags
+
+
+@pytest.mark.asyncio
+async def test_openapi_discovery_source_generates_human_friendly_names_and_metadata() -> None:
+    source = OpenAPIDiscoverySource(
+        name="small-sms-openapi",
+        spec={
+            "openapi": "3.0.0",
+            "info": {"title": "Small SMS", "version": "1.0.0"},
+            "paths": {
+                "/api/v1/school-years": {
+                    "get": {
+                        "summary": "Get School Years",
+                        "responses": {"200": {"description": "Successful Response"}},
+                        "tags": ["School Years"],
+                    }
+                },
+                "/api/v1/school-years/{school_year_id}": {
+                    "get": {
+                        "summary": "Get School Year",
+                        "responses": {"200": {"description": "Successful Response"}},
+                        "tags": ["School Years"],
+                    }
+                },
+                "/api/v1/school-years/{school_year_id}/activate": {
+                    "put": {
+                        "summary": "Activate School Year",
+                        "description": "Set current school year",
+                        "tags": ["School Years"],
+                        "parameters": [
+                            {
+                                "name": "school_year_id",
+                                "in": "path",
+                                "required": True,
+                                "schema": {"type": "integer"},
+                            }
+                        ],
+                        "responses": {
+                            "200": {
+                                "description": "Successful Response",
+                                "content": {
+                                    "application/json": {
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {"id": {"type": "integer"}},
+                                        }
+                                    }
+                                },
+                            }
+                        },
+                    }
+                },
+                "/api/v1/grades/{grade_id}": {
+                    "get": {
+                        "summary": "Get Grade",
+                        "responses": {"200": {"description": "Successful Response"}},
+                        "tags": ["Grades"],
+                    }
+                },
+                "/api/v1/subjects/{subject_id}": {
+                    "get": {
+                        "summary": "Get Subject",
+                        "responses": {"200": {"description": "Successful Response"}},
+                        "tags": ["Subjects"],
+                    }
+                },
+                "/api/v1/grades/subjects": {
+                    "post": {
+                        "summary": "Assign Subject To Grade",
+                        "description": "Assign subject to grade",
+                        "tags": ["Grades"],
+                        "requestBody": {
+                            "required": True,
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "grade_id": {"type": "integer"},
+                                            "subject_id": {"type": "integer"},
+                                        },
+                                        "required": ["grade_id", "subject_id"],
+                                    }
+                                }
+                            },
+                        },
+                        "responses": {"200": {"description": "Successful Response"}},
+                    }
+                },
+            },
+        },
+        spec_url="/tmp/small-sms-openapi.json",
+    )
+
+    capabilities = {cap.name: cap for cap in await source.discover()}
+
+    activate = capabilities["school_years.activate"]
+    assert activate.provider is not None
+    assert activate.provider.url is None
+    assert activate.description == "Activate School Year. Set current school year."
+    assert "school-years" in activate.tags
+    assert "method:put" in activate.tags
+    assert "risk:medium" in activate.tags
+    assert "governance:approval_candidate" in activate.tags
+    assert activate.continuation is not None
+    assert activate.continuation.next_capabilities == ["school_years.get", "school_years.list"]
+
+    assign_subject = capabilities["grades.assign_subject"]
+    assert assign_subject.description == "Assign subject to grade"
+    assert "grades" in assign_subject.tags
+    assert "risk:medium" in assign_subject.tags
+    assert assign_subject.continuation is not None
+    assert assign_subject.continuation.next_capabilities == ["grades.get", "subjects.get"]
+
+    assert "school_years.list" in capabilities
+    assert "school_years.get" in capabilities
+    assert "subjects.get" in capabilities
+
+
+@pytest.mark.asyncio
+async def test_openapi_discovery_source_warns_and_skips_unresolvable_refs() -> None:
+    source = OpenAPIDiscoverySource(
+        name="broken-api",
+        spec={
+            "openapi": "3.0.0",
+            "info": {"title": "Broken API", "version": "1.0.0"},
+            "paths": {
+                "/ok": {
+                    "get": {
+                        "operationId": "ok.list",
+                        "responses": {"200": {"description": "ok"}},
+                    }
+                },
+                "/broken": {
+                    "get": {
+                        "operationId": "broken.list",
+                        "responses": {
+                            "200": {
+                                "content": {
+                                    "application/json": {
+                                        "schema": {"$ref": "#/components/schemas/Missing"}
+                                    }
+                                }
+                            }
+                        },
+                    }
+                },
+            },
+        },
+    )
+
+    capabilities = await source.discover()
+
+    assert [cap.name for cap in capabilities] == ["ok.list"]
+    assert any("Skipping path /broken" in warning for warning in source.warnings)

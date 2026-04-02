@@ -1,14 +1,60 @@
 """History commands for the AICP CLI."""
 
+from __future__ import annotations
+
 import json
+from typing import Any
+
+
+def _normalize(value: Any) -> Any:
+    """Normalize values for JSON serialization."""
+    if value is None:
+        return None
+
+    if isinstance(value, (str, int, float, bool)):
+        return value
+
+    if isinstance(value, list):
+        return [_normalize(item) for item in value]
+
+    if isinstance(value, dict):
+        return {key: _normalize(item) for key, item in value.items()}
+
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        return model_dump(exclude_none=True)
+
+    to_dict = getattr(value, "to_dict", None)
+    if callable(to_dict):
+        return to_dict()
+
+    if hasattr(value, "__dict__"):
+        return {
+            key: _normalize(item)
+            for key, item in vars(value).items()
+            if not key.startswith("_")
+        }
+
+    return str(value)
 
 
 async def cmd_history_list(audit_service, args) -> int:
     """List audit history entries."""
-    entries = await audit_service.list_entries(
-        workflow_id=args.workflow_id,
-        capability_name=args.capability_name,
-        approval_request_id=args.approval_request_id,
-    )
-    print(json.dumps(entries, indent=2))
+    try:
+        entries = await audit_service.list_entries(
+            workflow_id=getattr(args, "workflow_id", None),
+            capability_name=getattr(args, "capability_name", None),
+            approval_request_id=getattr(args, "approval_request_id", None),
+        )
+    except Exception as exc:
+        print(
+            json.dumps(
+                {
+                    "error": f"Failed to list audit history: {exc}",
+                }
+            )
+        )
+        return 1
+
+    print(json.dumps(_normalize(entries), indent=2, default=str))
     return 0

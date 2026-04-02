@@ -67,6 +67,21 @@ def _extract_attrs(
     return result
 
 
+def _extract_extra_fields(obj: Any) -> dict[str, Any]:
+    """Preserve extension fields such as x-* from pydantic models."""
+    if obj is None:
+        return {}
+
+    if isinstance(obj, dict):
+        return {key: value for key, value in obj.items() if isinstance(key, str) and key.startswith("x-")}
+
+    extra = getattr(obj, "model_extra", None)
+    if isinstance(extra, dict):
+        return {key: value for key, value in extra.items() if isinstance(key, str) and key.startswith("x-")}
+
+    return {}
+
+
 def capability_to_dict(capability: Capability) -> dict[str, Any]:
     """Convert a Capability to a clean dictionary for YAML export.
 
@@ -95,6 +110,7 @@ def capability_to_dict(capability: Capability) -> dict[str, Any]:
                 "additionalProperties",
             ],
         )
+        input_data.update(_extract_extra_fields(input_schema))
         input_data = _compact_mapping(input_data)
         if input_data:
             data["input_schema"] = input_data
@@ -114,6 +130,7 @@ def capability_to_dict(capability: Capability) -> dict[str, Any]:
                 "additionalProperties",
             ],
         )
+        output_data.update(_extract_extra_fields(output_schema))
         output_data = _compact_mapping(output_data)
         if output_data:
             data["output_schema"] = output_data

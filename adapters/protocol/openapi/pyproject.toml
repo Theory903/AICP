@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aicp-connect-openapi"
-version = "0.1.0"
+version = "0.1.1"
 description = "AICP Connect OpenAPI mapper"
 requires-python = ">=3.10"
 dependencies = ["aicp-core>=0.1.0"]

@@ -57,6 +57,7 @@ class ExecutionResult(BaseModel):
     data: Any = None
     error: str | None = None
     error_code: str | None = None
+    warnings: list[dict[str, Any]] | None = None
     execution_time_ms: float | None = Field(default=None, ge=0)
 
     # Agent guidance
@@ -91,17 +92,19 @@ class ExecutionResult(BaseModel):
         *,
         execution_time_ms: float | None = None,
         next: dict[str, Any] | None = None,
+        warnings: list[dict[str, Any]] | None = None,
         rendered: str | None = None,
         format_hint: str | None = None,
         can_continue: bool = True,
         continuation_hint: str | None = None,
-    ) -> "ExecutionResult":
+    ) -> ExecutionResult:
         """Build a success result."""
         return cls(
             status=ExecutionStatus.SUCCESS,
             data=data,
             execution_time_ms=execution_time_ms,
             next=next,
+            warnings=warnings,
             rendered=rendered,
             format_hint=format_hint,
             can_continue=can_continue,
@@ -121,7 +124,7 @@ class ExecutionResult(BaseModel):
         approval_request_id: str | None = None,
         approval_status: str | None = None,
         status: ExecutionStatus = ExecutionStatus.FAILURE,
-    ) -> "ExecutionResult":
+    ) -> ExecutionResult:
         """Build a failure-like result."""
         return cls(
             status=status,

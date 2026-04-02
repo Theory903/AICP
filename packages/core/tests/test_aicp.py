@@ -1,6 +1,7 @@
 """Tests for AICP core implementations."""
 
 from datetime import datetime
+from typing import Any, cast
 
 import pytest
 
@@ -200,7 +201,7 @@ class TestErrorHandling:
         from aicp.interfaces import ExecutionStatus
 
         repo = InMemoryCapabilityRepository()
-        executor = AicpExecutor(repo)
+        executor = AicpExecutor(repo, DefaultPolicyEngine())
 
         import asyncio
 
@@ -212,6 +213,153 @@ class TestErrorHandling:
         assert result.status == ExecutionStatus.FAILURE
         assert result.error is not None
         assert "not found" in result.error.lower()
+
+    def test_executor_returns_requires_approval_with_dict_based_approval_service(self):
+        from aicp.interfaces import ExecutionStatus
+
+        repo = InMemoryCapabilityRepository()
+        repo.add_capability(
+            Capability(
+                name="students.create",
+                description="Create student",
+                kind=CapabilityKind.ACTION,
+            ),
+            handler=_noop_handler,
+        )
+        executor = AicpExecutor(repo, DefaultPolicyEngine())
+
+        class DictApprovalService:
+            async def create_approval_request(self, **kwargs):
+                return {"id": "apr_123", **kwargs}
+
+        cast(Any, executor)._approval_service = DictApprovalService()
+
+        policy = Policy(
+            name="require_approval",
+            effect=PolicyEffect.ASK,
+            subject=PolicySubject(capability_name="students.create"),
+            condition=PolicyCondition(require_confirmation=True),
+        )
+
+        import asyncio
+
+        async def run():
+            policy_engine = cast(Any, executor._policy_engine)
+            await policy_engine.add_policy(policy)
+            return await executor.execute(
+                "students.create",
+                {"body": {"name": "Abhi"}},
+                {"requester_id": "cli-user"},
+            )
+
+        result = asyncio.run(run())
+
+        assert result.status == ExecutionStatus.FAILURE
+        assert result.error_code == "requires_approval"
+        assert result.approval_request_id == "apr_123"
+
+    def test_execute_after_approval_bypasses_policy_re_evaluation(self):
+        from aicp.interfaces import ExecutionStatus
+
+        repo = InMemoryCapabilityRepository()
+        repo.add_capability(
+            Capability(
+                name="students.create",
+                description="Create student",
+                kind=CapabilityKind.ACTION,
+            ),
+            handler=_noop_handler,
+        )
+        executor = AicpExecutor(repo, DefaultPolicyEngine())
+
+        class DictApprovalService:
+            async def get_request(self, request_id):
+                return {
+                    "id": request_id,
+                    "capability_name": "students.create",
+                    "arguments": {"body": {"name": "Abhi"}},
+                    "status": "approved",
+                    "decided_by": "manager-1",
+                    "decided_at": "2026-04-01T00:00:00+00:00",
+                }
+
+        cast(Any, executor)._approval_service = DictApprovalService()
+
+        policy = Policy(
+            name="require_approval",
+            effect=PolicyEffect.ASK,
+            subject=PolicySubject(capability_name="students.create"),
+            condition=PolicyCondition(require_confirmation=True),
+        )
+
+        import asyncio
+
+        async def run():
+            policy_engine = cast(Any, executor._policy_engine)
+            await policy_engine.add_policy(policy)
+            return await executor.execute_after_approval("apr_123")
+
+        result = asyncio.run(run())
+
+        assert result.status == ExecutionStatus.SUCCESS
+        assert result.data["executed"] is True
+
+    def test_executor_fails_when_output_validation_mode_is_strict(self):
+        from aicp.interfaces import ExecutionStatus
+
+        repo = InMemoryCapabilityRepository()
+        repo.add_capability(
+            Capability(
+                name="students.get",
+                description="Get student",
+                kind=CapabilityKind.QUERY,
+                output_schema=OutputSchema(
+                    type="object",
+                    properties={"id": {"type": "string"}},
+                    required=["id"],
+                ),
+                output_validation_mode="strict",
+            ),
+            handler=lambda args, ctx: {"name": "Abhi"},
+        )
+        executor = AicpExecutor(repo, DefaultPolicyEngine())
+
+        import asyncio
+
+        result = asyncio.run(executor.execute("students.get", {}))
+
+        assert result.status == ExecutionStatus.FAILURE
+        assert result.error_code == "output_validation_failed"
+        assert result.error is not None
+        assert "output schema" in result.error.lower()
+
+    def test_executor_warns_when_output_validation_mode_is_warn(self):
+        from aicp.interfaces import ExecutionStatus
+
+        repo = InMemoryCapabilityRepository()
+        repo.add_capability(
+            Capability(
+                name="students.get",
+                description="Get student",
+                kind=CapabilityKind.QUERY,
+                output_schema=OutputSchema(
+                    type="object",
+                    properties={"id": {"type": "string"}},
+                    required=["id"],
+                ),
+                output_validation_mode="warn",
+            ),
+            handler=lambda args, ctx: {"name": "Abhi"},
+        )
+        executor = AicpExecutor(repo, DefaultPolicyEngine())
+
+        import asyncio
+
+        result = asyncio.run(executor.execute("students.get", {}))
+
+        assert result.status == ExecutionStatus.SUCCESS
+        assert result.warnings is not None
+        assert result.warnings[0]["code"] == "output_validation_warning"
 
 
 class TestPolicyConditions:
