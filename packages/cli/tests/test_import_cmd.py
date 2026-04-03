@@ -29,7 +29,13 @@ async def test_run_import_openapi_reads_spec_file_and_exports(tmp_path: Path) ->
     captured: dict[str, object] = {}
 
     class FakeSource:
-        def __init__(self, name: str, spec: dict, spec_url: str | None = None, base_url: str | None = None):
+        def __init__(
+            self,
+            name: str,
+            spec: dict,
+            spec_url: str | None = None,
+            base_url: str | None = None,
+        ):
             captured["name"] = name
             captured["spec"] = spec
             captured["spec_url"] = spec_url
@@ -43,7 +49,9 @@ async def test_run_import_openapi_reads_spec_file_and_exports(tmp_path: Path) ->
     sys.modules["aicp_connect_openapi"] = fake_module
 
     try:
-        exit_code = await _run_import_openapi(spec_file, "mini", "https://api.example.com", None)
+        exit_code = await _run_import_openapi(
+            spec_file, "mini", "https://api.example.com", None
+        )
     finally:
         sys.modules.pop("aicp_connect_openapi", None)
 

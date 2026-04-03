@@ -37,93 +37,109 @@ __all__ = [
 # Exceptions
 # ---------------------------------------------------------------------------
 
-_VALID_TOP_LEVEL = frozenset({
-    "name",
-    "description",
-    "version",
-    "context",
-    "metadata",
-    "steps",
-    "on_failure",
-    "on_complete",
-})
+_VALID_TOP_LEVEL = frozenset(
+    {
+        "name",
+        "description",
+        "version",
+        "context",
+        "metadata",
+        "steps",
+        "on_failure",
+        "on_complete",
+    }
+)
 
-_VALID_STEP_FIELDS = frozenset({
-    "id",
-    "type",
-    "name",
-    "description",
-    "capability_name",
-    "arguments",
-    "input_mapping",
-    "output_mapping",
-    "guard",
-    "retry_policy",
-    "approval_policy",
-    "timeout_ms",
-    "on_success",
-    "on_failure",
-    "on_timeout",
-    "on_approved",
-    "on_rejected",
-    "compensation",
-    "wait_for_event",
-    "event_filter",
-    "branch_conditions",
-    "default_branch",
-    "parallel_steps",
-    "parallel_failure_policy",
-    "loop_condition",
-    "loop_body",
-    "subflow_id",
-    "subflow_input_mapping",
-    "subflow_output_mapping",
-    "transform_expression",
-    "transform_target",
-    "message",
-    "assigned_to",
-})
+_VALID_STEP_FIELDS = frozenset(
+    {
+        "id",
+        "type",
+        "name",
+        "description",
+        "capability_name",
+        "arguments",
+        "input_mapping",
+        "output_mapping",
+        "guard",
+        "retry_policy",
+        "approval_policy",
+        "timeout_ms",
+        "on_success",
+        "on_failure",
+        "on_timeout",
+        "on_approved",
+        "on_rejected",
+        "compensation",
+        "wait_for_event",
+        "event_filter",
+        "branch_conditions",
+        "default_branch",
+        "parallel_steps",
+        "parallel_failure_policy",
+        "loop_condition",
+        "loop_body",
+        "subflow_id",
+        "subflow_input_mapping",
+        "subflow_output_mapping",
+        "transform_expression",
+        "transform_target",
+        "message",
+        "assigned_to",
+    }
+)
 
 _VALID_BACKOFF = frozenset({"none", "fixed", "exponential"})
 _VALID_PARALLEL_FAILURE_POLICY = frozenset({"fail_fast", "wait_all"})
-_VALID_STEP_TYPES = frozenset({
-    "capability", "approval", "wait_event", "branch",
-    "parallel", "loop", "subflow", "terminal", "human_task", "transform",
-})
+_VALID_STEP_TYPES = frozenset(
+    {
+        "capability",
+        "approval",
+        "wait_event",
+        "branch",
+        "parallel",
+        "loop",
+        "subflow",
+        "terminal",
+        "human_task",
+        "transform",
+    }
+)
 
 # Metadata keys to propagate from DSL step dict → Step.metadata
-_METADATA_FIELDS = frozenset({
-    "type",
-    "name",
-    "description",
-    "input_mapping",
-    "output_mapping",
-    "guard",
-    "retry_policy",
-    "approval_policy",
-    "timeout_ms",
-    "on_success",
-    "on_failure",
-    "on_timeout",
-    "on_approved",
-    "on_rejected",
-    "compensation",
-    "wait_for_event",
-    "event_filter",
-    "branch_conditions",
-    "default_branch",
-    "parallel_steps",
-    "parallel_failure_policy",
-    "loop_condition",
-    "loop_body",
-    "subflow_id",
-    "subflow_input_mapping",
-    "subflow_output_mapping",
-    "transform_expression",
-    "transform_target",
-    "message",
-    "assigned_to",
-})
+_METADATA_FIELDS = frozenset(
+    {
+        "type",
+        "name",
+        "description",
+        "input_mapping",
+        "output_mapping",
+        "guard",
+        "retry_policy",
+        "approval_policy",
+        "timeout_ms",
+        "on_success",
+        "on_failure",
+        "on_timeout",
+        "on_approved",
+        "on_rejected",
+        "compensation",
+        "wait_for_event",
+        "event_filter",
+        "branch_conditions",
+        "default_branch",
+        "parallel_steps",
+        "parallel_failure_policy",
+        "loop_condition",
+        "loop_body",
+        "subflow_id",
+        "subflow_input_mapping",
+        "subflow_output_mapping",
+        "transform_expression",
+        "transform_target",
+        "message",
+        "assigned_to",
+    }
+)
 
 
 class DSLParseError(Exception):
@@ -231,20 +247,14 @@ class WorkflowDSLParser:
 
         # name required
         if "name" not in doc or not str(doc.get("name", "") or "").strip():
-            raise DSLValidationError(
-                "Workflow DSL requires a non-empty 'name' field"
-            )
+            raise DSLValidationError("Workflow DSL requires a non-empty 'name' field")
 
         # steps required and non-empty
         if "steps" not in doc:
-            raise DSLValidationError(
-                "Workflow DSL requires a 'steps' field"
-            )
+            raise DSLValidationError("Workflow DSL requires a 'steps' field")
         steps = doc["steps"]
         if not isinstance(steps, list) or len(steps) == 0:
-            raise DSLValidationError(
-                "Workflow 'steps' must be a non-empty list"
-            )
+            raise DSLValidationError("Workflow 'steps' must be a non-empty list")
 
     def _validate_step(self, raw: Any, index: int) -> None:
         """Validate a single step dict."""
@@ -311,9 +321,7 @@ class WorkflowDSLParser:
             self._validate_step(raw_step, idx)
             step_id = str(raw_step["id"])
             if step_id in seen_ids:
-                raise DSLValidationError(
-                    f"duplicate step id: '{step_id}'"
-                )
+                raise DSLValidationError(f"duplicate step id: '{step_id}'")
             seen_ids.add(step_id)
 
         steps = [self._build_step(raw_step) for raw_step in raw_steps]

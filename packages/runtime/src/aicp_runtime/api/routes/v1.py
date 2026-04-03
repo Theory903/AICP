@@ -239,9 +239,7 @@ class AgentSurfaceMapper:
         approval_request = None
         approval_request_id = getattr(result, "approval_request_id", None)
         if isinstance(approval_request_id, str) and approval_request_id.strip():
-            approval_request = await approval_service.get_approval(
-                approval_request_id
-            )
+            approval_request = await approval_service.get_approval(approval_request_id)
 
         if result.status.value == "success":
             return AgentExecutionResponse(
@@ -400,7 +398,9 @@ class AgentSurfaceMapper:
         if result.error_code == "provider_session_mismatch":
             return "Use a session created for the capability's provider."
         if result.error_code == "tenant_session_mismatch":
-            return "Use a session scoped to the requested tenant or switch tenant context."
+            return (
+                "Use a session scoped to the requested tenant or switch tenant context."
+            )
         if result.error_code == "output_validation_failed":
             return (
                 "Inspect the provider response and update the declared "
@@ -568,7 +568,11 @@ def build_v1_router(
             if isinstance(session_id, str) and session_id.strip()
             else None
         )
-        if session is None and isinstance(session_provider, str) and session_provider.strip():
+        if (
+            session is None
+            and isinstance(session_provider, str)
+            and session_provider.strip()
+        ):
             session = {"provider_name": session_provider.strip()}
         ranked = await discovery_service.rank_capabilities(
             query=query,
@@ -583,7 +587,9 @@ def build_v1_router(
         sessions = await session_service.list_sessions()
         return [public_session_state(item) for item in sessions]
 
-    @router.post("/sessions", response_model=SessionState, status_code=status.HTTP_201_CREATED)
+    @router.post(
+        "/sessions", response_model=SessionState, status_code=status.HTTP_201_CREATED
+    )
     async def create_session(request: AgentSessionCreateRequest) -> SessionState:
         session = await session_service.create_session(
             provider_name=request.provider_name,
@@ -680,7 +686,9 @@ def build_v1_router(
             raise HTTPException(status_code=404, detail="Interaction not found")
         return AgentInteractionState.model_validate(interaction)
 
-    @router.patch("/interactions/{interaction_id}", response_model=AgentInteractionState)
+    @router.patch(
+        "/interactions/{interaction_id}", response_model=AgentInteractionState
+    )
     async def update_interaction(
         interaction_id: str,
         request: AgentInteractionUpdateRequest,
@@ -694,7 +702,9 @@ def build_v1_router(
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return AgentInteractionState.model_validate(interaction)
 
-    @router.delete("/interactions/{interaction_id}", status_code=status.HTTP_204_NO_CONTENT)
+    @router.delete(
+        "/interactions/{interaction_id}", status_code=status.HTTP_204_NO_CONTENT
+    )
     async def delete_interaction(interaction_id: str) -> Response:
         await interaction_service.delete_interaction(interaction_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -856,7 +866,11 @@ def build_v1_router(
     async def _provider_capability_names() -> list[str]:
         """Pull all capability names from the registered provider."""
         doc = await discovery_service.discover()
-        return [cap.get("name", "") for cap in doc.get("capabilities", []) if cap.get("name")]
+        return [
+            cap.get("name", "")
+            for cap in doc.get("capabilities", [])
+            if cap.get("name")
+        ]
 
     @router.post("/plan", response_model=PlanResponse)
     async def plan_goal(request: PlanRequest) -> PlanResponse:

@@ -16,30 +16,30 @@ class ContextCollector:
     def collect(self, initial_context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Collect all available context."""
         ctx = initial_context or {}
-        
+
         # Git context
         ctx["git"] = self._get_git_context()
-        
+
         # Project context
         ctx["project"] = self._get_project_context()
-        
+
         # Working directory
         ctx["cwd"] = os.getcwd()
-        
+
         # Environment
         ctx["env"] = self._get_env_context()
-        
+
         # Recent commands history
         ctx["recent"] = self._get_recent_context()
-        
+
         return ctx
 
     def _get_git_context(self) -> dict[str, Any]:
         """Get git repository context."""
         import subprocess
-        
+
         ctx = {"is_repo": False}
-        
+
         try:
             result = subprocess.run(
                 ["git", "rev-parse", "--is-inside-work-tree"],
@@ -48,7 +48,7 @@ class ContextCollector:
                 timeout=5,
             )
             ctx["is_repo"] = result.returncode == 0
-            
+
             if ctx["is_repo"]:
                 # Get current branch
                 result = subprocess.run(
@@ -58,7 +58,7 @@ class ContextCollector:
                     timeout=5,
                 )
                 ctx["branch"] = result.stdout.strip() or "HEAD"
-                
+
                 # Get status
                 result = subprocess.run(
                     ["git", "status", "--porcelain"],
@@ -67,7 +67,7 @@ class ContextCollector:
                     timeout=5,
                 )
                 ctx["has_changes"] = bool(result.stdout.strip())
-                
+
                 # Get remote
                 result = subprocess.run(
                     ["git", "remote", "get-url", "origin"],
@@ -79,15 +79,15 @@ class ContextCollector:
                     ctx["remote"] = result.stdout.strip()
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass
-        
+
         return ctx
 
     def _get_project_context(self) -> dict[str, Any]:
         """Detect project type and structure."""
         ctx = {"type": "unknown", "root": Path.cwd().name}
-        
+
         cwd = Path.cwd()
-        
+
         # Check for common project files
         if (cwd / "pyproject.toml").exists():
             ctx["type"] = "python"
@@ -97,7 +97,7 @@ class ContextCollector:
             ctx["type"] = "rust"
         elif (cwd / "go.mod").exists():
             ctx["type"] = "go"
-        
+
         # Check for AICP config
         aicp_dir = cwd / ".aicp"
         if aicp_dir.exists():
@@ -106,7 +106,7 @@ class ContextCollector:
                 ctx["capabilities_dir"] = str(aicp_dir / "capabilities")
             if (aicp_dir / "workflows").exists():
                 ctx["workflows_dir"] = str(aicp_dir / "workflows")
-        
+
         return ctx
 
     def _get_env_context(self) -> dict[str, Any]:

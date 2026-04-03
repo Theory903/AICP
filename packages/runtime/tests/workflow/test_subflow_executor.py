@@ -29,6 +29,7 @@ class FakeWorkflowRuntime:
 
     async def create_workflow(self, name: str, description: str = "", steps=None):
         import uuid
+
         wf_id = str(uuid.uuid4())
         state = {
             "id": wf_id,

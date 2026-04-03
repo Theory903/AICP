@@ -765,9 +765,7 @@ class TestSessionSchemaConformance:
             "goal": "Place a food order",
             "memory": {
                 "working": {"current_step": "checkout"},
-                "episodic": [
-                    {"event": "session_started", "timestamp": "2026-04-03T10:00:00Z"}
-                ],
+                "episodic": [{"event": "session_started", "timestamp": "2026-04-03T10:00:00Z"}],
                 "semantic": {"preferred_restaurant": "Tacos El Rey"},
                 "procedural": [{"pattern": "cart.add -> checkout", "confidence": 0.9}],
                 "meta": {
@@ -1086,9 +1084,7 @@ class TestComplianceLevel4:
             "trust_tier": 1,
             "created_at": "2026-04-03T12:00:00Z",
             "updated_at": "2026-04-03T12:00:00Z",
-            "memory": {
-                "procedural": [{"pattern": "a -> b", "confidence": 2.0}]
-            },
+            "memory": {"procedural": [{"pattern": "a -> b", "confidence": 2.0}]},
         }
         valid, _ = validate_against_schema("session.schema.json", session)
         assert not valid, "Should reject procedural pattern confidence > 1"
@@ -1099,10 +1095,12 @@ class TestComplianceLevel4:
 
     def test_planner_importable(self):
         from aicp_runtime.ai.planner import AICPlanner, PlannerOutput, PlanStep  # noqa: F401
+
         assert AICPlanner is not None
 
     def test_judge_importable(self):
         from aicp_runtime.ai.judge import AICJudge, JudgeResult, JudgeVerdict  # noqa: F401
+
         assert AICJudge is not None
 
     def test_intent_router_importable(self):
@@ -1111,18 +1109,22 @@ class TestComplianceLevel4:
             RouteDecision,
             RoutingDestination,
         )
+
         assert IntentRouter is not None
 
     def test_memory_store_importable(self):
         from aicp_runtime.memory.store import MemorySnapshot, MemoryStore  # noqa: F401
+
         assert MemoryStore is not None
 
     def test_ux_protocol_importable(self):
         from aicp_runtime.protocols.ux import PromptBlock, UXProtocol  # noqa: F401
+
         assert UXProtocol is not None
 
     def test_swe_protocol_importable(self):
         from aicp_runtime.protocols.swe import CodeAction, SWEProtocol  # noqa: F401
+
         assert SWEProtocol is not None
 
     # ------------------------------------------------------------------
@@ -1306,6 +1308,7 @@ class TestSessionFixtureConformance:
 
     def _load_fixtures(self, validity: str) -> list[tuple[Path, dict]]:
         import json
+
         fixtures = []
         base_dir = FIXTURES_DIR / validity / "session"
         if not base_dir.exists():

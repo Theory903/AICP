@@ -204,9 +204,7 @@ def create_approval_router(
     ) -> dict:
         """Execute a capability after approval is granted."""
         if not executor:
-            raise HTTPException(
-                status_code=400, detail="Executor not configured"
-            )
+            raise HTTPException(status_code=400, detail="Executor not configured")
 
         approval_request = await approval_service.get_request(request_id)
         if not approval_request:

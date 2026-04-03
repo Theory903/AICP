@@ -68,12 +68,20 @@ async def main():
     print("\n4. TRANSFER WORKFLOW")
     print("-" * 50)
 
-    print("\n  [4.1] Transfer $500 (under ${} - no approval needed)".format(APPROVAL_THRESHOLD))
+    print(
+        "\n  [4.1] Transfer $500 (under ${} - no approval needed)".format(
+            APPROVAL_THRESHOLD
+        )
+    )
     result = await simulator.transfer("user123", "merchant456", 500.00)
     print(f"      Status: {result.get('status', 'completed')}")
     print(f"      Transaction ID: {result.get('id')}")
 
-    print("\n  [4.2] Transfer $2,000 (OVER ${} - requires approval!)".format(APPROVAL_THRESHOLD))
+    print(
+        "\n  [4.2] Transfer $2,000 (OVER ${} - requires approval!)".format(
+            APPROVAL_THRESHOLD
+        )
+    )
     print("      Policy: high_value_approval triggers ASK effect")
 
     transfer_args = {

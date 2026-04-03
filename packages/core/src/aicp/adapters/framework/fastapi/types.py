@@ -9,6 +9,7 @@ from __future__ import annotations
 try:
     from aicp_connect_fastapi.types import AicpConfig, RouteMapping
 except ImportError:  # pragma: no cover
+
     class _MissingType:
         def __init__(self, name: str):
             self.name = name

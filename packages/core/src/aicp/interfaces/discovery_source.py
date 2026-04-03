@@ -115,16 +115,12 @@ class DiscoverySource(ABC):
         """
         capabilities = await self.discover()
 
-        exact_match = next(
-            (capability for capability in capabilities if capability.name == name), None
-        )
+        exact_match = next((capability for capability in capabilities if capability.name == name), None)
         if exact_match is not None:
             return exact_match
 
         suffix = f".{name}"
-        suffix_matches = [
-            capability for capability in capabilities if capability.name.endswith(suffix)
-        ]
+        suffix_matches = [capability for capability in capabilities if capability.name.endswith(suffix)]
 
         if len(suffix_matches) == 1:
             return suffix_matches[0]

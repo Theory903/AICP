@@ -24,7 +24,9 @@ class AgentInteractionState(BaseModel):
     created_at: str
     updated_at: str
 
-    @field_validator("id", "session_id", "last_capability", "created_at", "updated_at", mode="before")
+    @field_validator(
+        "id", "session_id", "last_capability", "created_at", "updated_at", mode="before"
+    )
     @classmethod
     def _normalize_optional_text(cls, value: Any) -> str | None:
         if value is None:

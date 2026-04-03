@@ -108,9 +108,9 @@ class LoopStepExecutor:
         :class:`LoopExecutionError`
             If the loop configuration is invalid.
         """
-        loop_condition: dict[str, Any] | None = (
-            step.get("metadata") or {}
-        ).get("loop_condition")
+        loop_condition: dict[str, Any] | None = (step.get("metadata") or {}).get(
+            "loop_condition"
+        )
 
         if not loop_condition:
             raise LoopExecutionError(

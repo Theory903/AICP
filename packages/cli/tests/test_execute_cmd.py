@@ -13,8 +13,9 @@ from aicp_cli.commands.serve_cmd import serve_cmd
 def test_run_cmd_shows_friendly_error_outside_project() -> None:
     runner = CliRunner()
 
-    with runner.isolated_filesystem(), patch(
-        "aicp_cli.commands.execute_cmd.get_server_client", return_value=None
+    with (
+        runner.isolated_filesystem(),
+        patch("aicp_cli.commands.execute_cmd.get_server_client", return_value=None),
     ):
         result = runner.invoke(run_cmd, ["health_health_get"])
 

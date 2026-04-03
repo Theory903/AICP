@@ -41,16 +41,24 @@ def create_parser() -> argparse.ArgumentParser:
     approvals_parser = subparsers.add_parser("approvals", help="Manage approvals")
     approvals_subparsers = approvals_parser.add_subparsers(dest="approvals_command")
     approvals_subparsers.add_parser("list", help="List pending approvals")
-    approvals_decide = approvals_subparsers.add_parser("decide", help="Decide on an approval")
+    approvals_decide = approvals_subparsers.add_parser(
+        "decide", help="Decide on an approval"
+    )
     approvals_decide.add_argument("approval_id", help="Approval request ID")
-    approvals_decide.add_argument("--decision", required=True, choices=["approved", "denied"])
+    approvals_decide.add_argument(
+        "--decision", required=True, choices=["approved", "denied"]
+    )
     approvals_decide.add_argument("--approver", required=True, help="Approver identity")
     approvals_decide.add_argument("--reason", help="Decision reason")
 
     # history subcommand
     history_parser = subparsers.add_parser("history", help="View execution history")
-    history_parser.add_argument("--workflow-id", dest="workflow_id", help="Filter by workflow ID")
-    history_parser.add_argument("--capability-name", dest="capability_name", help="Filter by capability")
+    history_parser.add_argument(
+        "--workflow-id", dest="workflow_id", help="Filter by workflow ID"
+    )
+    history_parser.add_argument(
+        "--capability-name", dest="capability_name", help="Filter by capability"
+    )
 
     return parser
 

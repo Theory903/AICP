@@ -5,7 +5,12 @@ from fastapi.testclient import TestClient
 from aicp import Capability, CapabilityKind
 from aicp.implementations import InMemoryCapabilityRepository
 from aicp.implementations.policy import DefaultPolicyEngine
-from aicp.interfaces.policy_engine import Policy, PolicyCondition, PolicyEffect, PolicySubject
+from aicp.interfaces.policy_engine import (
+    Policy,
+    PolicyCondition,
+    PolicyEffect,
+    PolicySubject,
+)
 
 from aicp_runtime.server.app import create_app
 
@@ -94,7 +99,9 @@ def test_runtime_server_discovery_exposes_extended_graph_edges() -> None:
         )
     )
     repo.add_capability(
-        Capability(name="invoice.get", description="Get invoice", kind=CapabilityKind.QUERY)
+        Capability(
+            name="invoice.get", description="Get invoice", kind=CapabilityKind.QUERY
+        )
     )
     repo.add_capability(
         Capability(
@@ -238,7 +245,9 @@ def test_runtime_server_exposes_approvals_history_and_resume() -> None:
         "/workflows",
         json={
             "name": "transfer_flow",
-            "steps": [{"capability_name": "payments.transfer", "arguments": {"amount": 5000}}],
+            "steps": [
+                {"capability_name": "payments.transfer", "arguments": {"amount": 5000}}
+            ],
         },
     )
     workflow_id = workflow_response.json()["id"]
@@ -252,7 +261,9 @@ def test_runtime_server_exposes_approvals_history_and_resume() -> None:
         f"/approvals/{approval_id}/decide",
         json={"decision": "approved", "approver": "manager-1"},
     )
-    resume_response = client.post(f"/workflows/{workflow_id}/resume", json={"approval_id": approval_id})
+    resume_response = client.post(
+        f"/workflows/{workflow_id}/resume", json={"approval_id": approval_id}
+    )
     history_response = client.get("/history", params={"workflow_id": workflow_id})
 
     assert step_response.status_code == 200
@@ -264,7 +275,10 @@ def test_runtime_server_exposes_approvals_history_and_resume() -> None:
     assert resume_response.status_code == 200
     assert resume_response.json()["success"] is True
     assert history_response.status_code == 200
-    assert any(entry["event_type"] == "approval_decision_made" for entry in history_response.json())
+    assert any(
+        entry["event_type"] == "approval_decision_made"
+        for entry in history_response.json()
+    )
 
 
 def test_runtime_server_exposes_provider_health_route() -> None:
@@ -358,7 +372,9 @@ def test_runtime_server_exposes_approval_review_packet() -> None:
         "/workflows",
         json={
             "name": "transfer_flow",
-            "steps": [{"capability_name": "payments.transfer", "arguments": {"amount": 5000}}],
+            "steps": [
+                {"capability_name": "payments.transfer", "arguments": {"amount": 5000}}
+            ],
         },
     )
     workflow_id = workflow_response.json()["id"]
@@ -386,10 +402,15 @@ def test_runtime_server_exposes_approval_review_packet() -> None:
     assert payload["impact_summary"]["risk_level"] == "high"
     assert payload["impact_summary"]["destructive"] is True
     assert payload["impact_summary"]["rollback_capability"] == "payments.refund"
-    assert payload["impact_summary"]["auth_session_implications"]["requires_session"] is True
+    assert (
+        payload["impact_summary"]["auth_session_implications"]["requires_session"]
+        is True
+    )
 
 
-def test_runtime_server_exposes_workflow_detail_and_timeline_with_compensation() -> None:
+def test_runtime_server_exposes_workflow_detail_and_timeline_with_compensation() -> (
+    None
+):
     repo = InMemoryCapabilityRepository("runtime-test")
     repo.add_capability(
         Capability.model_validate(
@@ -431,7 +452,9 @@ def test_runtime_server_exposes_workflow_detail_and_timeline_with_compensation()
         "/workflows",
         json={
             "name": "transfer_flow",
-            "steps": [{"capability_name": "payments.transfer", "arguments": {"amount": 5000}}],
+            "steps": [
+                {"capability_name": "payments.transfer", "arguments": {"amount": 5000}}
+            ],
         },
     )
     workflow_id = workflow_response.json()["id"]
@@ -474,7 +497,9 @@ def test_runtime_server_exposes_workflow_detail_and_timeline_with_compensation()
     assert "workflow_step_completed" in event_types
 
     waiting_event = next(
-        event for event in detail_payload["timeline"] if event["event_type"] == "workflow_step_waiting"
+        event
+        for event in detail_payload["timeline"]
+        if event["event_type"] == "workflow_step_waiting"
     )
     assert waiting_event["approval_request_id"] == approval_id
     assert waiting_event["approval_status"] == "pending"
@@ -499,12 +524,16 @@ def test_runtime_server_can_use_file_backed_store(tmp_path) -> None:
         "/workflows",
         json={
             "name": "transfer_flow",
-            "steps": [{"capability_name": "payments.transfer", "arguments": {"amount": 50}}],
+            "steps": [
+                {"capability_name": "payments.transfer", "arguments": {"amount": 50}}
+            ],
         },
     )
     workflow_id = create_response.json()["id"]
 
-    reloaded_app = create_app(capability_provider=repo, store_path=tmp_path / "runtime-store")
+    reloaded_app = create_app(
+        capability_provider=repo, store_path=tmp_path / "runtime-store"
+    )
     reloaded_client = TestClient(reloaded_app)
     get_response = reloaded_client.get(f"/workflows/{workflow_id}")
 
@@ -523,19 +552,25 @@ def test_runtime_server_can_use_sqlite_backed_store(tmp_path) -> None:
         )
     )
     db_path = tmp_path / "runtime.db"
-    app = create_app(capability_provider=repo, store_path=db_path, store_backend="sqlite")
+    app = create_app(
+        capability_provider=repo, store_path=db_path, store_backend="sqlite"
+    )
     client = TestClient(app)
 
     create_response = client.post(
         "/workflows",
         json={
             "name": "transfer_flow",
-            "steps": [{"capability_name": "payments.transfer", "arguments": {"amount": 50}}],
+            "steps": [
+                {"capability_name": "payments.transfer", "arguments": {"amount": 50}}
+            ],
         },
     )
     workflow_id = create_response.json()["id"]
 
-    reloaded_app = create_app(capability_provider=repo, store_path=db_path, store_backend="sqlite")
+    reloaded_app = create_app(
+        capability_provider=repo, store_path=db_path, store_backend="sqlite"
+    )
     reloaded_client = TestClient(reloaded_app)
     get_response = reloaded_client.get(f"/workflows/{workflow_id}")
 
@@ -664,7 +699,9 @@ def test_runtime_server_redacts_sensitive_execution_context_in_explorer() -> Non
     assert "resolved_interaction" not in record["context"]
 
 
-def test_runtime_server_v1_execute_returns_not_found_shape_for_missing_interaction() -> None:
+def test_runtime_server_v1_execute_returns_not_found_shape_for_missing_interaction() -> (
+    None
+):
     repo = InMemoryCapabilityRepository("runtime-test")
     repo.add_capability(
         Capability(
@@ -889,7 +926,10 @@ def test_runtime_server_v1_execute_returns_reauth_hint_for_expired_session() -> 
     payload = execute_response.json()
     assert payload["status"] == "failed"
     assert payload["error"]["code"] == "needs_reauthentication"
-    assert payload["error"]["fix_hint"] == "Refresh or recreate the session before retrying this capability."
+    assert (
+        payload["error"]["fix_hint"]
+        == "Refresh or recreate the session before retrying this capability."
+    )
 
 
 def test_runtime_server_v1_refreshes_session() -> None:

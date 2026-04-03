@@ -189,7 +189,9 @@ class TestIntentRouterPlanRouting:
 
 class TestIntentRouterClarifyRouting:
     def setup_method(self):
-        self.router = IntentRouter(capabilities=SAMPLE_CAPABILITIES, clarify_threshold=0.5)
+        self.router = IntentRouter(
+            capabilities=SAMPLE_CAPABILITIES, clarify_threshold=0.5
+        )
 
     def test_vague_utterance_routes_to_clarify(self):
         decision = self.router.route("do the thing")

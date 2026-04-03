@@ -393,7 +393,11 @@ class TestJudgeResponseConformance:
         if steps is None:
             steps = [
                 {"step_id": "s1", "capability_name": "cart.add_item", "depends_on": []},
-                {"step_id": "s2", "capability_name": "checkout.confirm", "depends_on": ["s1"]},
+                {
+                    "step_id": "s2",
+                    "capability_name": "checkout.confirm",
+                    "depends_on": ["s1"],
+                },
             ]
         plan = {
             "plan_id": "plan_conform_001",
@@ -512,7 +516,12 @@ class TestPlanJudgeRoundTrip:
         judge_resp = client.post("/v1/judge", json={"plan": plan})
         assert judge_resp.status_code == 200
         verdict = judge_resp.json()
-        assert verdict["verdict"] in ("approved", "partial", "rejected", "needs_revision")
+        assert verdict["verdict"] in (
+            "approved",
+            "partial",
+            "rejected",
+            "needs_revision",
+        )
         assert 0.0 <= verdict["score"] <= 1.0
 
     def test_planner_and_judge_agree_on_non_empty_plan(self, client):

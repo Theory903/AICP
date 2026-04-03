@@ -108,11 +108,14 @@ class WebhookChannel(NotificationChannel):
                 ) as response:
                     return 200 <= response.status < 300
 
-            async with aiohttp.ClientSession(timeout=timeout) as session, session.post(
-                self.url,
-                json=payload,
-                headers=headers,
-            ) as response:
+            async with (
+                aiohttp.ClientSession(timeout=timeout) as session,
+                session.post(
+                    self.url,
+                    json=payload,
+                    headers=headers,
+                ) as response,
+            ):
                 return 200 <= response.status < 300
         except Exception:
             return False
@@ -160,10 +163,7 @@ class SlackChannel(NotificationChannel):
             "urgent": "#e53935",
         }[notification.priority]
 
-        fields = [
-            {"title": str(key), "value": str(value), "short": True}
-            for key, value in notification.data.items()
-        ]
+        fields = [{"title": str(key), "value": str(value), "short": True} for key, value in notification.data.items()]
 
         payload: dict[str, Any] = {
             "attachments": [
@@ -192,10 +192,13 @@ class SlackChannel(NotificationChannel):
                 ) as response:
                     return 200 <= response.status < 300
 
-            async with aiohttp.ClientSession(timeout=timeout) as session, session.post(
-                self.webhook_url,
-                json=payload,
-            ) as response:
+            async with (
+                aiohttp.ClientSession(timeout=timeout) as session,
+                session.post(
+                    self.webhook_url,
+                    json=payload,
+                ) as response,
+            ):
                 return 200 <= response.status < 300
         except Exception:
             return False

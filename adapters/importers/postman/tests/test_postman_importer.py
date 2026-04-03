@@ -57,7 +57,10 @@ async def test_postman_importer_flattens_nested_folders() -> None:
                             "name": "List Users",
                             "request": {
                                 "method": "GET",
-                                "url": {"raw": "https://api.example.com/users", "path": ["users"]},
+                                "url": {
+                                    "raw": "https://api.example.com/users",
+                                    "path": ["users"],
+                                },
                             },
                         }
                     ],
@@ -84,7 +87,10 @@ async def test_postman_importer_handles_missing_body_without_required_none() -> 
                     "name": "Get Users",
                     "request": {
                         "method": "GET",
-                        "url": {"raw": "https://api.example.com/users", "path": ["users"]},
+                        "url": {
+                            "raw": "https://api.example.com/users",
+                            "path": ["users"],
+                        },
                     },
                 }
             ],
@@ -117,7 +123,10 @@ async def test_postman_importer_preserves_auth_and_header_tags() -> None:
                             {"key": "Content-Type", "value": "application/json"},
                             {"key": "X-Trace-Id", "value": "abc"},
                         ],
-                        "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "secret"}]},
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [{"key": "token", "value": "secret"}],
+                        },
                     },
                 }
             ],

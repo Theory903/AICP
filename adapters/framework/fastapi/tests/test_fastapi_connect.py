@@ -44,7 +44,9 @@ def test_connect_fastapi_mounts_discovery_with_provider_metadata() -> None:
 
 def test_core_fastapi_import_is_backed_by_connect_package() -> None:
     from aicp.adapters.framework.fastapi import mount_aicp as core_mount_aicp
-    from aicp.adapters.framework.fastapi.inspect import infer_capability_name as core_infer
+    from aicp.adapters.framework.fastapi.inspect import (
+        infer_capability_name as core_infer,
+    )
 
     app = FastAPI()
 
@@ -57,10 +59,15 @@ def test_core_fastapi_import_is_backed_by_connect_package() -> None:
     response = client.get("/.well-known/aicp")
 
     assert response.status_code == 200
-    assert core_infer({"path": "/users", "methods": ["GET"], "func_name": "list_users"}) == "users.list"
+    assert (
+        core_infer({"path": "/users", "methods": ["GET"], "func_name": "list_users"})
+        == "users.list"
+    )
 
 
-def test_connect_fastapi_skips_dependency_only_inputs_and_uses_openapi_response_schema() -> None:
+def test_connect_fastapi_skips_dependency_only_inputs_and_uses_openapi_response_schema() -> (
+    None
+):
     app = FastAPI()
 
     class StudentOut(BaseModel):

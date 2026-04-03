@@ -50,7 +50,11 @@ jobs:
 
       - name: Install packages
         run: |
-          pip install -e "packages/core[dev]" -e packages/runtime -e packages/cli -e adapters/framework/fastapi
+          pip install -e "packages/core[dev]" -e packages/runtime
+          pip install -e adapters/protocol/openapi -e adapters/protocol/mcp \
+            -e adapters/framework/fastapi \
+            -e adapters/importers/postman -e adapters/importers/har -e adapters/importers/curl
+          pip install -e "packages/cli[dev]"
           pip install pytest pytest-asyncio fastapi httpx
 
       - name: Run full test suite
@@ -70,7 +74,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e "packages/core[dev]" -e packages/runtime
-          pip install pytest referencing
+          pip install pyyaml pytest referencing
 
       - name: Run schema conformance tests
         run: python -m pytest spec/tests/ packages/runtime/tests/conformance/ --tb=short -q

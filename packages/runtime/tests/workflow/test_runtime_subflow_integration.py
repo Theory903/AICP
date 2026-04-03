@@ -18,7 +18,13 @@ class FakeProvider:
         self._results = results or []
         self.calls: list[tuple] = []
 
-    async def execute(self, capability_name: str, arguments: dict, context: dict | None = None, **kwargs):
+    async def execute(
+        self,
+        capability_name: str,
+        arguments: dict,
+        context: dict | None = None,
+        **kwargs,
+    ):
         idx = len(self.calls)
         self.calls.append((capability_name, arguments))
         if idx < len(self._results):

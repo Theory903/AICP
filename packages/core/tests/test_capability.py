@@ -19,12 +19,8 @@ class TestCapability:
             name="payments.transfer",
             description="Transfer money to a recipient",
             kind=CapabilityKind.ACTION,
-            input_schema=InputSchema(
-                type="object", properties={"amount": {"type": "number"}}, required=["amount"]
-            ),
-            output_schema=OutputSchema(
-                type="object", properties={"transaction_id": {"type": "string"}}
-            ),
+            input_schema=InputSchema(type="object", properties={"amount": {"type": "number"}}, required=["amount"]),
+            output_schema=OutputSchema(type="object", properties={"transaction_id": {"type": "string"}}),
             tags=["payments", "money"],
         )
         assert capability.name == "payments.transfer"

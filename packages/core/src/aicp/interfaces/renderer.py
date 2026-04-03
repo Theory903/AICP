@@ -114,11 +114,7 @@ class Renderer(ABC):
         forced_format = context.get("format")
         if forced_format:
             try:
-                hints.format = (
-                    forced_format
-                    if isinstance(forced_format, RenderFormat)
-                    else RenderFormat(forced_format)
-                )
+                hints.format = forced_format if isinstance(forced_format, RenderFormat) else RenderFormat(forced_format)
                 return hints
             except ValueError:
                 pass

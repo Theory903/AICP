@@ -203,12 +203,8 @@ class AicpRegistry:
 
         return {
             "version": "0.1.1",
-            "capabilities": [
-                capability.model_dump(exclude_none=True) for capability in capabilities
-            ],
-            "policies": [
-                policy.model_dump(exclude_none=True) for policy in policies
-            ],
+            "capabilities": [capability.model_dump(exclude_none=True) for capability in capabilities],
+            "policies": [policy.model_dump(exclude_none=True) for policy in policies],
             "workflows": workflows,
             "metadata": {
                 "capability_count": len(capabilities),

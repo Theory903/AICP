@@ -9,7 +9,9 @@ from aicp_cli.commands.map_postman import cmd_map_postman
 
 
 @pytest.mark.asyncio
-async def test_cmd_map_postman_outputs_capabilities_with_nested_provider(tmp_path, capsys) -> None:
+async def test_cmd_map_postman_outputs_capabilities_with_nested_provider(
+    tmp_path, capsys
+) -> None:
     collection_file = tmp_path / "payments.postman_collection.json"
     collection_file.write_text(
         json.dumps(
@@ -38,8 +40,13 @@ async def test_cmd_map_postman_outputs_capabilities_with_nested_provider(tmp_pat
 
     assert exit_code == 0
     assert payload["capability_count"] == 1
-    assert payload["capabilities"][0]["provider"]["name"] == "payments.postman_collection"
-    assert payload["capabilities"][0]["input_schema"]["required"] == ["payment_id", "body"]
+    assert (
+        payload["capabilities"][0]["provider"]["name"] == "payments.postman_collection"
+    )
+    assert payload["capabilities"][0]["input_schema"]["required"] == [
+        "payment_id",
+        "body",
+    ]
 
 
 @pytest.mark.asyncio
@@ -55,14 +62,19 @@ async def test_cmd_map_postman_writes_output_file(tmp_path, capsys) -> None:
                         "name": "List Users",
                         "request": {
                             "method": "GET",
-                            "url": {"raw": "https://api.example.com/users", "path": ["users"]},
+                            "url": {
+                                "raw": "https://api.example.com/users",
+                                "path": ["users"],
+                            },
                         },
                     }
                 ],
             }
         )
     )
-    args = argparse.Namespace(file=str(collection_file), name="users-collection", output=str(output_file))
+    args = argparse.Namespace(
+        file=str(collection_file), name="users-collection", output=str(output_file)
+    )
 
     exit_code = await cmd_map_postman(args)
     output = capsys.readouterr().out

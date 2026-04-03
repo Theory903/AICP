@@ -12,10 +12,10 @@ try:
         map_routes_to_capabilities,
     )
 except ImportError:  # pragma: no cover
+
     def _missing_adapter(*args, **kwargs):
         raise RuntimeError(
-            "FastAPI mapping helpers are not available. "
-            "Install the FastAPI adapter package to use these helpers."
+            "FastAPI mapping helpers are not available. Install the FastAPI adapter package to use these helpers."
         )
 
     map_routes_to_capabilities = _missing_adapter

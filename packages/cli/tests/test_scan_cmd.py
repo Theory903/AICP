@@ -35,12 +35,30 @@ def test_scan_fastapi_prefers_openapi_import_path(monkeypatch, tmp_path: Path) -
             captured["base_url"] = base_url
 
         async def discover(self):
-            return [type("Cap", (), {"name": "items.list", "kind": type("K", (), {"value": "query"})()})()]
+            return [
+                type(
+                    "Cap",
+                    (),
+                    {"name": "items.list", "kind": type("K", (), {"value": "query"})()},
+                )()
+            ]
 
-    monkeypatch.setattr("aicp_cli.commands.scan_cmd._import_module", lambda module_name: type("M", (), {"app": app})())
+    monkeypatch.setattr(
+        "aicp_cli.commands.scan_cmd._import_module",
+        lambda module_name: type("M", (), {"app": app})(),
+    )
     monkeypatch.setattr("aicp_cli.commands.scan_cmd._handle_scan_results", fake_handle)
-    monkeypatch.setattr("aicp_cli.commands.scan_cmd._load_config", lambda: type("C", (), {"provider_name": "aicp", "capabilities_dir": str(tmp_path)})())
-    monkeypatch.setitem(__import__("sys").modules, "aicp_connect_openapi", type("Mod", (), {"OpenAPIDiscoverySource": FakeSource})())
+    monkeypatch.setattr(
+        "aicp_cli.commands.scan_cmd._load_config",
+        lambda: type(
+            "C", (), {"provider_name": "aicp", "capabilities_dir": str(tmp_path)}
+        )(),
+    )
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "aicp_connect_openapi",
+        type("Mod", (), {"OpenAPIDiscoverySource": FakeSource})(),
+    )
 
     asyncio.run(_scan_fastapi("demo:app", None, False))
 

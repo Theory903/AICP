@@ -22,13 +22,39 @@ class ServiceMapper:
     """Maps services and business logic."""
 
     ACTION_VERBS = {
-        "create", "update", "delete", "remove", "add", "edit", "modify",
-        "get", "fetch", "retrieve", "list", "search", "query",
-        "send", "notify", "publish", "emit",
-        "process", "execute", "run", "handle",
-        "authenticate", "authorize", "validate", "verify",
-        "approve", "reject", "confirm", "cancel",
-        "transfer", "pay", "refund", "charge",
+        "create",
+        "update",
+        "delete",
+        "remove",
+        "add",
+        "edit",
+        "modify",
+        "get",
+        "fetch",
+        "retrieve",
+        "list",
+        "search",
+        "query",
+        "send",
+        "notify",
+        "publish",
+        "emit",
+        "process",
+        "execute",
+        "run",
+        "handle",
+        "authenticate",
+        "authorize",
+        "validate",
+        "verify",
+        "approve",
+        "reject",
+        "confirm",
+        "cancel",
+        "transfer",
+        "pay",
+        "refund",
+        "charge",
     }
 
     def map(self, path: str | Path) -> list[ExtractedService]:
@@ -59,15 +85,19 @@ class ServiceMapper:
                 if isinstance(node, ast.ClassDef):
                     # Check for service-like class
                     if self._is_service_class(node):
-                        methods = [n.name for n in node.body if isinstance(n, ast.FunctionDef)]
+                        methods = [
+                            n.name for n in node.body if isinstance(n, ast.FunctionDef)
+                        ]
                         domain_verbs = self._extract_domain_verbs(methods)
 
-                        results.append(ExtractedService(
-                            name=node.name,
-                            file_path=str(file_path),
-                            methods=methods,
-                            domain_verbs=domain_verbs,
-                        ))
+                        results.append(
+                            ExtractedService(
+                                name=node.name,
+                                file_path=str(file_path),
+                                methods=methods,
+                                domain_verbs=domain_verbs,
+                            )
+                        )
         except Exception:
             pass
         return results

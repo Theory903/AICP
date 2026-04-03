@@ -118,7 +118,9 @@ class ExecutionService:
     ) -> ExecutionResult:
         """Resume an execution after approval has been granted."""
         execution_id = self._require_text(execution_id, field_name="execution_id")
-        approval_request_id = self._require_text(approval_request_id, field_name="approval_request_id")
+        approval_request_id = self._require_text(
+            approval_request_id, field_name="approval_request_id"
+        )
 
         resolved_execution_id = await self._resolve_execution_id(
             approval_request_id, execution_id
@@ -190,7 +192,9 @@ class ExecutionService:
                 if str(record.get("status") or "").strip() == status_filter
             ]
 
-        records.sort(key=lambda record: str(record.get("created_at") or ""), reverse=True)
+        records.sort(
+            key=lambda record: str(record.get("created_at") or ""), reverse=True
+        )
         bounded_limit = max(1, min(limit, 100))
         return [deepcopy(record) for record in records[:bounded_limit]]
 
@@ -209,7 +213,9 @@ class ExecutionService:
         execution_id = f"exe_{uuid.uuid4().hex[:12]}"
         approval_request_id = getattr(result, "approval_request_id", None)
         if isinstance(approval_request_id, str) and approval_request_id.strip():
-            execution_id = await self._resolve_execution_id(approval_request_id, execution_id)
+            execution_id = await self._resolve_execution_id(
+                approval_request_id, execution_id
+            )
 
         record = {
             "execution_id": execution_id,
@@ -304,7 +310,9 @@ class ExecutionService:
 
         required_provider = None
         if auth_requirement is not None:
-            required_provider = getattr(auth_requirement, "required_session_provider", None)
+            required_provider = getattr(
+                auth_requirement, "required_session_provider", None
+            )
         if not required_provider and capability is not None:
             provider = getattr(capability, "provider", None)
             required_provider = getattr(provider, "name", None)

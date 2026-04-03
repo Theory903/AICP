@@ -133,9 +133,7 @@ class DiscoveryService:
                 }
             )
 
-        ranked.sort(
-            key=lambda item: (-item["score"], item["capability"]["name"])
-        )
+        ranked.sort(key=lambda item: (-item["score"], item["capability"]["name"]))
         return ranked[: max(limit, 0)]
 
     async def _compute_semantic_similarity(
@@ -167,7 +165,9 @@ class DiscoveryService:
             term_union |= query_terms & tag_terms
 
             if term_union:
-                scores[capability_name] = min(len(term_union) / max(len(query_terms), 1), 1.0)
+                scores[capability_name] = min(
+                    len(term_union) / max(len(query_terms), 1), 1.0
+                )
 
         return scores
 
@@ -214,7 +214,9 @@ class DiscoveryService:
 
             continuation = getattr(capability, "continuation", None)
             if continuation is not None:
-                for next_capability in getattr(continuation, "next_capabilities", []) or []:
+                for next_capability in (
+                    getattr(continuation, "next_capabilities", []) or []
+                ):
                     self._add_capability_edge(
                         nodes,
                         node_ids,
@@ -346,7 +348,9 @@ class DiscoveryService:
         normalized_query = query.strip().lower()
         capability_name = str(getattr(capability, "name", "")).strip()
         description = str(getattr(capability, "description", "") or "")
-        tags = [str(tag).strip().lower() for tag in getattr(capability, "tags", []) or []]
+        tags = [
+            str(tag).strip().lower() for tag in getattr(capability, "tags", []) or []
+        ]
         query_terms = self._extract_terms(normalized_query)
         name_terms = self._extract_terms(capability_name)
         description_terms = self._extract_terms(description)
@@ -405,16 +409,26 @@ class DiscoveryService:
                 self._append_reason(reasons, "kind:action_match")
 
         auth_requirement = getattr(capability, "auth", None)
-        if auth_requirement is not None and getattr(auth_requirement, "requires_session", False):
+        if auth_requirement is not None and getattr(
+            auth_requirement, "requires_session", False
+        ):
             required_provider = str(
                 getattr(auth_requirement, "required_session_provider", None)
                 or getattr(getattr(capability, "provider", None), "name", None)
                 or ""
             ).strip()
-            if session_provider and required_provider and required_provider == session_provider:
+            if (
+                session_provider
+                and required_provider
+                and required_provider == session_provider
+            ):
                 score += 24
                 self._append_reason(reasons, "auth:session_compatible")
-            elif session_provider and required_provider and required_provider != session_provider:
+            elif (
+                session_provider
+                and required_provider
+                and required_provider != session_provider
+            ):
                 score -= 12
                 self._append_reason(reasons, "auth:session_incompatible")
             elif not session_provider:
@@ -423,7 +437,10 @@ class DiscoveryService:
 
         if last_capability:
             for edge in graph.get("edges", []):
-                if edge.get("source") != last_capability or edge.get("target") != capability_name:
+                if (
+                    edge.get("source") != last_capability
+                    or edge.get("target") != capability_name
+                ):
                     continue
                 edge_type = str(edge.get("type") or "")
                 if edge_type == "continuation":
@@ -460,7 +477,9 @@ class DiscoveryService:
             return None
 
         query_matches = len(query_terms.intersection(self._QUERY_INTENT_TERMS["query"]))
-        action_matches = len(query_terms.intersection(self._QUERY_INTENT_TERMS["action"]))
+        action_matches = len(
+            query_terms.intersection(self._QUERY_INTENT_TERMS["action"])
+        )
         if query_matches == action_matches == 0:
             return None
         if query_matches >= action_matches:
@@ -501,7 +520,9 @@ class DiscoveryService:
         if getattr(capability, "policy", None) is not None:
             return True
 
-        tags = [str(tag).strip().lower() for tag in getattr(capability, "tags", []) or []]
+        tags = [
+            str(tag).strip().lower() for tag in getattr(capability, "tags", []) or []
+        ]
         if any(tag in {"destructive", "governance:approval_candidate"} for tag in tags):
             return True
 

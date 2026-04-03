@@ -145,9 +145,7 @@ class ParallelStepExecutor:
     ) -> ParallelStepResult:
         """Run all steps; return immediately with failure on the first error."""
         tasks = {
-            step["id"]: asyncio.ensure_future(
-                self._run_single(step, context)
-            )
+            step["id"]: asyncio.ensure_future(self._run_single(step, context))
             for step in sub_steps
         }
 
@@ -201,7 +199,9 @@ class ParallelStepExecutor:
         context: dict[str, Any],
     ) -> ParallelStepResult:
         """Run all steps; collect all outcomes regardless of failures."""
-        tasks = [asyncio.ensure_future(self._run_single(step, context)) for step in sub_steps]
+        tasks = [
+            asyncio.ensure_future(self._run_single(step, context)) for step in sub_steps
+        ]
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         outcomes: dict[str, SubStepOutcome] = {}

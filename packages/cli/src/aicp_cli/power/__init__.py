@@ -48,9 +48,7 @@ class PowerCLI:
     def __init__(self, config: PowerCLIConfig | None = None):
         self.config = config or PowerCLIConfig()
         self._alias_resolver = AliasResolver()
-        self._intent_detector = IntentDetector(
-            threshold=self.config.fuzzy_threshold
-        )
+        self._intent_detector = IntentDetector(threshold=self.config.fuzzy_threshold)
         self._context_collector = ContextCollector()
         self._suggestion_engine = SuggestionEngine(
             max_suggestions=self.config.max_suggestions
@@ -63,18 +61,18 @@ class PowerCLI:
         context: dict[str, Any] | None = None,
     ) -> InterpretationResult:
         """Interpret user input and resolve to executable command."""
-        
+
         log = []
         original_input = user_input
         current_input = user_input
         resolved_args = {}
-        
+
         # Step 1: Collect context
         ctx = context or {}
         if self.config.context_aware:
             ctx = self._context_collector.collect(ctx)
             log.append(f"Context collected: {list(ctx.keys())}")
-        
+
         # Step 2: Expand aliases (e.g., "gc" -> "git commit")
         if self.config.alias_expansion_enabled:
             expanded, alias_log = self._alias_resolver.resolve(current_input)
@@ -82,7 +80,7 @@ class PowerCLI:
                 log.append(f"Alias expanded: '{current_input}' -> '{expanded}'")
                 current_input = expanded
                 ctx["_aliases_expanded"] = alias_log
-        
+
         # Step 3: Match skills/macros (e.g., "deploy" -> workflow)
         if self.config.skill_enabled:
             skill_result, skill_log = self._skill_engine.execute(current_input, ctx)
@@ -97,7 +95,7 @@ class PowerCLI:
                     skills_matched=[skill_log.get("skill_name", "")],
                     transformation_log=log,
                 )
-        
+
         # Step 4: Intent detection
         intent = None
         confidence = 1.0
@@ -106,20 +104,22 @@ class PowerCLI:
             intent = intent_result.intent
             confidence = intent_result.confidence
             if intent_result.transformation:
-                log.append(f"Intent transformed: {current_input} -> {intent_result.transformation}")
+                log.append(
+                    f"Intent transformed: {current_input} -> {intent_result.transformation}"
+                )
                 current_input = intent_result.transformation
-            
+
             # Parse command and args from intent
             parsed = self._parse_command_args(current_input)
             current_input = parsed["command"]
             resolved_args.update(parsed["args"])
-        
+
         # Step 5: Generate suggestions
         suggestions = []
         if self.config.context_aware:
             suggestions = self._suggestion_engine.suggest(current_input, ctx)
             log.append(f"Generated {len(suggestions)} suggestions")
-        
+
         return InterpretationResult(
             original_input=original_input,
             resolved_command=current_input,
@@ -136,10 +136,10 @@ class PowerCLI:
         parts = input_str.strip().split()
         if not parts:
             return {"command": "", "args": {}}
-        
+
         command = parts[0]
         args = {}
-        
+
         # Parse key=value arguments
         for part in parts[1:]:
             if "=" in part:
@@ -147,7 +147,7 @@ class PowerCLI:
                 args[key] = value
             else:
                 args[f"arg_{len(args)}"] = part
-        
+
         return {"command": command, "args": args}
 
     def register_alias(self, alias: str, expansion: str) -> None:

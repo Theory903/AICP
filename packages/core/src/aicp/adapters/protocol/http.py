@@ -72,9 +72,7 @@ class HttpExecutionAdapter(CapabilityProvider):
             raise CapabilityNotFoundError(f"Capability not found: {capability_name}")
 
         if not AIOHTTP_AVAILABLE or aiohttp is None:
-            raise RuntimeError(
-                "aiohttp is required for HTTP execution. Install it with: pip install aiohttp"
-            )
+            raise RuntimeError("aiohttp is required for HTTP execution. Install it with: pip install aiohttp")
 
         safe_context = context or {}
         request_args = dict(arguments)
@@ -205,9 +203,7 @@ class HttpExecutionAdapter(CapabilityProvider):
             except Exception:
                 error_body = None
 
-            raise RuntimeError(
-                f"HTTP request failed with status {response.status}: {error_body}"
-            )
+            raise RuntimeError(f"HTTP request failed with status {response.status}: {error_body}")
 
         if "application/json" in content_type:
             return await response.json()

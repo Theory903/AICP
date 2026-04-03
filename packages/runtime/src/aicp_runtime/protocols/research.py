@@ -157,9 +157,7 @@ class ResearchProtocol:
         self._record(action)
         return action
 
-    def extract(
-        self, source: str, schema: Optional[dict[str, Any]]
-    ) -> ResearchAction:
+    def extract(self, source: str, schema: Optional[dict[str, Any]]) -> ResearchAction:
         """Create an EXTRACT action (requires non-empty source and schema)."""
         if not source or not source.strip():
             raise ResearchProtocolError("source must not be empty")

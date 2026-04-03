@@ -10,7 +10,12 @@ from aicp import Capability, CapabilityKind, InputSchema, OutputSchema, Provider
 from aicp.implementations import InMemoryCapabilityRepository
 from aicp.implementations.execution import HttpCapabilityHandler
 from aicp.implementations.policy import DefaultPolicyEngine
-from aicp.interfaces.policy_engine import Policy, PolicyCondition, PolicyEffect, PolicySubject
+from aicp.interfaces.policy_engine import (
+    Policy,
+    PolicyCondition,
+    PolicyEffect,
+    PolicySubject,
+)
 
 from aicp_runtime.persistence.memory import InMemoryRuntimeStore
 from aicp_runtime.persistence.file import FileRuntimeStore
@@ -98,7 +103,9 @@ async def test_discovery_service_includes_capability_graph_edges() -> None:
     discovery = await service.discover()
 
     graph = discovery["graph"]
-    edge_types = {(edge["source"], edge["target"], edge["type"]) for edge in graph["edges"]}
+    edge_types = {
+        (edge["source"], edge["target"], edge["type"]) for edge in graph["edges"]
+    }
     node_ids = {node["id"] for node in graph["nodes"]}
 
     assert "students.create" in node_ids
@@ -107,7 +114,11 @@ async def test_discovery_service_includes_capability_graph_edges() -> None:
     assert "approval:human_review" in node_ids
     assert ("students.create", "students.get", "continuation") in edge_types
     assert ("students.create", "session:school-http", "requires_session") in edge_types
-    assert ("students.create", "approval:human_review", "requires_approval") in edge_types
+    assert (
+        "students.create",
+        "approval:human_review",
+        "requires_approval",
+    ) in edge_types
 
 
 @pytest.mark.asyncio
@@ -126,7 +137,9 @@ async def test_discovery_service_includes_dependency_and_compensation_edges() ->
         )
     )
     repo.add_capability(
-        Capability(name="invoice.get", description="Get invoice", kind=CapabilityKind.QUERY)
+        Capability(
+            name="invoice.get", description="Get invoice", kind=CapabilityKind.QUERY
+        )
     )
     repo.add_capability(
         Capability(
@@ -147,7 +160,8 @@ async def test_discovery_service_includes_dependency_and_compensation_edges() ->
     discovery = await service.discover()
 
     edge_types = {
-        (edge["source"], edge["target"], edge["type"]) for edge in discovery["graph"]["edges"]
+        (edge["source"], edge["target"], edge["type"])
+        for edge in discovery["graph"]["edges"]
     }
 
     assert ("invoice.send", "invoice.get", "dependency") in edge_types
@@ -247,7 +261,9 @@ async def test_interaction_service_persists_and_updates_state() -> None:
 
 
 @pytest.mark.asyncio
-async def test_discovery_service_ranks_capabilities_with_graph_and_session_context() -> None:
+async def test_discovery_service_ranks_capabilities_with_graph_and_session_context() -> (
+    None
+):
     repo = InMemoryCapabilityRepository("rank-test")
     repo.add_capability(
         Capability.model_validate(
@@ -358,7 +374,10 @@ async def test_discovery_service_uses_stemming_lite_for_term_overlap() -> None:
     ranked = await service.rank_capabilities(query="archiving invoices", limit=2)
 
     assert ranked[0]["capability"]["name"] == "invoice.archive"
-    assert "query:description_terms" in ranked[0]["reasons"] or "query:tag_match" in ranked[0]["reasons"]
+    assert (
+        "query:description_terms" in ranked[0]["reasons"]
+        or "query:tag_match" in ranked[0]["reasons"]
+    )
 
 
 @pytest.mark.asyncio
@@ -457,7 +476,9 @@ async def test_session_service_reports_expired_session_health() -> None:
 
 
 @pytest.mark.asyncio
-async def test_execution_service_returns_missing_session_for_session_required_capability() -> None:
+async def test_execution_service_returns_missing_session_for_session_required_capability() -> (
+    None
+):
     repo = InMemoryCapabilityRepository("runtime-auth")
     repo.add_capability(
         Capability.model_validate(
@@ -514,7 +535,9 @@ async def test_execution_service_persists_preflight_auth_failures() -> None:
     store = InMemoryRuntimeStore()
     service = ExecutionService(capability_provider=repo, runtime_store=store)
 
-    result = await service.execute("crm.contacts.update", {"email": "new@example.com"}, {})
+    result = await service.execute(
+        "crm.contacts.update", {"email": "new@example.com"}, {}
+    )
     records = await service.list_execution_records()
 
     assert result.status == "failure"
@@ -751,7 +774,13 @@ async def test_approval_service_builds_review_packet() -> None:
         "risk_level": "high",
         "destructive": True,
         "affected_resource_hints": ["payments", "account_id"],
-        "affected_capabilities": ["payments.transfer.list", "payments.transfer.get", "payments.transfer.refund", "payments.transfer.revert", "payments.transfer.cancel"],
+        "affected_capabilities": [
+            "payments.transfer.list",
+            "payments.transfer.get",
+            "payments.transfer.refund",
+            "payments.transfer.revert",
+            "payments.transfer.cancel",
+        ],
         "data_classification": "internal",
         "compliance_flags": ["financial_transaction"],
         "time_sensitivity": "standard",
@@ -821,7 +850,9 @@ async def test_execution_service_applies_session_state_to_http_handler() -> None
 
         store = InMemoryRuntimeStore()
         audit_service = AuditService(runtime_store=store)
-        session_service = SessionService(runtime_store=store, audit_service=audit_service)
+        session_service = SessionService(
+            runtime_store=store, audit_service=audit_service
+        )
         session = await session_service.create_session(
             provider_name="crm-http",
             auth_mode="session",
@@ -900,7 +931,9 @@ async def test_execution_service_applies_api_key_auth_recipe() -> None:
 
         store = InMemoryRuntimeStore()
         audit_service = AuditService(runtime_store=store)
-        session_service = SessionService(runtime_store=store, audit_service=audit_service)
+        session_service = SessionService(
+            runtime_store=store, audit_service=audit_service
+        )
         session = await session_service.create_session(
             provider_name="crm-http",
             auth_mode="api_key",
@@ -962,7 +995,9 @@ async def test_session_service_refreshes_oauth_recipe_session() -> None:
     try:
         store = InMemoryRuntimeStore()
         audit_service = AuditService(runtime_store=store)
-        session_service = SessionService(runtime_store=store, audit_service=audit_service)
+        session_service = SessionService(
+            runtime_store=store, audit_service=audit_service
+        )
         session = await session_service.create_session(
             provider_name="crm-http",
             auth_mode="bearer",
@@ -1101,7 +1136,9 @@ async def test_workflow_resume_after_approval_decision_completes_flow(
 
 
 @pytest.mark.asyncio
-async def test_workflow_service_exposes_detail_timeline_with_failure_and_compensation() -> None:
+async def test_workflow_service_exposes_detail_timeline_with_failure_and_compensation() -> (
+    None
+):
     repo = InMemoryCapabilityRepository("workflow-detail")
     repo.add_capability(
         Capability.model_validate(
@@ -1112,7 +1149,9 @@ async def test_workflow_service_exposes_detail_timeline_with_failure_and_compens
                 "rollback_capability": "invoice.cancel",
             }
         ),
-        handler=lambda args, ctx: (_ for _ in ()).throw(RuntimeError("provider offline")),
+        handler=lambda args, ctx: (_ for _ in ()).throw(
+            RuntimeError("provider offline")
+        ),
     )
     repo.add_capability(
         Capability(
@@ -1131,7 +1170,9 @@ async def test_workflow_service_exposes_detail_timeline_with_failure_and_compens
 
     workflow = await workflow_service.create_workflow(
         name="invoice_flow",
-        steps=[{"capability_name": "invoice.send", "arguments": {"invoice_id": "inv_123"}}],
+        steps=[
+            {"capability_name": "invoice.send", "arguments": {"invoice_id": "inv_123"}}
+        ],
     )
 
     result = await workflow_service.execute_step(workflow.id)
@@ -1150,7 +1191,9 @@ async def test_workflow_service_exposes_detail_timeline_with_failure_and_compens
     assert "workflow_step_started" in event_types
     assert "workflow_step_failed" in event_types
     failed_event = next(
-        event for event in detail["timeline"] if event["event_type"] == "workflow_step_failed"
+        event
+        for event in detail["timeline"]
+        if event["event_type"] == "workflow_step_failed"
     )
     assert failed_event["compensation"]["rollback_capability"] == "invoice.cancel"
     assert failed_event["summary"] == "Step failed: provider offline"
@@ -1308,6 +1351,7 @@ async def test_sqlite_runtime_store_persists_all_runtime_records(tmp_path) -> No
 # ---------------------------------------------------------------------------
 # Memory persistence via SessionService
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_session_service_saves_and_restores_memory_snapshot() -> None:

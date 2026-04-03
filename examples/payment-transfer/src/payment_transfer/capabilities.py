@@ -79,11 +79,15 @@ class ApprovalSimulator:
             created_at=datetime.now().isoformat(),
         )
         self.approval_requests[request.id] = request
-        self.log_audit("approval_requested", requester, {
-            "request_id": request.id,
-            "capability": capability,
-            "amount": amount,
-        })
+        self.log_audit(
+            "approval_requested",
+            requester,
+            {
+                "request_id": request.id,
+                "capability": capability,
+                "amount": amount,
+            },
+        )
         return request
 
     def get_approval_request(self, request_id: str) -> ApprovalRequest | None:
@@ -91,7 +95,8 @@ class ApprovalSimulator:
 
     def list_pending_requests(self) -> list[ApprovalRequest]:
         return [
-            req for req in self.approval_requests.values()
+            req
+            for req in self.approval_requests.values()
             if req.status == ApprovalStatus.PENDING
         ]
 
@@ -112,10 +117,14 @@ class ApprovalSimulator:
         request.reason = reason
         request.resolved_at = datetime.now().isoformat()
 
-        self.log_audit("approval_approved", approver, {
-            "request_id": request_id,
-            "reason": reason,
-        })
+        self.log_audit(
+            "approval_approved",
+            approver,
+            {
+                "request_id": request_id,
+                "reason": reason,
+            },
+        )
         return request
 
     def reject_request(
@@ -135,10 +144,14 @@ class ApprovalSimulator:
         request.reason = reason
         request.resolved_at = datetime.now().isoformat()
 
-        self.log_audit("approval_rejected", approver, {
-            "request_id": request_id,
-            "reason": reason,
-        })
+        self.log_audit(
+            "approval_rejected",
+            approver,
+            {
+                "request_id": request_id,
+                "reason": reason,
+            },
+        )
         return request
 
     def get_audit_trail(self, user: str | None = None) -> list[AuditEntry]:
@@ -273,7 +286,10 @@ def create_payment_capabilities() -> list[Capability]:
             ),
             continuation=ContinuationSpec(
                 can_continue=True,
-                next_capabilities=["payments.get_transactions", "payments.approve_request"],
+                next_capabilities=[
+                    "payments.get_transactions",
+                    "payments.approve_request",
+                ],
                 next_hint="View transaction history or approve pending requests",
             ),
         ),
@@ -382,7 +398,10 @@ def create_payment_capabilities() -> list[Capability]:
             ),
             continuation=ContinuationSpec(
                 can_continue=True,
-                next_capabilities=["payments.approve_request", "payments.reject_request"],
+                next_capabilities=[
+                    "payments.approve_request",
+                    "payments.reject_request",
+                ],
                 next_hint="Approve or reject pending requests",
             ),
         ),

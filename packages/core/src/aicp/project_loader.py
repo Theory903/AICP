@@ -126,9 +126,7 @@ def load_project(project_root: str | Path | None = None) -> LoadedProject:
     warnings: list[str] = []
 
     if not cap_dirs:
-        warnings.append(
-            f"No capability directory found under '{config.capabilities_dir}'."
-        )
+        warnings.append(f"No capability directory found under '{config.capabilities_dir}'.")
 
     for yaml_file in _iter_capability_files(cap_dirs):
         rel_path = _safe_relative_path(yaml_file, root)
@@ -147,11 +145,7 @@ def load_project(project_root: str | Path | None = None) -> LoadedProject:
                 warnings.append(
                     "Duplicate capability name ignored: "
                     f"{capability.name} from {rel_path}"
-                    + (
-                        f" (already loaded from {previous_source})"
-                        if previous_source
-                        else ""
-                    )
+                    + (f" (already loaded from {previous_source})" if previous_source else "")
                 )
                 continue
 
@@ -159,11 +153,7 @@ def load_project(project_root: str | Path | None = None) -> LoadedProject:
             source_capability = cast(Any, capability)
             source_capability._source_file = str(rel_path)
 
-            if (
-                capability.provider is not None
-                and not capability.provider.url
-                and config.provider_url
-            ):
+            if capability.provider is not None and not capability.provider.url and config.provider_url:
                 capability.provider.url = config.provider_url
 
             handler = _handler_for_capability(capability, mock_handler, config)
@@ -175,8 +165,7 @@ def load_project(project_root: str | Path | None = None) -> LoadedProject:
 
     if not loaded_caps:
         warnings.append(
-            "No capabilities found in the project. "
-            "Check your aicp.yaml 'capabilities_dir' and exported YAML files."
+            "No capabilities found in the project. Check your aicp.yaml 'capabilities_dir' and exported YAML files."
         )
 
     capabilities = sorted(loaded_caps.values(), key=lambda cap: cap.name)

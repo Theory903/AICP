@@ -138,7 +138,9 @@ class AicpLangGraphAdapter:
         context = self._context
 
         async def _tool_node(state: dict[str, Any]) -> dict[str, Any]:
-            capability_name: str = state["capability_name"]  # raises KeyError if missing
+            capability_name: str = state[
+                "capability_name"
+            ]  # raises KeyError if missing
             if capability_name not in known_names:
                 raise ValueError(
                     f"Unknown capability '{capability_name}'. "

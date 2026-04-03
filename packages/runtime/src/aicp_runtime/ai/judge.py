@@ -163,17 +163,22 @@ class AICJudge:
 
         # Determine verdict
         critical = any(
-            kw in " ".join(issues)
-            for kw in ("Circular", "Duplicate", "no steps")
+            kw in " ".join(issues) for kw in ("Circular", "Duplicate", "no steps")
         )
 
         if critical or score < 0.5:
             verdict = JudgeVerdict.REJECTED
         elif issues:
-            verdict = JudgeVerdict.NEEDS_REVISION if score < 0.8 else JudgeVerdict.PARTIAL
+            verdict = (
+                JudgeVerdict.NEEDS_REVISION if score < 0.8 else JudgeVerdict.PARTIAL
+            )
         else:
             verdict = JudgeVerdict.APPROVED
 
-        rationale = "Plan is coherent and ready for execution." if not issues else " ".join(issues)
+        rationale = (
+            "Plan is coherent and ready for execution."
+            if not issues
+            else " ".join(issues)
+        )
 
         return JudgeResult(verdict=verdict, score=round(score, 4), rationale=rationale)

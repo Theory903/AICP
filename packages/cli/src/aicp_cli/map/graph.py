@@ -110,7 +110,9 @@ class CodebaseGraph:
         """Get a node by ID."""
         return self.nodes.get(node_id)
 
-    def get_outgoing(self, node_id: str, edge_type: EdgeType | None = None) -> list[Node]:
+    def get_outgoing(
+        self, node_id: str, edge_type: EdgeType | None = None
+    ) -> list[Node]:
         """Get nodes connected from a node."""
         result = []
         for edge in self.edges:
@@ -121,7 +123,9 @@ class CodebaseGraph:
                         result.append(target)
         return result
 
-    def get_incoming(self, node_id: str, edge_type: EdgeType | None = None) -> list[Node]:
+    def get_incoming(
+        self, node_id: str, edge_type: EdgeType | None = None
+    ) -> list[Node]:
         """Get nodes connecting to a node."""
         result = []
         for edge in self.edges:

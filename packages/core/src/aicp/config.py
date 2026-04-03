@@ -108,9 +108,7 @@ class RuntimeConfig(BaseModel):
     @model_validator(mode="after")
     def validate_store_path(self) -> RuntimeConfig:
         if self.store_backend in {"file", "sqlite"} and not self.store_path:
-            raise ValueError(
-                f"store_path is required when store_backend='{self.store_backend}'"
-            )
+            raise ValueError(f"store_path is required when store_backend='{self.store_backend}'")
         return self
 
 
@@ -176,10 +174,7 @@ class AuthConfig(BaseModel):
                 missing.append("token_url")
             if missing:
                 joined = ", ".join(missing)
-                raise ValueError(
-                    "Missing required auth fields for oauth2_client_credentials: "
-                    f"{joined}"
-                )
+                raise ValueError(f"Missing required auth fields for oauth2_client_credentials: {joined}")
 
         return self
 
@@ -340,9 +335,7 @@ def _parse_config(path: Path) -> AicpProjectConfig:
     try:
         import yaml
     except ImportError as exc:
-        raise ImportError(
-            "PyYAML is required for config loading. Install with: pip install pyyaml"
-        ) from exc
+        raise ImportError("PyYAML is required for config loading. Install with: pip install pyyaml") from exc
 
     try:
         with path.open("r", encoding="utf-8") as f:
@@ -387,9 +380,7 @@ def save_project_config(
     try:
         import yaml
     except ImportError as exc:
-        raise ImportError(
-            "PyYAML is required for config saving. Install with: pip install pyyaml"
-        ) from exc
+        raise ImportError("PyYAML is required for config saving. Install with: pip install pyyaml") from exc
 
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

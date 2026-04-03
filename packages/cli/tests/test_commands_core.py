@@ -16,7 +16,9 @@ from aicp_cli.commands.execute import cmd_execute
 async def test_cmd_discover_prints_registry_discovery(capsys) -> None:
     registry = AicpRegistry()
     registry.register_capability(
-        Capability(name="users.list", description="List users", kind=CapabilityKind.QUERY)
+        Capability(
+            name="users.list", description="List users", kind=CapabilityKind.QUERY
+        )
     )
     args = argparse.Namespace()
 
@@ -31,10 +33,14 @@ async def test_cmd_discover_prints_registry_discovery(capsys) -> None:
 async def test_cmd_execute_runs_capability_and_prints_result(capsys) -> None:
     repo = InMemoryCapabilityRepository()
     repo.add_capability(
-        Capability(name="payments.transfer", description="Transfer", kind=CapabilityKind.ACTION)
+        Capability(
+            name="payments.transfer", description="Transfer", kind=CapabilityKind.ACTION
+        )
     )
     executor = AicpExecutor(repo)
-    args = argparse.Namespace(capability="payments.transfer", args='{"amount": 10}', context='{}')
+    args = argparse.Namespace(
+        capability="payments.transfer", args='{"amount": 10}', context="{}"
+    )
 
     exit_code = await cmd_execute(AicpRegistry(), executor, args)
     payload = json.loads(capsys.readouterr().out)

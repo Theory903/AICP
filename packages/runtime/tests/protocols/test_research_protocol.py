@@ -62,7 +62,10 @@ class TestResearchAction:
         action = ResearchAction(
             operation=ResearchOperationType.EXTRACT,
             source="document text",
-            extract_schema={"type": "object", "properties": {"name": {"type": "string"}}},
+            extract_schema={
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+            },
         )
         assert action.extract_schema is not None
 

@@ -248,7 +248,9 @@ class TestMemoryStore:
 
         schema_path = (
             Path(__file__).parent.parent.parent.parent.parent
-            / "spec" / "schemas" / "session.schema.json"
+            / "spec"
+            / "schemas"
+            / "session.schema.json"
         )
         with open(schema_path) as f:
             full_schema = json.load(f)
@@ -311,12 +313,14 @@ class TestMetaMemoryTokenBudget:
 
     def test_consume_tokens_raises_when_exhausted(self):
         from aicp_runtime.memory.store import TokenBudgetExhaustedError
+
         mm = MetaMemory(token_budget_remaining=50)
         with pytest.raises(TokenBudgetExhaustedError):
             mm.consume_tokens(100)
 
     def test_token_budget_does_not_go_negative(self):
         from aicp_runtime.memory.store import TokenBudgetExhaustedError
+
         mm = MetaMemory(token_budget_remaining=10)
         with pytest.raises(TokenBudgetExhaustedError):
             mm.consume_tokens(20)

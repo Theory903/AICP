@@ -33,7 +33,13 @@ class FakeProvider:
         self._results = list(results or [])
         self.calls: list[tuple[str, dict]] = []
 
-    async def execute(self, capability_name: str, arguments: dict, context: dict | None = None, **kwargs):
+    async def execute(
+        self,
+        capability_name: str,
+        arguments: dict,
+        context: dict | None = None,
+        **kwargs,
+    ):
         self.calls.append((capability_name, arguments))
         idx = len(self.calls) - 1
         if idx < len(self._results):
@@ -72,9 +78,21 @@ class TestL3Parallel:
                     "metadata": {
                         "type": "parallel",
                         "parallel_steps": [
-                            {"id": "task_a", "capability_name": "task.a", "arguments": {}},
-                            {"id": "task_b", "capability_name": "task.b", "arguments": {}},
-                            {"id": "task_c", "capability_name": "task.c", "arguments": {}},
+                            {
+                                "id": "task_a",
+                                "capability_name": "task.a",
+                                "arguments": {},
+                            },
+                            {
+                                "id": "task_b",
+                                "capability_name": "task.b",
+                                "arguments": {},
+                            },
+                            {
+                                "id": "task_c",
+                                "capability_name": "task.c",
+                                "arguments": {},
+                            },
                         ],
                         "failure_policy": "wait_all",
                     },
@@ -108,8 +126,16 @@ class TestL3Parallel:
                     "metadata": {
                         "type": "parallel",
                         "parallel_steps": [
-                            {"id": "will_fail", "capability_name": "will.fail", "arguments": {}},
-                            {"id": "wont_run", "capability_name": "wont.run", "arguments": {}},
+                            {
+                                "id": "will_fail",
+                                "capability_name": "will.fail",
+                                "arguments": {},
+                            },
+                            {
+                                "id": "wont_run",
+                                "capability_name": "wont.run",
+                                "arguments": {},
+                            },
                         ],
                         "failure_policy": "fail_fast",
                     },
@@ -132,7 +158,11 @@ class TestL3Parallel:
                     "metadata": {
                         "type": "parallel",
                         "parallel_steps": [
-                            {"id": "step_xa", "capability_name": "x.a", "arguments": {}},
+                            {
+                                "id": "step_xa",
+                                "capability_name": "x.a",
+                                "arguments": {},
+                            },
                         ],
                     },
                 },

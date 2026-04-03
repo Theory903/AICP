@@ -60,7 +60,9 @@ async def run_event_flow(
     provider = FoodOrderProvider()
 
     # --- Step 1: Build cart ---
-    await provider.execute("food.add_to_cart", {"item_id": item_id, "quantity": quantity})
+    await provider.execute(
+        "food.add_to_cart", {"item_id": item_id, "quantity": quantity}
+    )
 
     # --- Step 2: Checkout ---
     checkout_result = await provider.execute(

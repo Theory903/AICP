@@ -30,28 +30,49 @@ class IntentDetector:
         """Load built-in intent patterns."""
         return {
             "run": [
-                {"pattern": r"^(run|execute|go|start)\s+(.+)", "transform": r"aicp run \2"},
+                {
+                    "pattern": r"^(run|execute|go|start)\s+(.+)",
+                    "transform": r"aicp run \2",
+                },
                 {"pattern": r"^(do|make|create)\s+(.+)", "transform": r"aicp run \2"},
                 {"pattern": r"^!(\S+)", "transform": r"aicp run \1"},
             ],
             "approve": [
-                {"pattern": r"^(ok|yes|yep|approve|grant|allow)", "transform": "aicp appr ok"},
+                {
+                    "pattern": r"^(ok|yes|yep|approve|grant|allow)",
+                    "transform": "aicp appr ok",
+                },
                 {"pattern": r"^y(es)?$", "transform": "aicp appr ok"},
             ],
             "reject": [
-                {"pattern": r"^(no|nope|deny|reject|disallow)", "transform": "aicp appr no"},
+                {
+                    "pattern": r"^(no|nope|deny|reject|disallow)",
+                    "transform": "aicp appr no",
+                },
                 {"pattern": r"^n(o)?$", "transform": "aicp appr no"},
             ],
             "list": [
-                {"pattern": r"^(ls|list|show|what|what's available)", "transform": "aicp ls"},
-                {"pattern": r"^(what can|what do|capabilities)", "transform": "aicp ls"},
+                {
+                    "pattern": r"^(ls|list|show|what|what's available)",
+                    "transform": "aicp ls",
+                },
+                {
+                    "pattern": r"^(what can|what do|capabilities)",
+                    "transform": "aicp ls",
+                },
             ],
             "search": [
-                {"pattern": r"^(search|find|look|grep)\s+(.+)", "transform": r"aicp scan --query \2"},
+                {
+                    "pattern": r"^(search|find|look|grep)\s+(.+)",
+                    "transform": r"aicp scan --query \2",
+                },
                 {"pattern": r"^\?(.+)", "transform": r"aicp scan --query \1"},
             ],
             "preview": [
-                {"pattern": r"^(preview|inspect|show|view)\s+(.+)", "transform": r"aicp preview \2"},
+                {
+                    "pattern": r"^(preview|inspect|show|view)\s+(.+)",
+                    "transform": r"aicp preview \2",
+                },
                 {"pattern": r"^::(.+)", "transform": r"aicp preview \1"},
             ],
             "dev": [
@@ -68,10 +89,12 @@ class IntentDetector:
             ],
         }
 
-    def detect(self, input_str: str, context: dict[str, Any] | None = None) -> IntentResult:
+    def detect(
+        self, input_str: str, context: dict[str, Any] | None = None
+    ) -> IntentResult:
         """Detect intent from user input."""
         input_str = input_str.strip().lower()
-        
+
         # Try built-in patterns first
         for intent_name, patterns in self._built_in_intents.items():
             for pattern in patterns:
@@ -89,7 +112,7 @@ class IntentDetector:
                         transformation=transformation,
                         matched_pattern=pattern["pattern"],
                     )
-        
+
         # Try registered patterns
         for pattern_def in self._patterns:
             match = re.match(pattern_def["pattern"], input_str, re.IGNORECASE)
@@ -106,23 +129,36 @@ class IntentDetector:
                     transformation=transformation,
                     matched_pattern=pattern_def["pattern"],
                 )
-        
+
         # Fuzzy match against known commands
         known_commands = [
-            "run", "dev", "scan", "preview", "ls", "list",
-            "appr", "approve", "test", "bootstrap", "import",
-            "init", "doctor", "serve", "history", "protect",
+            "run",
+            "dev",
+            "scan",
+            "preview",
+            "ls",
+            "list",
+            "appr",
+            "approve",
+            "test",
+            "bootstrap",
+            "import",
+            "init",
+            "doctor",
+            "serve",
+            "history",
+            "protect",
         ]
-        
+
         best_match = None
         best_ratio = 0.0
-        
+
         for cmd in known_commands:
             ratio = difflib.SequenceMatcher(None, input_str, cmd).ratio()
             if ratio > best_ratio and ratio >= self.threshold:
                 best_match = cmd
                 best_ratio = ratio
-        
+
         if best_match:
             # Check if input might be the command itself
             if input_str == best_match:
@@ -138,7 +174,7 @@ class IntentDetector:
                     confidence=best_ratio,
                     transformation=f"aicp {input_str}",
                 )
-        
+
         # No intent detected - return as-is
         return IntentResult(
             intent=None,
@@ -153,8 +189,10 @@ class IntentDetector:
         transformation: str,
     ) -> None:
         """Register a custom intent pattern."""
-        self._patterns.append({
-            "pattern": pattern,
-            "intent": intent,
-            "transformation": transformation,
-        })
+        self._patterns.append(
+            {
+                "pattern": pattern,
+                "intent": intent,
+                "transformation": transformation,
+            }
+        )

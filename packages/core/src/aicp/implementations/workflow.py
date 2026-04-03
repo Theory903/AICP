@@ -443,9 +443,7 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         sub_steps: list[dict[str, Any]] = step.metadata.get("parallel_steps", [])
         # Support both DSL key (parallel_failure_policy) and direct key (failure_policy)
         failure_policy: str = (
-            step.metadata.get("failure_policy")
-            or step.metadata.get("parallel_failure_policy")
-            or "fail_fast"
+            step.metadata.get("failure_policy") or step.metadata.get("parallel_failure_policy") or "fail_fast"
         )
 
         try:

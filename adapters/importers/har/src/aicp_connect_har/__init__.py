@@ -4,7 +4,13 @@ import json
 from typing import Any
 from urllib.parse import urlparse
 
-from aicp.capability import Capability, CapabilityKind, InputSchema, OutputSchema, ProviderInfo
+from aicp.capability import (
+    Capability,
+    CapabilityKind,
+    InputSchema,
+    OutputSchema,
+    ProviderInfo,
+)
 
 
 class HarImporter:
@@ -29,7 +35,9 @@ class HarImporter:
                 by_name[capability.name] = capability
             else:
                 existing = by_name[capability.name]
-                existing.input_schema.properties.update(capability.input_schema.properties)
+                existing.input_schema.properties.update(
+                    capability.input_schema.properties
+                )
 
         self._cached_capabilities = list(by_name.values())
         return self._cached_capabilities
@@ -48,7 +56,9 @@ class HarImporter:
         else:
             resource = path_parts[0]
             if method == "GET":
-                suffix = "get" if len(path_parts) > 1 and path_parts[1].isdigit() else "list"
+                suffix = (
+                    "get" if len(path_parts) > 1 and path_parts[1].isdigit() else "list"
+                )
             else:
                 suffix = path_parts[-1] if len(path_parts) > 1 else method.lower()
             name = f"{resource}.{suffix}"
@@ -71,7 +81,8 @@ class HarImporter:
                 properties["body"] = {
                     "type": "object",
                     "properties": {
-                        key: {"type": self._json_type(value)} for key, value in parsed_body.items()
+                        key: {"type": self._json_type(value)}
+                        for key, value in parsed_body.items()
                     },
                 }
             else:
@@ -85,7 +96,9 @@ class HarImporter:
             name=name,
             description=f"Imported from HAR: {method} {parsed.path}",
             kind=kind,
-            input_schema=InputSchema(type="object", properties=properties, required=required),
+            input_schema=InputSchema(
+                type="object", properties=properties, required=required
+            ),
             output_schema=OutputSchema(type="object", properties={}),
             tags=sorted(set(tags)),
             provider=ProviderInfo(name=self._name, type="har"),

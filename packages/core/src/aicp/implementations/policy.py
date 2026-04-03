@@ -140,8 +140,7 @@ class DefaultPolicyEngine(PolicyEngine):
                 return PolicyDecision(
                     effect=PolicyEffect.DENY,
                     reason=(
-                        f"Policy '{policy.name}' denied execution: "
-                        f"amount {amount} exceeds limit {condition.max_amount}"
+                        f"Policy '{policy.name}' denied execution: amount {amount} exceeds limit {condition.max_amount}"
                     ),
                     policy_name=policy.name,
                     metadata={

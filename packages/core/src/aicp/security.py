@@ -208,8 +208,7 @@ class ApiKeyRotator:
         """
         now = time.time()
         active_keys = [
-            key for key in self._keys.values()
-            if key.is_active and (key.expires_at is None or key.expires_at >= now)
+            key for key in self._keys.values() if key.is_active and (key.expires_at is None or key.expires_at >= now)
         ]
 
         if not active_keys:
@@ -316,11 +315,7 @@ class SecureAuditLog:
 
         for index, entry in enumerate(self._entries):
             signature = entry.get("signature")
-            unsigned_entry = {
-                key: value
-                for key, value in entry.items()
-                if key not in {"signature", "signed_at"}
-            }
+            unsigned_entry = {key: value for key, value in entry.items() if key not in {"signature", "signed_at"}}
 
             if not self._signer.verify(unsigned_entry, signature or ""):
                 invalid.append(index)

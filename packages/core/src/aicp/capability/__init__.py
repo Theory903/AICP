@@ -341,9 +341,7 @@ class Capability(BaseModel):
         provider_type = raw.pop("provider_type", None)
         provider_url = raw.pop("provider_url", None)
 
-        if provider is None and any(
-            value is not None for value in (provider_name, provider_type, provider_url)
-        ):
+        if provider is None and any(value is not None for value in (provider_name, provider_type, provider_url)):
             raw["provider"] = {
                 "name": provider_name,
                 "type": provider_type,
@@ -373,9 +371,7 @@ class Capability(BaseModel):
             allowed = {"strict", "warn", "disabled"}
             normalized_mode = self.output_validation_mode.strip().lower()
             if normalized_mode not in allowed:
-                raise ValueError(
-                    "output_validation_mode must be one of: strict, warn, disabled"
-                )
+                raise ValueError("output_validation_mode must be one of: strict, warn, disabled")
             self.output_validation_mode = normalized_mode
 
         return self

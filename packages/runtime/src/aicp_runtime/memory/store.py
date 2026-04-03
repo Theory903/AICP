@@ -227,9 +227,7 @@ class MetaMemory:
                 go below zero (budget remains unchanged on failure).
         """
         if tokens < 0:
-            raise ValueError(
-                f"tokens to consume must be non-negative, got: {tokens}"
-            )
+            raise ValueError(f"tokens to consume must be non-negative, got: {tokens}")
         if tokens > self.token_budget_remaining:
             raise TokenBudgetExhaustedError(
                 f"Token budget exhausted: requested {tokens}, "

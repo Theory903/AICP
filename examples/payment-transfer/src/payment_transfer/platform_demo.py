@@ -83,8 +83,13 @@ async def run_platform_demo(store_path: str | Path, amount: float = 2000.0) -> d
     return {
         "workflow": final_workflow.model_dump(mode="json") if final_workflow else None,
         "approval": approval,
-        "approval_requests": [a.model_dump(mode="json") if hasattr(a, 'model_dump') else a for a in approvals],
-        "execution_result": resumed_result.model_dump(mode="json") if resumed_result else None,
+        "approval_requests": [
+            a.model_dump(mode="json") if hasattr(a, "model_dump") else a
+            for a in approvals
+        ],
+        "execution_result": resumed_result.model_dump(mode="json")
+        if resumed_result
+        else None,
         "history": history,
     }
 

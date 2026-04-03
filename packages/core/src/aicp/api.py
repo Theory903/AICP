@@ -92,7 +92,7 @@ class VersionManager:
             return {
                 "Deprecation": f'="{config.sunset_date}"',
                 "Sunset": config.sunset_date,
-                "Link": f"<{successor.path_prefix}>; rel=\"successor-version\"",
+                "Link": f'<{successor.path_prefix}>; rel="successor-version"',
             }
 
         return {}
@@ -304,9 +304,7 @@ class HealthCheckRouter:
 
         @router.get("/health/ready")
         async def readiness() -> JSONResponse:
-            envelope = await self._run_checks(
-                self._iter_checks(categories={"readiness", "dependency"})
-            )
+            envelope = await self._run_checks(self._iter_checks(categories={"readiness", "dependency"}))
             return self._response(envelope, degraded_ok=False)
 
         return router

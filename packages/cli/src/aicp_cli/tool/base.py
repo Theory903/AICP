@@ -41,11 +41,11 @@ class AicpTool(ABC):
     ) -> tuple[bool, str | None]:
         """
         Check if tool is permitted based on user permissions.
-        
+
         Args:
             user_permissions: List of permission patterns (supports wildcards)
             mode: Permission mode - 'default', 'plan', 'bypassPermissions', 'auto'
-        
+
         Returns:
             Tuple of (is_permitted, reason_if_not)
         """
@@ -94,10 +94,10 @@ class AicpTool(ABC):
     def explain(self, format: str = "text") -> str | dict[str, Any]:
         """
         Explain what this tool does in human-readable format.
-        
+
         Args:
             format: Output format - 'text', 'json', or 'markdown'
-        
+
         Returns:
             Explanation in requested format
         """

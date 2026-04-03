@@ -74,11 +74,7 @@ class EnvSecretStore(SecretStore):
 
     async def list_keys(self, prefix: str = "") -> list[str]:
         full_prefix = self._full_key(prefix) if prefix else self.prefix
-        keys = [
-            env_key[len(self.prefix):]
-            for env_key in os.environ
-            if env_key.startswith(full_prefix)
-        ]
+        keys = [env_key[len(self.prefix) :] for env_key in os.environ if env_key.startswith(full_prefix)]
         return sorted(keys)
 
 

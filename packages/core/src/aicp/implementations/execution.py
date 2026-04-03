@@ -125,12 +125,8 @@ class DefaultMockExecutionHandler:
         capability_name = safe_context.get("capability_name", "unknown")
         kind = safe_context.get("kind", "action")
         force_error = bool(safe_context.get("mock_error") or safe_arguments.get("__mock_error"))
-        force_timeout = bool(
-            safe_context.get("mock_timeout") or safe_arguments.get("__mock_timeout")
-        )
-        force_unavailable = bool(
-            safe_context.get("mock_unavailable") or safe_arguments.get("__mock_unavailable")
-        )
+        force_timeout = bool(safe_context.get("mock_timeout") or safe_arguments.get("__mock_timeout"))
+        force_unavailable = bool(safe_context.get("mock_unavailable") or safe_arguments.get("__mock_unavailable"))
 
         if force_timeout:
             return ExecutionResult.failure(
@@ -351,8 +347,7 @@ class HttpCapabilityHandler:
 
             if body is not None and (form_data or file_parts):
                 raise ExecutionError(
-                    "Capabilities cannot mix x-location='body' with "
-                    "multipart form fields or files.",
+                    "Capabilities cannot mix x-location='body' with multipart form fields or files.",
                     error_code="invalid_arguments",
                 )
 
@@ -365,9 +360,7 @@ class HttpCapabilityHandler:
             await self._auth_injector.apply(headers, query_params)
             self._apply_session_state(context, headers, cookies)
             if cookies and "Cookie" not in headers:
-                headers["Cookie"] = "; ".join(
-                    f"{name}={value}" for name, value in cookies.items()
-                )
+                headers["Cookie"] = "; ".join(f"{name}={value}" for name, value in cookies.items())
 
             try:
                 response = await _shared_http_client().request(
@@ -535,9 +528,7 @@ class HttpCapabilityHandler:
                 error_code="missing_session",
             )
 
-        if getattr(auth_requirement, "csrf_required", False) and not (
-            raw_session.get("csrf_tokens") or {}
-        ):
+        if getattr(auth_requirement, "csrf_required", False) and not (raw_session.get("csrf_tokens") or {}):
             raise ExecutionError(
                 "Capability requires a CSRF token in the attached session.",
                 error_code="needs_reauthentication",
@@ -739,8 +730,7 @@ class HttpCapabilityHandler:
             content = inline_content if isinstance(inline_content, bytes) else str(inline_content).encode("utf-8")
         else:
             raise ExecutionError(
-                f"File descriptor for '{field_name}' must include 'path', "
-                "'content', or 'content_base64'.",
+                f"File descriptor for '{field_name}' must include 'path', 'content', or 'content_base64'.",
                 error_code="invalid_arguments",
             )
 
@@ -782,11 +772,7 @@ class HttpCapabilityHandler:
             "attachment" in disposition.lower()
             or lowered_type.startswith("application/octet-stream")
             or self._output_expects_binary()
-            or (
-                lowered_type.startswith("application/")
-                and "json" not in lowered_type
-                and "xml" not in lowered_type
-            )
+            or (lowered_type.startswith("application/") and "json" not in lowered_type and "xml" not in lowered_type)
         )
 
     def _output_expects_binary(self) -> bool:
@@ -907,34 +893,22 @@ class HttpCapabilityHandler:
 
             if self._looks_like_phone_field(field_name, message):
                 repaired_value = self._repair_phone_value(input_value)
-                changed = (
-                    self._assign_repaired_value(repaired, loc, field_name, repaired_value)
-                    or changed
-                )
+                changed = self._assign_repaired_value(repaired, loc, field_name, repaired_value) or changed
                 continue
 
             if self._looks_like_string_trim_error(input_value, message):
                 repaired_value = self._repair_trimmed_string(input_value)
-                changed = (
-                    self._assign_repaired_value(repaired, loc, field_name, repaired_value)
-                    or changed
-                )
+                changed = self._assign_repaired_value(repaired, loc, field_name, repaired_value) or changed
                 continue
 
             if self._looks_like_date_field(field_name, message):
                 repaired_value = self._repair_date_value(input_value)
-                changed = (
-                    self._assign_repaired_value(repaired, loc, field_name, repaired_value)
-                    or changed
-                )
+                changed = self._assign_repaired_value(repaired, loc, field_name, repaired_value) or changed
                 continue
 
             if self._looks_like_boolean_field(field_name, message):
                 repaired_value = self._repair_boolean_value(input_value)
-                changed = (
-                    self._assign_repaired_value(repaired, loc, field_name, repaired_value)
-                    or changed
-                )
+                changed = self._assign_repaired_value(repaired, loc, field_name, repaired_value) or changed
 
         return repaired if changed else None
 
@@ -1006,11 +980,7 @@ class HttpCapabilityHandler:
         return "phone" in lowered_name or "phone number" in lowered_message
 
     def _looks_like_string_trim_error(self, value: Any, message: str) -> bool:
-        return (
-            isinstance(value, str)
-            and value != value.strip()
-            and "must not be empty" not in message.lower()
-        )
+        return isinstance(value, str) and value != value.strip() and "must not be empty" not in message.lower()
 
     def _looks_like_date_field(self, field_name: str, message: str) -> bool:
         lowered_name = field_name.lower()
@@ -1020,11 +990,7 @@ class HttpCapabilityHandler:
     def _looks_like_boolean_field(self, field_name: str, message: str) -> bool:
         lowered_name = field_name.lower()
         lowered_message = message.lower()
-        return (
-            lowered_name.startswith("is_")
-            or lowered_name == "gender"
-            or "boolean" in lowered_message
-        )
+        return lowered_name.startswith("is_") or lowered_name == "gender" or "boolean" in lowered_message
 
     def _repair_phone_value(self, value: Any) -> str | None:
         digits = re.sub(r"\D", "", str(value or ""))

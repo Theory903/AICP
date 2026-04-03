@@ -239,7 +239,9 @@ class TestEventFiltering:
         async def pub():
             await asyncio.sleep(0)
             # Wrong id first
-            await w.publish_event("order.updated", {"order_id": "ord_1", "status": "confirmed"})
+            await w.publish_event(
+                "order.updated", {"order_id": "ord_1", "status": "confirmed"}
+            )
             await asyncio.sleep(0)
             # Correct id second
             await w.publish_event("order.updated", correct_payload)

@@ -148,9 +148,7 @@ class OAuth2Auth(Auth):
 
     def apply(self, headers: dict[str, str], params: dict[str, Any]) -> None:
         if not self._cached_token:
-            raise TokenFetchError(
-                "OAuth2 token is not available. Call 'await ensure_ready()' before apply()."
-            )
+            raise TokenFetchError("OAuth2 token is not available. Call 'await ensure_ready()' before apply().")
         headers["Authorization"] = f"Bearer {self._cached_token}"
 
     async def ensure_ready(self) -> None:
@@ -194,16 +192,11 @@ class OAuth2Auth(Auth):
                 response = await client.post(self.token_url, data=data)
                 text = response.text
                 if response.status_code != 200:
-                    raise TokenFetchError(
-                        "OAuth2 token request failed: "
-                        f"status={response.status_code}, body={text}"
-                    )
+                    raise TokenFetchError(f"OAuth2 token request failed: status={response.status_code}, body={text}")
                 try:
                     return response.json()
                 except Exception as exc:
-                    raise TokenFetchError(
-                        f"OAuth2 token response was not valid JSON: {text}"
-                    ) from exc
+                    raise TokenFetchError(f"OAuth2 token response was not valid JSON: {text}") from exc
         except httpx.HTTPError as exc:
             raise TokenFetchError(f"OAuth2 token request failed: {exc}") from exc
 

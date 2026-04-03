@@ -49,7 +49,9 @@ def test_studio_exposes_approvals_and_history_api(tmp_path) -> None:
             }
         )
     )
-    asyncio.run(store.save_workflow(WorkflowState(id="wf-1", name="transfer_flow", steps=[])))
+    asyncio.run(
+        store.save_workflow(WorkflowState(id="wf-1", name="transfer_flow", steps=[]))
+    )
 
     approvals_response = client.get("/api/approvals")
     history_response = client.get("/api/history")
@@ -92,7 +94,10 @@ def test_studio_can_decide_approval_requests(tmp_path) -> None:
     assert decide_response.status_code == 200
     assert decide_response.json()["decision"] == "approved"
     assert approvals_response.json()[0]["status"] == "approved"
-    assert any(entry["event_type"] == "approval_decision_made" for entry in history_response.json())
+    assert any(
+        entry["event_type"] == "approval_decision_made"
+        for entry in history_response.json()
+    )
 
 
 def test_studio_serves_workflow_detail_page_and_api(tmp_path) -> None:
@@ -102,7 +107,9 @@ def test_studio_serves_workflow_detail_page_and_api(tmp_path) -> None:
 
     import asyncio
 
-    asyncio.run(store.save_workflow(WorkflowState(id="wf-42", name="checkout_flow", steps=[])))
+    asyncio.run(
+        store.save_workflow(WorkflowState(id="wf-42", name="checkout_flow", steps=[]))
+    )
     asyncio.run(
         store.append_audit_entry(
             {
@@ -134,7 +141,9 @@ def test_studio_workflow_detail_groups_replay_events(tmp_path) -> None:
 
     import asyncio
 
-    asyncio.run(store.save_workflow(WorkflowState(id="wf-group", name="grouped_flow", steps=[])))
+    asyncio.run(
+        store.save_workflow(WorkflowState(id="wf-group", name="grouped_flow", steps=[]))
+    )
     asyncio.run(
         store.append_audit_entry(
             {

@@ -89,7 +89,9 @@ class CapabilityInferrer:
         cap = CapabilityCandidate(
             name=name,
             description=f"{route.method.upper()} {route.path}",
-            kind="action" if route.method in ["POST", "PUT", "PATCH", "DELETE"] else "query",
+            kind="action"
+            if route.method in ["POST", "PUT", "PATCH", "DELETE"]
+            else "query",
             family=family or "unknown",
             source_route=route.path,
             side_effect_level=self._estimate_side_effect(route),
@@ -102,7 +104,9 @@ class CapabilityInferrer:
         caps.append(cap)
         return caps
 
-    def _infer_from_service(self, service: ExtractedService) -> list[CapabilityCandidate]:
+    def _infer_from_service(
+        self, service: ExtractedService
+    ) -> list[CapabilityCandidate]:
         """Infer capabilities from a service."""
         caps = []
 

@@ -26,6 +26,7 @@ from aicp_runtime.workflow.parallel import (
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
+
 def make_capability_provider(responses: dict[str, Any]) -> MagicMock:
     """Build a minimal CapabilityProvider mock.
 
@@ -47,18 +48,21 @@ def make_capability_provider(responses: dict[str, Any]) -> MagicMock:
 # Happy path
 # ---------------------------------------------------------------------------
 
+
 class TestParallelStepExecutorHappyPath:
     @pytest.mark.asyncio
     async def test_all_steps_succeed_returns_result(self):
         """All sub-steps succeed → overall success, results collected."""
-        provider = make_capability_provider({
-            "notify.email": {"sent": True},
-            "notify.sms": {"sent": True},
-        })
+        provider = make_capability_provider(
+            {
+                "notify.email": {"sent": True},
+                "notify.sms": {"sent": True},
+            }
+        )
         executor = ParallelStepExecutor(provider)
         sub_steps = [
             {"id": "email", "capability_name": "notify.email", "arguments": {}},
-            {"id": "sms",   "capability_name": "notify.sms",   "arguments": {}},
+            {"id": "sms", "capability_name": "notify.sms", "arguments": {}},
         ]
         result = await executor.execute(sub_steps, context={})
 
@@ -69,14 +73,16 @@ class TestParallelStepExecutorHappyPath:
 
     @pytest.mark.asyncio
     async def test_outcomes_indexed_by_step_id(self):
-        provider = make_capability_provider({
-            "notify.email": {"sent": True},
-            "notify.sms": {"delivered": True},
-        })
+        provider = make_capability_provider(
+            {
+                "notify.email": {"sent": True},
+                "notify.sms": {"delivered": True},
+            }
+        )
         executor = ParallelStepExecutor(provider)
         sub_steps = [
             {"id": "email", "capability_name": "notify.email", "arguments": {}},
-            {"id": "sms",   "capability_name": "notify.sms",   "arguments": {}},
+            {"id": "sms", "capability_name": "notify.sms", "arguments": {}},
         ]
         result = await executor.execute(sub_steps, context={})
 
@@ -87,11 +93,15 @@ class TestParallelStepExecutorHappyPath:
 
     @pytest.mark.asyncio
     async def test_outcome_carries_result_data(self):
-        provider = make_capability_provider({
-            "notify.email": {"msg_id": "abc123"},
-        })
+        provider = make_capability_provider(
+            {
+                "notify.email": {"msg_id": "abc123"},
+            }
+        )
         executor = ParallelStepExecutor(provider)
-        sub_steps = [{"id": "email", "capability_name": "notify.email", "arguments": {}}]
+        sub_steps = [
+            {"id": "email", "capability_name": "notify.email", "arguments": {}}
+        ]
         result = await executor.execute(sub_steps, context={})
 
         outcome = result.outcomes["email"]
@@ -157,31 +167,40 @@ class TestParallelStepExecutorHappyPath:
 # Failure modes
 # ---------------------------------------------------------------------------
 
+
 class TestParallelStepExecutorFailureModes:
     @pytest.mark.asyncio
     async def test_fail_fast_stops_on_first_failure(self):
         """With fail_fast (default), overall result is failure if any step fails."""
-        provider = make_capability_provider({
-            "notify.email": RuntimeError("smtp down"),
-            "notify.sms": {"delivered": True},
-        })
+        provider = make_capability_provider(
+            {
+                "notify.email": RuntimeError("smtp down"),
+                "notify.sms": {"delivered": True},
+            }
+        )
         executor = ParallelStepExecutor(provider)
         sub_steps = [
             {"id": "email", "capability_name": "notify.email", "arguments": {}},
-            {"id": "sms",   "capability_name": "notify.sms",   "arguments": {}},
+            {"id": "sms", "capability_name": "notify.sms", "arguments": {}},
         ]
-        result = await executor.execute(sub_steps, context={}, failure_policy="fail_fast")
+        result = await executor.execute(
+            sub_steps, context={}, failure_policy="fail_fast"
+        )
 
         assert result.success is False
         assert result.failed_count >= 1
 
     @pytest.mark.asyncio
     async def test_failed_outcome_carries_error_message(self):
-        provider = make_capability_provider({
-            "notify.email": RuntimeError("smtp down"),
-        })
+        provider = make_capability_provider(
+            {
+                "notify.email": RuntimeError("smtp down"),
+            }
+        )
         executor = ParallelStepExecutor(provider)
-        sub_steps = [{"id": "email", "capability_name": "notify.email", "arguments": {}}]
+        sub_steps = [
+            {"id": "email", "capability_name": "notify.email", "arguments": {}}
+        ]
         result = await executor.execute(sub_steps, context={})
 
         outcome = result.outcomes["email"]
@@ -192,18 +211,22 @@ class TestParallelStepExecutorFailureModes:
     @pytest.mark.asyncio
     async def test_wait_all_collects_all_outcomes(self):
         """With wait_all, all steps run even after a failure."""
-        provider = make_capability_provider({
-            "notify.email": RuntimeError("smtp down"),
-            "notify.sms": {"delivered": True},
-            "notify.push": {"delivered": True},
-        })
+        provider = make_capability_provider(
+            {
+                "notify.email": RuntimeError("smtp down"),
+                "notify.sms": {"delivered": True},
+                "notify.push": {"delivered": True},
+            }
+        )
         executor = ParallelStepExecutor(provider)
         sub_steps = [
             {"id": "email", "capability_name": "notify.email", "arguments": {}},
-            {"id": "sms",   "capability_name": "notify.sms",   "arguments": {}},
-            {"id": "push",  "capability_name": "notify.push",  "arguments": {}},
+            {"id": "sms", "capability_name": "notify.sms", "arguments": {}},
+            {"id": "push", "capability_name": "notify.push", "arguments": {}},
         ]
-        result = await executor.execute(sub_steps, context={}, failure_policy="wait_all")
+        result = await executor.execute(
+            sub_steps, context={}, failure_policy="wait_all"
+        )
 
         assert result.success is False
         assert len(result.outcomes) == 3
@@ -213,32 +236,40 @@ class TestParallelStepExecutorFailureModes:
 
     @pytest.mark.asyncio
     async def test_wait_all_failed_count_is_accurate(self):
-        provider = make_capability_provider({
-            "a": RuntimeError("err1"),
-            "b": RuntimeError("err2"),
-            "c": {"ok": True},
-        })
+        provider = make_capability_provider(
+            {
+                "a": RuntimeError("err1"),
+                "b": RuntimeError("err2"),
+                "c": {"ok": True},
+            }
+        )
         executor = ParallelStepExecutor(provider)
         sub_steps = [
             {"id": "a", "capability_name": "a", "arguments": {}},
             {"id": "b", "capability_name": "b", "arguments": {}},
             {"id": "c", "capability_name": "c", "arguments": {}},
         ]
-        result = await executor.execute(sub_steps, context={}, failure_policy="wait_all")
+        result = await executor.execute(
+            sub_steps, context={}, failure_policy="wait_all"
+        )
         assert result.failed_count == 2
 
     @pytest.mark.asyncio
     async def test_all_fail_with_wait_all(self):
-        provider = make_capability_provider({
-            "a": RuntimeError("err"),
-            "b": RuntimeError("err"),
-        })
+        provider = make_capability_provider(
+            {
+                "a": RuntimeError("err"),
+                "b": RuntimeError("err"),
+            }
+        )
         executor = ParallelStepExecutor(provider)
         sub_steps = [
             {"id": "a", "capability_name": "a", "arguments": {}},
             {"id": "b", "capability_name": "b", "arguments": {}},
         ]
-        result = await executor.execute(sub_steps, context={}, failure_policy="wait_all")
+        result = await executor.execute(
+            sub_steps, context={}, failure_policy="wait_all"
+        )
         assert result.success is False
         assert result.failed_count == 2
 
@@ -246,6 +277,7 @@ class TestParallelStepExecutorFailureModes:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestParallelStepExecutorEdgeCases:
     @pytest.mark.asyncio
@@ -266,13 +298,15 @@ class TestParallelStepExecutorEdgeCases:
 
     @pytest.mark.asyncio
     async def test_result_includes_step_ids(self):
-        provider = make_capability_provider({
-            "x.y": {"r": 1},
-            "x.z": {"r": 2},
-        })
+        provider = make_capability_provider(
+            {
+                "x.y": {"r": 1},
+                "x.z": {"r": 2},
+            }
+        )
         executor = ParallelStepExecutor(provider)
         sub_steps = [
-            {"id": "first",  "capability_name": "x.y", "arguments": {}},
+            {"id": "first", "capability_name": "x.y", "arguments": {}},
             {"id": "second", "capability_name": "x.z", "arguments": {}},
         ]
         result = await executor.execute(sub_steps, context={})
@@ -281,9 +315,11 @@ class TestParallelStepExecutorEdgeCases:
     @pytest.mark.asyncio
     async def test_default_failure_policy_is_fail_fast(self):
         """When failure_policy is not provided, fail_fast behaviour applies."""
-        provider = make_capability_provider({
-            "a": RuntimeError("boom"),
-        })
+        provider = make_capability_provider(
+            {
+                "a": RuntimeError("boom"),
+            }
+        )
         executor = ParallelStepExecutor(provider)
         sub_steps = [{"id": "a", "capability_name": "a", "arguments": {}}]
         result = await executor.execute(sub_steps, context={})

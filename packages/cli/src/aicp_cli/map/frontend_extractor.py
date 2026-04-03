@@ -117,11 +117,13 @@ class FrontendExtractor:
                         continue
 
                     page_path = f"/{prefix}" if prefix else "/"
-                    pages.append({
-                        "path": page_path,
-                        "file": str(item),
-                        "type": self._classify_page(item.stem),
-                    })
+                    pages.append(
+                        {
+                            "path": page_path,
+                            "file": str(item),
+                            "type": self._classify_page(item.stem),
+                        }
+                    )
 
             elif item.is_dir():
                 if item.name == "api":
@@ -149,15 +151,19 @@ class FrontendExtractor:
             elif "[..." in rel.stem:
                 path = "/" + "/".join(parts) + "/*" if parts else "/*"
             elif "[" in rel.stem:
-                path = "/" + "/".join(parts + [rel.stem.split("[")[0]]) if parts else "/"
+                path = (
+                    "/" + "/".join(parts + [rel.stem.split("[")[0]]) if parts else "/"
+                )
             else:
                 path = "/" + "/".join(parts + [rel.stem]) if parts else f"/{rel.stem}"
 
-            pages.append({
-                "path": path,
-                "file": str(item),
-                "type": self._classify_page(rel.stem),
-            })
+            pages.append(
+                {
+                    "path": path,
+                    "file": str(item),
+                    "type": self._classify_page(rel.stem),
+                }
+            )
 
         return pages
 
@@ -196,10 +202,12 @@ class FrontendExtractor:
                 # Simple class/function component detection
                 if "export default" in content or "export const" in content:
                     name = tsx_file.stem
-                    components.append({
-                        "name": name,
-                        "file": str(tsx_file),
-                    })
+                    components.append(
+                        {
+                            "name": name,
+                            "file": str(tsx_file),
+                        }
+                    )
             except Exception:
                 pass
 
@@ -238,11 +246,13 @@ class FrontendExtractor:
                             elif "delete" in pattern.lower():
                                 method = "DELETE"
 
-                            api_calls.append({
-                                "method": method,
-                                "path": url,
-                                "file": str(tsx_file),
-                            })
+                            api_calls.append(
+                                {
+                                    "method": method,
+                                    "path": url,
+                                    "file": str(tsx_file),
+                                }
+                            )
             except Exception:
                 pass
 
@@ -268,10 +278,12 @@ class FrontendExtractor:
 
                 for pattern in patterns:
                     for match in re.finditer(pattern, content):
-                        routes.append({
-                            "path": match.group(1),
-                            "file": str(tsx_file),
-                        })
+                        routes.append(
+                            {
+                                "path": match.group(1),
+                                "file": str(tsx_file),
+                            }
+                        )
             except Exception:
                 pass
 

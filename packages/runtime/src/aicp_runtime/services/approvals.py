@@ -48,7 +48,9 @@ class ApprovalService:
             capability_name, field_name="capability_name"
         )
         requester = self._normalize_requester(requester)
-        message = self._require_text(message or "Approval required", field_name="message")
+        message = self._require_text(
+            message or "Approval required", field_name="message"
+        )
 
         request = {
             "id": f"apr_{uuid.uuid4().hex[:8]}",
@@ -114,10 +116,13 @@ class ApprovalService:
             return None
 
         normalized_args = self._normalize_for_matching(arguments or {})
-        normalized_context = self._normalize_for_matching({
-            k: v for k, v in (context or {}).items()
-            if k in {"tenant_id", "user_id", "session_id"}
-        })
+        normalized_context = self._normalize_for_matching(
+            {
+                k: v
+                for k, v in (context or {}).items()
+                if k in {"tenant_id", "user_id", "session_id"}
+            }
+        )
         intent_key = f"{capability_name}:{normalized_args}:{normalized_context}"
 
         for approval in approvals:
@@ -127,10 +132,13 @@ class ApprovalService:
                     continue
 
                 saved_args = approval.get("arguments") or {}
-                saved_context = self._normalize_for_matching({
-                    k: v for k, v in (approval.get("context") or {}).items()
-                    if k in {"tenant_id", "user_id", "session_id"}
-                })
+                saved_context = self._normalize_for_matching(
+                    {
+                        k: v
+                        for k, v in (approval.get("context") or {}).items()
+                        if k in {"tenant_id", "user_id", "session_id"}
+                    }
+                )
                 saved_intent = f"{capability_name}:{self._normalize_for_matching(saved_args)}:{saved_context}"
                 if saved_intent == intent_key:
                     return deepcopy(approval)
@@ -248,7 +256,9 @@ class ApprovalService:
         execution_id = self._normalize_optional_text(approval.get("execution_id"))
         workflow = await self._store.get_workflow(workflow_id) if workflow_id else None
         execution = (
-            await self._store.get_execution_record(execution_id) if execution_id else None
+            await self._store.get_execution_record(execution_id)
+            if execution_id
+            else None
         )
         raw_context = approval.get("context")
         context: dict[str, Any] = raw_context if isinstance(raw_context, dict) else {}
@@ -266,7 +276,8 @@ class ApprovalService:
             "approval": {
                 "id": str(approval.get("id") or approval_id),
                 "status": str(approval.get("status") or "pending"),
-                "requested_at": approval.get("requested_at") or approval.get("created_at"),
+                "requested_at": approval.get("requested_at")
+                or approval.get("created_at"),
                 "decided_at": approval.get("decided_at"),
                 "message": approval.get("message"),
             },
@@ -282,7 +293,9 @@ class ApprovalService:
                     getattr(getattr(capability, "provider", None), "type", None)
                 ),
                 "arguments": deepcopy(
-                    approval.get("modified_arguments") or approval.get("arguments") or {}
+                    approval.get("modified_arguments")
+                    or approval.get("arguments")
+                    or {}
                 ),
             },
             "requester_context": {
@@ -319,7 +332,9 @@ class ApprovalService:
                 "execution": {
                     "id": execution_id,
                     "status": (execution or {}).get("status") if execution else None,
-                    "created_at": (execution or {}).get("created_at") if execution else None,
+                    "created_at": (execution or {}).get("created_at")
+                    if execution
+                    else None,
                 },
             },
             "policy": {
@@ -393,7 +408,9 @@ class ApprovalService:
 
         if status == "pending":
             if workflow_id:
-                return "Review and decide the approval to unblock workflow continuation."
+                return (
+                    "Review and decide the approval to unblock workflow continuation."
+                )
             if execution_id:
                 return "Review and decide the approval before execution can continue."
             return "Review the request and record an approval decision."
@@ -413,7 +430,9 @@ class ApprovalService:
         context: dict[str, Any],
     ) -> dict[str, Any]:
         """Build a deterministic, operator-friendly impact summary."""
-        arguments = approval.get("modified_arguments") or approval.get("arguments") or {}
+        arguments = (
+            approval.get("modified_arguments") or approval.get("arguments") or {}
+        )
         arguments_dict = arguments if isinstance(arguments, dict) else {}
         rollback_capability = self._normalize_optional_text(
             getattr(capability, "rollback_capability", None)
@@ -462,7 +481,10 @@ class ApprovalService:
         )
         if kind in {"query"}:
             return "low"
-        if str(approval.get("policy_effect") or approval.get("effect") or "ask") == "ask":
+        if (
+            str(approval.get("policy_effect") or approval.get("effect") or "ask")
+            == "ask"
+        ):
             return "medium"
         return "medium"
 
@@ -499,13 +521,18 @@ class ApprovalService:
         context: dict[str, Any],
     ) -> str:
         """Estimate the likely blast radius using deterministic heuristics."""
-        capability_name = self._normalize_optional_text(getattr(capability, "name", None)) or ""
+        capability_name = (
+            self._normalize_optional_text(getattr(capability, "name", None)) or ""
+        )
         lowered_name = capability_name.lower()
         argument_keys = {str(key).strip().lower() for key in arguments}
 
         if getattr(getattr(capability, "kind", None), "value", None) == "query":
             return "read_only"
-        if any(token in lowered_name for token in ("bulk", "batch", "sync", "import", "export")):
+        if any(
+            token in lowered_name
+            for token in ("bulk", "batch", "sync", "import", "export")
+        ):
             return "multi_resource"
         if "tenant_id" in argument_keys or context.get("tenant_id") is not None:
             return "tenant_scope"
@@ -526,13 +553,19 @@ class ApprovalService:
             return None
 
         requires_session = bool(getattr(auth_requirement, "requires_session", False))
-        auth_mode = self._normalize_optional_text(getattr(auth_requirement, "mode", None))
+        auth_mode = self._normalize_optional_text(
+            getattr(auth_requirement, "mode", None)
+        )
         required_session_provider = self._normalize_optional_text(
             getattr(auth_requirement, "required_session_provider", None)
         )
         refreshable = bool(getattr(auth_requirement, "refreshable", False))
 
-        if not requires_session and auth_mode is None and required_session_provider is None:
+        if (
+            not requires_session
+            and auth_mode is None
+            and required_session_provider is None
+        ):
             return None
 
         return {
@@ -540,7 +573,9 @@ class ApprovalService:
             "requires_session": requires_session,
             "required_session_provider": required_session_provider,
             "refreshable": refreshable,
-            "session_present": bool(self._normalize_optional_text(context.get("session_id"))),
+            "session_present": bool(
+                self._normalize_optional_text(context.get("session_id"))
+            ),
         }
 
     def _affected_capabilities(
@@ -574,8 +609,18 @@ class ApprovalService:
         lowered = capability_name.lower()
 
         sensitive_keywords = (
-            "password", "secret", "credential", "token", "key", "auth",
-            "ssn", "credit", "card", "bank", "pii", "personal",
+            "password",
+            "secret",
+            "credential",
+            "token",
+            "key",
+            "auth",
+            "ssn",
+            "credit",
+            "card",
+            "bank",
+            "pii",
+            "personal",
         )
         if any(kw in lowered for kw in sensitive_keywords):
             return "sensitive"

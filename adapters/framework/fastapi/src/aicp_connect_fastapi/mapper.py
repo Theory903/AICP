@@ -18,7 +18,9 @@ from aicp_connect_fastapi.types import AicpConfig, RouteMapping
 def map_routes_to_capabilities(app: FastAPI, config: AicpConfig) -> list[Capability]:
     routes = inspect_routes(app)
     routes = [
-        r for r in routes if not any(r["path"].startswith(exc) for exc in config.exclude_routes)
+        r
+        for r in routes
+        if not any(r["path"].startswith(exc) for exc in config.exclude_routes)
     ]
 
     capability_mappings = {}
@@ -83,7 +85,8 @@ def map_routes_to_capabilities(app: FastAPI, config: AicpConfig) -> list[Capabil
             namespace, action = cap_parts
             # Find sibling capabilities in the same namespace
             siblings = [
-                name for name in capability_mappings
+                name
+                for name in capability_mappings
                 if name.startswith(f"{namespace}.") and name != mapping.capability_name
             ]
             if siblings:
@@ -92,7 +95,9 @@ def map_routes_to_capabilities(app: FastAPI, config: AicpConfig) -> list[Capabil
                     "next_capabilities": sorted(siblings)[:3],
                 }
                 if action == "create":
-                    continuation["next_hint"] = f"View or list {namespace} after creation"
+                    continuation["next_hint"] = (
+                        f"View or list {namespace} after creation"
+                    )
                 elif action in ("update", "patch"):
                     continuation["next_hint"] = f"Get updated {namespace} or list all"
                 elif action == "delete":
@@ -105,7 +110,9 @@ def map_routes_to_capabilities(app: FastAPI, config: AicpConfig) -> list[Capabil
             input_schema=input_schema,
             output_schema=output_schema,
             tags=tags,
-            provider=ProviderInfo(name=config.provider_name, type="fastapi", url=config.provider_url),
+            provider=ProviderInfo(
+                name=config.provider_name, type="fastapi", url=config.provider_url
+            ),
         )
 
         # Attach continuation if generated
@@ -117,10 +124,14 @@ def map_routes_to_capabilities(app: FastAPI, config: AicpConfig) -> list[Capabil
     return capabilities
 
 
-def create_discovery_response(capabilities: list[Capability], config: AicpConfig) -> dict[str, Any]:
+def create_discovery_response(
+    capabilities: list[Capability], config: AicpConfig
+) -> dict[str, Any]:
     return {
         "version": config.version,
-        "capabilities": [cap.model_dump(exclude_none=True, mode="json") for cap in capabilities],
+        "capabilities": [
+            cap.model_dump(exclude_none=True, mode="json") for cap in capabilities
+        ],
         "policies": [],
         "workflows": [],
         "metadata": {

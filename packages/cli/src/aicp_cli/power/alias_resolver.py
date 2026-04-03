@@ -35,7 +35,7 @@ class AliasResolver:
         self.register("gco", "git checkout")
         self.register("gm", "git merge")
         self.register("gr", "git rebase")
-        
+
         # AICP command aliases
         self.register("r", "run")
         self.register("d", "dev")
@@ -51,7 +51,7 @@ class AliasResolver:
         self.register("i", "init")
         self.register("dr", "doctor")
         self.register("h", "history")
-        
+
         # Short forms
         self.register("?", "--help")
         self.register("!!", "test --all")
@@ -60,29 +60,31 @@ class AliasResolver:
         """Resolve aliases in input string."""
         original = input_str
         aliases_used = []
-        
+
         # Sort aliases by length (longest first) to match most specific
-        sorted_aliases = sorted(self._aliases.items(), key=lambda x: len(x[0]), reverse=True)
-        
+        sorted_aliases = sorted(
+            self._aliases.items(), key=lambda x: len(x[0]), reverse=True
+        )
+
         for alias, expansion in sorted_aliases:
             # Match alias at start of command or after |
-            pattern = rf'^\|?({re.escape(alias)})\b'
+            pattern = rf"^\|?({re.escape(alias)})\b"
             if re.search(pattern, input_str):
-                input_str = re.sub(pattern, f'\1 → {expansion}', input_str)
+                input_str = re.sub(pattern, f"\1 → {expansion}", input_str)
                 aliases_used.append(alias)
-        
+
         # Simple expansion if direct match
         if input_str in self._aliases:
             expansion = self._aliases[input_str]
             return expansion, [input_str]
-        
+
         # Check for alias at start
         words = input_str.split()
         if words and words[0] in self._aliases:
             expansion = self._aliases[words[0]]
             words[0] = expansion
             return " ".join(words), [words[0]]
-        
+
         return original, aliases_used
 
     def register(self, alias: str, expansion: str) -> None:

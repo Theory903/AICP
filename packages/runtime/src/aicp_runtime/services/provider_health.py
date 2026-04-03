@@ -63,8 +63,12 @@ class ProviderHealthService:
             summary = provider_summaries.setdefault(
                 provider_key,
                 self._empty_summary(
-                    provider_name=str(signal.get("provider_name") or self._provider.provider_name),
-                    provider_type=str(signal.get("provider_type") or self._provider.provider_type),
+                    provider_name=str(
+                        signal.get("provider_name") or self._provider.provider_name
+                    ),
+                    provider_type=str(
+                        signal.get("provider_type") or self._provider.provider_type
+                    ),
                 ),
             )
             self._apply_signal(summary, signal)
@@ -125,8 +129,12 @@ class ProviderHealthService:
         if not summaries:
             default_name = self._provider.provider_name
             default_type = self._provider.provider_type
-            summaries[self._provider_key(provider_name=default_name, provider_type=default_type)] = (
-                self._empty_summary(provider_name=default_name, provider_type=default_type)
+            summaries[
+                self._provider_key(
+                    provider_name=default_name, provider_type=default_type
+                )
+            ] = self._empty_summary(
+                provider_name=default_name, provider_type=default_type
             )
 
         return summaries
@@ -143,7 +151,9 @@ class ProviderHealthService:
             provider = self._resolve_provider(capability_name, capability_providers)
             raw_result = record.get("result")
             result: dict[str, Any] = raw_result if isinstance(raw_result, dict) else {}
-            status = str(record.get("status") or result.get("status") or "").strip().lower()
+            status = (
+                str(record.get("status") or result.get("status") or "").strip().lower()
+            )
             error_code = str(result.get("error_code") or "").strip().lower()
             latency_ms = self._latency_ms(record, result)
 
@@ -157,7 +167,9 @@ class ProviderHealthService:
                     "success_count": 1 if status == "success" else 0,
                     "failure_count": 0 if status == "success" else 1,
                     "auth_failure_count": 1 if error_code in _AUTH_FAILURE_CODES else 0,
-                    "network_failure_count": 1 if error_code in _NETWORK_FAILURE_CODES else 0,
+                    "network_failure_count": 1
+                    if error_code in _NETWORK_FAILURE_CODES
+                    else 0,
                     "rate_limit_count": 1 if error_code == "rate_limited" else 0,
                     "latency_ms": latency_ms,
                     "error_code": error_code or None,
@@ -190,7 +202,9 @@ class ProviderHealthService:
                     "provider_type": provider["provider_type"],
                     "timestamp": entry.get("timestamp"),
                     "execution_total": 0,
-                    "success_count": 1 if event_type == "workflow_step_completed" else 0,
+                    "success_count": 1
+                    if event_type == "workflow_step_completed"
+                    else 0,
                     "failure_count": 1 if event_type == "workflow_step_failed" else 0,
                     "auth_failure_count": 0,
                     "network_failure_count": 0,
@@ -221,7 +235,9 @@ class ProviderHealthService:
         summary["success_count"] += int(signal.get("success_count") or 0)
         summary["failure_count"] += int(signal.get("failure_count") or 0)
         summary["auth_failure_count"] += int(signal.get("auth_failure_count") or 0)
-        summary["network_failure_count"] += int(signal.get("network_failure_count") or 0)
+        summary["network_failure_count"] += int(
+            signal.get("network_failure_count") or 0
+        )
         summary["rate_limit_count"] += int(signal.get("rate_limit_count") or 0)
         timestamp = signal.get("timestamp")
         if summary["last_activity_at"] is None or str(timestamp or "") > str(
@@ -244,7 +260,9 @@ class ProviderHealthService:
                 summary["_last_error_at"] = timestamp
                 summary["last_error_code"] = error_code
 
-    def _empty_summary(self, *, provider_name: str, provider_type: str) -> dict[str, Any]:
+    def _empty_summary(
+        self, *, provider_name: str, provider_type: str
+    ) -> dict[str, Any]:
         return {
             "provider_name": provider_name,
             "provider_type": provider_type,
@@ -291,15 +309,25 @@ class ProviderHealthService:
             return "unhealthy"
         if success_count == 0 and failure_count > 0:
             return "unhealthy"
-        if auth_failure_count > 0 or network_failure_count > 0 or rate_limit_count > 0 or failure_count > success_count:
+        if (
+            auth_failure_count > 0
+            or network_failure_count > 0
+            or rate_limit_count > 0
+            or failure_count > success_count
+        ):
             return "degraded"
         if failure_count > 0:
             return "degraded"
         return "healthy"
 
-    def _latency_ms(self, record: dict[str, Any], result: dict[str, Any]) -> float | None:
+    def _latency_ms(
+        self, record: dict[str, Any], result: dict[str, Any]
+    ) -> float | None:
         """Extract a latency estimate from persisted execution data."""
-        for candidate in (record.get("execution_time_ms"), result.get("execution_time_ms")):
+        for candidate in (
+            record.get("execution_time_ms"),
+            result.get("execution_time_ms"),
+        ):
             if isinstance(candidate, int | float):
                 return float(candidate)
         return None
@@ -336,7 +364,12 @@ class ProviderHealthService:
         }
         summary["health_status"] = self._health_status(summary)
 
-        for key in ("_latency_total_ms", "_latency_sample_count", "_error_code_mix", "_last_error_at"):
+        for key in (
+            "_latency_total_ms",
+            "_latency_sample_count",
+            "_error_code_mix",
+            "_last_error_at",
+        ):
             summary.pop(key, None)
         return summary
 

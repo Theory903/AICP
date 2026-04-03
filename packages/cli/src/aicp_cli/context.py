@@ -71,7 +71,9 @@ class RuntimeClient:
     def close(self) -> None:
         self.session.close()
 
-    def execute(self, capability_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    def execute(
+        self, capability_name: str, arguments: dict[str, Any]
+    ) -> dict[str, Any]:
         """Execute a capability via the server."""
         response = self.session.post(
             f"{self.base_url}/v1/execute",

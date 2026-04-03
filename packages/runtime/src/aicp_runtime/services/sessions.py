@@ -127,7 +127,9 @@ class SessionService:
             raise ValueError("Session is not refreshable via auth recipe")
 
         refresh_token_field = recipe.token_field or "refresh_token"
-        refresh_token = str((session.get("tokens") or {}).get(refresh_token_field) or "").strip()
+        refresh_token = str(
+            (session.get("tokens") or {}).get(refresh_token_field) or ""
+        ).strip()
         if not refresh_token:
             raise ValueError("Session does not contain a refresh token")
         if not recipe.token_url:
@@ -167,14 +169,14 @@ class SessionService:
         if isinstance(expires_in, (int, float)) and expires_in > 0:
             now_dt = datetime.now(timezone.utc)
             session["expires_at"] = (
-                now_dt.replace(microsecond=0)
-                .astimezone(timezone.utc)
-                .isoformat()
+                now_dt.replace(microsecond=0).astimezone(timezone.utc).isoformat()
             )
             expiry = now_dt.timestamp() + float(expires_in)
-            session["expires_at"] = datetime.fromtimestamp(
-                expiry, tz=timezone.utc
-            ).replace(microsecond=0).isoformat()
+            session["expires_at"] = (
+                datetime.fromtimestamp(expiry, tz=timezone.utc)
+                .replace(microsecond=0)
+                .isoformat()
+            )
 
         session["updated_at"] = utc_now_rfc3339()
         session = self._with_health(session)
@@ -254,8 +256,13 @@ class SessionService:
             if (expires_at - now).total_seconds() <= 300:
                 return "stale"
 
-        has_auth_artifacts = bool(session.get("cookies") or session.get("tokens") or session.get("headers"))
-        if not has_auth_artifacts and str(session.get("auth_mode") or "").strip().lower() != "anonymous":
+        has_auth_artifacts = bool(
+            session.get("cookies") or session.get("tokens") or session.get("headers")
+        )
+        if (
+            not has_auth_artifacts
+            and str(session.get("auth_mode") or "").strip().lower() != "anonymous"
+        ):
             return "invalid"
 
         return "healthy"

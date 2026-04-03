@@ -68,10 +68,14 @@ class InteractionStateService:
 
     async def list_interactions(self) -> list[dict[str, Any]]:
         interactions = await self._store.list_interaction_states()
-        interactions.sort(key=lambda item: str(item.get("updated_at", "")), reverse=True)
+        interactions.sort(
+            key=lambda item: str(item.get("updated_at", "")), reverse=True
+        )
         return [deepcopy(item) for item in interactions]
 
-    async def update_interaction(self, interaction_id: str, **patch: Any) -> dict[str, Any]:
+    async def update_interaction(
+        self, interaction_id: str, **patch: Any
+    ) -> dict[str, Any]:
         normalized = self._require_text(interaction_id, "interaction_id")
         interaction = await self._store.get_interaction_state(normalized)
         if interaction is None:

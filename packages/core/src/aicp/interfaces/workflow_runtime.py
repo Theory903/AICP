@@ -145,8 +145,7 @@ class WorkflowState(BaseModel):
     def is_complete(self) -> bool:
         """Check if workflow is complete."""
         return bool(self.steps) and all(
-            step.status in {StepStatus.COMPLETED, StepStatus.SKIPPED}
-            for step in self.steps
+            step.status in {StepStatus.COMPLETED, StepStatus.SKIPPED} for step in self.steps
         )
 
     @property

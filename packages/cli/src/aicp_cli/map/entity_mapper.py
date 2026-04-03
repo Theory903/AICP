@@ -54,7 +54,9 @@ class EntityMapper:
             pass
         return entities
 
-    def _extract_entity(self, node: ast.ClassDef, file_path: str) -> ExtractedEntity | None:
+    def _extract_entity(
+        self, node: ast.ClassDef, file_path: str
+    ) -> ExtractedEntity | None:
         name = node.name
 
         # Check for SQLAlchemy model
@@ -96,7 +98,11 @@ class EntityMapper:
                         fields.append(field_info)
             elif isinstance(item, ast.FunctionDef):
                 # Check for relationship
-                if any("relationship" in ast.unparse(d) for d in item.decorator_list if isinstance(d, ast.Call)):
+                if any(
+                    "relationship" in ast.unparse(d)
+                    for d in item.decorator_list
+                    if isinstance(d, ast.Call)
+                ):
                     pass
 
         return ExtractedEntity(

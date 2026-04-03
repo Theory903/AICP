@@ -324,7 +324,4 @@ class CircuitBreakerManager:
 
     def get_all_states(self) -> list[dict[str, Any]]:
         """Get state of all circuit breakers."""
-        return [
-            self._breakers[name].get_state()
-            for name in sorted(self._breakers)
-        ]
+        return [self._breakers[name].get_state() for name in sorted(self._breakers)]

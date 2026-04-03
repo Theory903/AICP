@@ -242,9 +242,7 @@ class GraphQLTransport(TransportPlugin):
     async def send_raw(self, request: dict[str, Any]) -> dict[str, Any]:
         """Execute a GraphQL HTTP request and return the parsed body."""
         if aiohttp is None:
-            raise RuntimeError(
-                "GraphQL transport requires aiohttp. Install the core 'http' extra to use it."
-            )
+            raise RuntimeError("GraphQL transport requires aiohttp. Install the core 'http' extra to use it.")
 
         full_url = self._build_url()
         headers = self._build_headers()
@@ -276,9 +274,7 @@ class GraphQLTransport(TransportPlugin):
     async def _get_session(self) -> Any:
         """Get or create an aiohttp session."""
         if aiohttp is None:
-            raise RuntimeError(
-                "GraphQL transport requires aiohttp. Install the core 'http' extra to use it."
-            )
+            raise RuntimeError("GraphQL transport requires aiohttp. Install the core 'http' extra to use it.")
 
         if self._session is None or self._session.closed:
             timeout = aiohttp.ClientTimeout(total=self.timeout_seconds)
@@ -485,11 +481,7 @@ class GraphQLDiscoverySource(DiscoverySource):
             render=RenderSpec(format="json"),
             tags=tags,
             deprecated=bool(field.get("isDeprecated")),
-            deprecation_message=(
-                str(field["deprecationReason"])
-                if field.get("deprecationReason")
-                else None
-            ),
+            deprecation_message=(str(field["deprecationReason"]) if field.get("deprecationReason") else None),
         )
         binding = _GraphQLBinding(
             capability_name=capability_name,
@@ -730,11 +722,7 @@ def graphql_operation_for_field(
         indented = "\n".join(f"    {line}" for line in str(selection_set).splitlines())
         selection_block = f" {{\n{indented}\n  }}"
 
-    return (
-        f"{operation} {safe_field_name}{variables_part} {{\n"
-        f"  {safe_field_name}{args_part}{selection_block}\n"
-        f"}}"
-    )
+    return f"{operation} {safe_field_name}{variables_part} {{\n  {safe_field_name}{args_part}{selection_block}\n}}"
 
 
 def graphql_query_from_capability(

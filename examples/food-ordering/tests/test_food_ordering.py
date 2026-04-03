@@ -40,6 +40,7 @@ class TestFoodOrderProvider:
     @pytest.fixture
     def provider(self):
         from food_ordering.provider import FoodOrderProvider
+
         return FoodOrderProvider()
 
     @pytest.mark.asyncio
@@ -84,7 +85,9 @@ class TestFoodOrderProvider:
     async def test_execute_add_to_cart(self, provider):
         # Clear state first
         await provider.execute("food.clear_cart", {})
-        result = await provider.execute("food.add_to_cart", {"item_id": "burger", "quantity": 1})
+        result = await provider.execute(
+            "food.add_to_cart", {"item_id": "burger", "quantity": 1}
+        )
         assert "cart_item" in result
         assert "cart_total" in result
         assert result["cart_total"] > 0
@@ -118,6 +121,7 @@ class TestFoodOrderProvider:
     @pytest.mark.asyncio
     async def test_execute_unknown_capability_raises(self, provider):
         from aicp.interfaces.capability_provider import CapabilityNotFoundError
+
         with pytest.raises(CapabilityNotFoundError):
             await provider.execute("food.unknown", {})
 
@@ -125,6 +129,7 @@ class TestFoodOrderProvider:
     async def test_each_provider_instance_has_isolated_cart(self):
         """Two FoodOrderProvider instances must not share cart state."""
         from food_ordering.provider import FoodOrderProvider
+
         p1 = FoodOrderProvider()
         p2 = FoodOrderProvider()
         await p1.execute("food.clear_cart", {})
@@ -145,6 +150,7 @@ class TestYAMLWorkflow:
     @pytest.fixture
     def parser(self):
         from aicp_runtime.workflow.dsl import WorkflowDSLParser
+
         return WorkflowDSLParser()
 
     @pytest.fixture
@@ -198,6 +204,7 @@ class TestEventFlow:
     @pytest.mark.asyncio
     async def test_order_confirmed_event_received(self):
         from food_ordering.event_flow import run_event_flow
+
         result = await run_event_flow(timeout_ms=500)
         assert result["event_name"] == "order.confirmed"
         assert "order_id" in result["payload"]
@@ -205,6 +212,7 @@ class TestEventFlow:
     @pytest.mark.asyncio
     async def test_event_flow_returns_order_id(self):
         from food_ordering.event_flow import run_event_flow
+
         result = await run_event_flow(timeout_ms=500)
         assert result["payload"]["order_id"] is not None
 
@@ -212,6 +220,7 @@ class TestEventFlow:
     async def test_event_flow_timeout(self):
         """If no event is published, EventTimeoutError should propagate."""
         from aicp_runtime.workflow.events import EventWaiter, EventTimeoutError
+
         waiter = EventWaiter(workflow_id="wf_test_timeout")
         with pytest.raises(EventTimeoutError):
             await waiter.wait_for_event("order.never", timeout_ms=50)
@@ -228,17 +237,20 @@ class TestLangChainIntegration:
     @pytest.fixture
     def provider(self):
         from food_ordering.provider import FoodOrderProvider
+
         return FoodOrderProvider()
 
     @pytest.mark.asyncio
     async def test_build_tools_returns_five_tools(self, provider):
         from food_ordering.langchain_agent import build_langchain_tools
+
         tools = await build_langchain_tools(provider)
         assert len(tools) == 5
 
     @pytest.mark.asyncio
     async def test_tool_names_use_underscores(self, provider):
         from food_ordering.langchain_agent import build_langchain_tools
+
         tools = await build_langchain_tools(provider)
         for tool in tools:
             assert "." not in tool.name
@@ -246,6 +258,7 @@ class TestLangChainIntegration:
     @pytest.mark.asyncio
     async def test_tool_has_description(self, provider):
         from food_ordering.langchain_agent import build_langchain_tools
+
         tools = await build_langchain_tools(provider)
         for tool in tools:
             assert tool.description
@@ -253,16 +266,19 @@ class TestLangChainIntegration:
     @pytest.mark.asyncio
     async def test_tool_execute_list_menu(self, provider):
         from food_ordering.langchain_agent import build_langchain_tools
+
         tools = await build_langchain_tools(provider)
         list_menu_tool = next(t for t in tools if t.name == "food_list_menu")
         result = await list_menu_tool._arun({})
         import json
+
         data = json.loads(result)
         assert "items" in data
 
     @pytest.mark.asyncio
     async def test_adapter_context_forwarded(self, provider):
         from food_ordering.langchain_agent import build_langchain_tools
+
         ctx = {"session_id": "test_sess"}
         tools = await build_langchain_tools(provider, context=ctx)
         assert len(tools) == 5
@@ -279,11 +295,13 @@ class TestLangGraphIntegration:
     @pytest.fixture
     def provider(self):
         from food_ordering.provider import FoodOrderProvider
+
         return FoodOrderProvider()
 
     @pytest.mark.asyncio
     async def test_build_nodes_returns_dict(self, provider):
         from food_ordering.langgraph_flow import build_langgraph_nodes
+
         nodes = await build_langgraph_nodes(provider)
         assert isinstance(nodes, dict)
         assert len(nodes) == 5
@@ -291,6 +309,7 @@ class TestLangGraphIntegration:
     @pytest.mark.asyncio
     async def test_node_names_use_underscores(self, provider):
         from food_ordering.langgraph_flow import build_langgraph_nodes
+
         nodes = await build_langgraph_nodes(provider)
         for name in nodes:
             assert "." not in name
@@ -298,6 +317,7 @@ class TestLangGraphIntegration:
     @pytest.mark.asyncio
     async def test_tool_node_dispatches_list_menu(self, provider):
         from food_ordering.langgraph_flow import build_tool_node
+
         tool_node = await build_tool_node(provider)
         state = {"capability_name": "food.list_menu", "input": {}}
         result = await tool_node(state)
@@ -307,6 +327,7 @@ class TestLangGraphIntegration:
     @pytest.mark.asyncio
     async def test_tool_node_raises_for_unknown_capability(self, provider):
         from food_ordering.langgraph_flow import build_tool_node
+
         tool_node = await build_tool_node(provider)
         with pytest.raises(ValueError, match="Unknown capability"):
             await tool_node({"capability_name": "food.unknown", "input": {}})
@@ -314,6 +335,7 @@ class TestLangGraphIntegration:
     @pytest.mark.asyncio
     async def test_individual_node_executes(self, provider):
         from food_ordering.langgraph_flow import build_langgraph_nodes
+
         await provider.execute("food.clear_cart", {})
         nodes = await build_langgraph_nodes(provider)
         node_fn = nodes["food_list_menu"]

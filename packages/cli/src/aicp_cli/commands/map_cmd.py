@@ -34,7 +34,12 @@ def scan(path: str, deep: bool, output: str):
 @map_group.command(name="capabilities")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--family", "-f", help="Filter by family (users, orders, payments, etc)")
-@click.option("--risk", "-r", type=click.Choice(["low", "medium", "high"]), help="Filter by risk level")
+@click.option(
+    "--risk",
+    "-r",
+    type=click.Choice(["low", "medium", "high"]),
+    help="Filter by risk level",
+)
 def capabilities(path: str, family: str | None, risk: str | None):
     """List inferred capability candidates."""
     scanner = MapScanner()
@@ -54,7 +59,9 @@ def capabilities(path: str, family: str | None, risk: str | None):
         risk_badge = _risk_badge(cap.get("risk", "low"))
         click.echo(f"{risk_badge} {cap['name']}")
         click.echo(f"   {cap.get('description', '')}")
-        click.echo(f"   family={cap.get('family')} kind={cap.get('kind')} side_effect={cap.get('side_effect')}")
+        click.echo(
+            f"   family={cap.get('family')} kind={cap.get('kind')} side_effect={cap.get('side_effect')}"
+        )
         if cap.get("approval_required"):
             click.echo("   ⚠️  requires approval")
         click.echo()
@@ -136,7 +143,9 @@ def _print_scan_summary(result) -> None:
     """Print human-readable scan summary."""
     click.echo("# Map Scan Results")
     click.echo()
-    click.echo(f"Framework: {result.backend_framework or 'unknown'} (confidence: {result.backend_confidence})")
+    click.echo(
+        f"Framework: {result.backend_framework or 'unknown'} (confidence: {result.backend_confidence})"
+    )
     click.echo(f"Scan time: {result.scan_time_ms}ms")
     click.echo()
 

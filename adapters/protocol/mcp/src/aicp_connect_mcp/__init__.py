@@ -124,7 +124,9 @@ class McpAdapter(CapabilityProvider):
                 stderr=asyncio.subprocess.PIPE,
             )
 
-        request = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
+        request = json.dumps(
+            {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+        )
         self._process.stdin.write(request.encode() + b"\n")
         await self._process.stdin.drain()
 

@@ -133,6 +133,7 @@ class SubflowExecutor:
         final_state = await self._runtime.get_workflow(child_wf.id)
         if final_state is not None and hasattr(final_state, "status"):
             from aicp.interfaces.workflow_runtime import WorkflowStatus  # type: ignore[import]
+
             if final_state.status == WorkflowStatus.FAILED:
                 return SubflowResult(
                     success=False,

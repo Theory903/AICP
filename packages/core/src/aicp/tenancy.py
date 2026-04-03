@@ -349,9 +349,7 @@ class TenantIsolation:
         """Assert that an item belongs to a tenant."""
         item_tenant_id = item.get(tenant_field)
         if item_tenant_id != tenant_id:
-            raise PermissionError(
-                f"Tenant '{tenant_id}' cannot access data for tenant '{item_tenant_id}'"
-            )
+            raise PermissionError(f"Tenant '{tenant_id}' cannot access data for tenant '{item_tenant_id}'")
 
     def isolation_middleware(self, request: dict[str, Any]) -> dict[str, Any]:
         """Add tenant isolation to request context.

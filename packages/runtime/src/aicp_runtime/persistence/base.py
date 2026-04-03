@@ -34,7 +34,9 @@ class RuntimeStore(ABC):
         """
 
     @abstractmethod
-    async def save_execution_record(self, execution_id: str, record: dict[str, Any]) -> None:
+    async def save_execution_record(
+        self, execution_id: str, record: dict[str, Any]
+    ) -> None:
         """Persist an execution record."""
 
     @abstractmethod

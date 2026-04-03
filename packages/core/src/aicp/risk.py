@@ -19,9 +19,9 @@ from aicp.capability import CapabilityKind
 class RiskLevel(str, Enum):
     """Risk classification for capabilities."""
 
-    LOW = "low"         # Safe queries, reads
-    MEDIUM = "medium"   # Standard mutations
-    HIGH = "high"       # Financial, sensitive operations
+    LOW = "low"  # Safe queries, reads
+    MEDIUM = "medium"  # Standard mutations
+    HIGH = "high"  # Financial, sensitive operations
     CRITICAL = "critical"  # Bulk destructive, irreversible
 
 

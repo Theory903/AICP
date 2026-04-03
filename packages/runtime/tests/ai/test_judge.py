@@ -66,7 +66,9 @@ class TestJudgeResult:
 
         schema_path = (
             Path(__file__).parent.parent.parent.parent.parent
-            / "spec" / "schemas" / "session.schema.json"
+            / "spec"
+            / "schemas"
+            / "session.schema.json"
         )
         with open(schema_path) as f:
             full_schema = json.load(f)
@@ -104,6 +106,7 @@ class TestAICJudge:
     def test_circular_dependency_detected(self):
         """A plan with a circular dep gets REJECTED."""
         from aicp_runtime.ai.planner import PlanStep
+
         steps = [
             PlanStep(step_id="s1", capability_name="a.foo", depends_on=["s2"]),
             PlanStep(step_id="s2", capability_name="b.bar", depends_on=["s1"]),
@@ -115,6 +118,7 @@ class TestAICJudge:
     def test_duplicate_step_ids_detected(self):
         """A plan with duplicate step IDs should be rejected."""
         from aicp_runtime.ai.planner import PlanStep
+
         steps = [
             PlanStep(step_id="s1", capability_name="a.foo"),
             PlanStep(step_id="s1", capability_name="b.bar"),

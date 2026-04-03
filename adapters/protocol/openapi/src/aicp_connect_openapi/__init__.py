@@ -37,8 +37,30 @@ ACTION_WORDS = {
     "unfollow",
     "update",
 }
-HIGH_IMPACT_ACTIONS = {"activate", "approve", "deactivate", "delete", "promote", "publish", "unassign", "unfollow"}
-STOP_WORDS = {"a", "an", "and", "by", "for", "from", "in", "of", "or", "the", "to", "with"}
+HIGH_IMPACT_ACTIONS = {
+    "activate",
+    "approve",
+    "deactivate",
+    "delete",
+    "promote",
+    "publish",
+    "unassign",
+    "unfollow",
+}
+STOP_WORDS = {
+    "a",
+    "an",
+    "and",
+    "by",
+    "for",
+    "from",
+    "in",
+    "of",
+    "or",
+    "the",
+    "to",
+    "with",
+}
 
 
 class OpenAPIDiscoverySource(DiscoverySource):
@@ -192,7 +214,9 @@ class OpenAPIDiscoverySource(DiscoverySource):
             name=name,
             description=self._build_description(operation, method, path),
             kind=self._infer_kind(method, operation),
-            input_schema=self._extract_inputs(path, method, operation, path_parameters or []),
+            input_schema=self._extract_inputs(
+                path, method, operation, path_parameters or []
+            ),
             output_schema=outputs,
             tags=self._dedupe_strings(tags),
             provider=ProviderInfo(
@@ -667,7 +691,9 @@ class OpenAPIDiscoverySource(DiscoverySource):
         if tags:
             return tags
 
-        namespace, _, _ = self._derive_operation_name(path, method, operation).partition(".")
+        namespace, _, _ = self._derive_operation_name(
+            path, method, operation
+        ).partition(".")
         return [self._normalize_tag(namespace)] if namespace else []
 
     def _normalize_tag(self, value: str) -> str:
@@ -691,19 +717,34 @@ class OpenAPIDiscoverySource(DiscoverySource):
 
         return f"risk:{risk}"
 
-    def _is_destructive_operation(self, method: str, operation: dict[str, Any], name: str) -> bool:
+    def _is_destructive_operation(
+        self, method: str, operation: dict[str, Any], name: str
+    ) -> bool:
         verb, _ = self._summary_action_parts(operation)
-        return method.lower() == "delete" or verb in {"delete", "unassign", "unfollow"} or name.endswith(".delete")
+        return (
+            method.lower() == "delete"
+            or verb in {"delete", "unassign", "unfollow"}
+            or name.endswith(".delete")
+        )
 
-    def _is_approval_candidate(self, method: str, operation: dict[str, Any], name: str) -> bool:
+    def _is_approval_candidate(
+        self, method: str, operation: dict[str, Any], name: str
+    ) -> bool:
         verb, _ = self._summary_action_parts(operation)
-        return self._is_destructive_operation(method, operation, name) or verb in HIGH_IMPACT_ACTIONS
+        return (
+            self._is_destructive_operation(method, operation, name)
+            or verb in HIGH_IMPACT_ACTIONS
+        )
 
-    def _build_description(self, operation: dict[str, Any], method: str, path: str) -> str:
+    def _build_description(
+        self, operation: dict[str, Any], method: str, path: str
+    ) -> str:
         summary = str(operation.get("summary") or "").strip()
         description = str(operation.get("description") or "").strip()
         if summary and description and summary.lower() != description.lower():
-            return f"{summary.rstrip('.')}. {description.rstrip('.')} .".replace(" .", ".")
+            return f"{summary.rstrip('.')}. {description.rstrip('.')} .".replace(
+                " .", "."
+            )
         if description:
             return description
         if summary:
@@ -714,18 +755,34 @@ class OpenAPIDiscoverySource(DiscoverySource):
         op_id = operation_id.strip()
         if not op_id:
             return None
-        if re.search(r"_api_v\d+_", op_id) or "__" in op_id or re.search(r"_(get|post|put|patch|delete)$", op_id):
+        if (
+            re.search(r"_api_v\d+_", op_id)
+            or "__" in op_id
+            or re.search(r"_(get|post|put|patch|delete)$", op_id)
+        ):
             return None
         return self._normalize_capability_name(op_id)
 
-    def _derive_operation_name(self, path: str, method: str, operation: dict[str, Any]) -> str:
+    def _derive_operation_name(
+        self, path: str, method: str, operation: dict[str, Any]
+    ) -> str:
         segments = [segment for segment in path.strip("/").split("/") if segment]
-        filtered_segments = [segment for segment in segments if not self._is_api_prefix_segment(segment)]
-        static_segments = [self._normalize_name_segment(segment) for segment in filtered_segments if not self._is_path_param(segment)]
+        filtered_segments = [
+            segment for segment in segments if not self._is_api_prefix_segment(segment)
+        ]
+        static_segments = [
+            self._normalize_name_segment(segment)
+            for segment in filtered_segments
+            if not self._is_path_param(segment)
+        ]
         namespace = static_segments[0] if static_segments else "root"
         last_static = static_segments[-1] if static_segments else namespace
-        has_path_param = any(self._is_path_param(segment) for segment in filtered_segments)
-        tail_is_action = len(static_segments) > 1 and last_static in ACTION_WORDS and has_path_param
+        has_path_param = any(
+            self._is_path_param(segment) for segment in filtered_segments
+        )
+        tail_is_action = (
+            len(static_segments) > 1 and last_static in ACTION_WORDS and has_path_param
+        )
         verb, obj = self._summary_action_parts(operation)
         singular_namespace = self._singularize(namespace)
 
@@ -740,7 +797,9 @@ class OpenAPIDiscoverySource(DiscoverySource):
                 action = "list"
         elif method.lower() == "post":
             if verb and verb != "create":
-                action = verb if not obj or obj == singular_namespace else f"{verb}_{obj}"
+                action = (
+                    verb if not obj or obj == singular_namespace else f"{verb}_{obj}"
+                )
             elif len(static_segments) > 1 and last_static != namespace:
                 action = f"create_{self._singularize(last_static)}"
             else:
@@ -749,7 +808,9 @@ class OpenAPIDiscoverySource(DiscoverySource):
             if tail_is_action:
                 action = last_static
             elif verb and verb != "update":
-                action = verb if not obj or obj == singular_namespace else f"{verb}_{obj}"
+                action = (
+                    verb if not obj or obj == singular_namespace else f"{verb}_{obj}"
+                )
             elif len(static_segments) > 1 and last_static != namespace:
                 action = f"update_{self._singularize(last_static)}"
             else:
@@ -758,7 +819,9 @@ class OpenAPIDiscoverySource(DiscoverySource):
             if tail_is_action:
                 action = last_static
             elif verb and verb != "delete":
-                action = verb if not obj or obj == singular_namespace else f"{verb}_{obj}"
+                action = (
+                    verb if not obj or obj == singular_namespace else f"{verb}_{obj}"
+                )
             elif len(static_segments) > 1 and last_static != namespace:
                 action = f"delete_{self._singularize(last_static)}"
             else:
@@ -768,12 +831,17 @@ class OpenAPIDiscoverySource(DiscoverySource):
 
         return f"{namespace}.{action}"
 
-    def _summary_action_parts(self, operation: dict[str, Any]) -> tuple[str | None, str | None]:
+    def _summary_action_parts(
+        self, operation: dict[str, Any]
+    ) -> tuple[str | None, str | None]:
         summary = str(operation.get("summary") or "").strip().lower()
         if not summary:
             return None, None
 
-        tokens = [self._normalize_name_segment(token) for token in re.findall(r"[A-Za-z0-9]+", summary)]
+        tokens = [
+            self._normalize_name_segment(token)
+            for token in re.findall(r"[A-Za-z0-9]+", summary)
+        ]
         if not tokens:
             return None, None
 
@@ -791,7 +859,10 @@ class OpenAPIDiscoverySource(DiscoverySource):
         return verb, obj
 
     def _normalize_capability_name(self, value: str) -> str:
-        parts = [self._slugify(part, separator="_") for part in str(value).replace("/", ".").split(".")]
+        parts = [
+            self._slugify(part, separator="_")
+            for part in str(value).replace("/", ".").split(".")
+        ]
         parts = [part for part in parts if part]
         return ".".join(parts)
 

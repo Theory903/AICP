@@ -34,7 +34,11 @@ from aicp.capability import Capability, CapabilityKind, ProviderInfo
 from aicp.interfaces.capability_provider import CapabilityProvider
 
 # ---- import the adapter (will fail RED until implemented) ----
-from aicp_connect_langchain import AicpCapabilityTool, AicpLangChainAdapter, AdapterConfigError
+from aicp_connect_langchain import (
+    AicpCapabilityTool,
+    AicpLangChainAdapter,
+    AdapterConfigError,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +56,11 @@ def make_capability(
         name=name,
         description=description,
         kind=kind,
-        input_schema={"type": "object", "properties": {"item": {"type": "string"}}, "required": []},
+        input_schema={
+            "type": "object",
+            "properties": {"item": {"type": "string"}},
+            "required": [],
+        },
         output_schema={"type": "object"},
         tags=tags or [],
         provider=ProviderInfo(name="test_provider", type="test"),
@@ -62,7 +70,9 @@ def make_capability(
 class FakeProvider(CapabilityProvider):
     """Minimal in-memory capability provider for tests."""
 
-    def __init__(self, capabilities: list[Capability], results: dict[str, Any] | None = None):
+    def __init__(
+        self, capabilities: list[Capability], results: dict[str, Any] | None = None
+    ):
         self._caps = {c.name: c for c in capabilities}
         self._results = results or {}
         self.execute_calls: list[tuple[str, dict]] = []
@@ -143,7 +153,11 @@ class TestBuildTools:
 
     @pytest.mark.asyncio
     async def test_returns_one_tool_per_capability(self):
-        caps = [make_capability("a.one"), make_capability("b.two"), make_capability("c.three")]
+        caps = [
+            make_capability("a.one"),
+            make_capability("b.two"),
+            make_capability("c.three"),
+        ]
         adapter = AicpLangChainAdapter(FakeProvider(caps))
         tools = await adapter.build_tools()
         assert len(tools) == 3

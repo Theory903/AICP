@@ -12,9 +12,13 @@ from aicp_cli.commands.history import cmd_history_list
 
 class FakeApprovalService:
     async def list_approvals(self):
-        return [{"id": "apr-1", "status": "pending", "capability_name": "payments.transfer"}]
+        return [
+            {"id": "apr-1", "status": "pending", "capability_name": "payments.transfer"}
+        ]
 
-    async def decide(self, approval_id, decision, approver, reason=None, modified_arguments=None):
+    async def decide(
+        self, approval_id, decision, approver, reason=None, modified_arguments=None
+    ):
         return {
             "id": "dec-1",
             "request_id": approval_id,
@@ -26,7 +30,9 @@ class FakeApprovalService:
 
 
 class FakeAuditService:
-    async def list_entries(self, workflow_id=None, capability_name=None, approval_request_id=None):
+    async def list_entries(
+        self, workflow_id=None, capability_name=None, approval_request_id=None
+    ):
         return [
             {
                 "id": "audit-1",
@@ -67,7 +73,9 @@ async def test_cmd_approvals_decide_prints_decision(capsys) -> None:
 
 @pytest.mark.asyncio
 async def test_cmd_history_list_prints_filtered_history(capsys) -> None:
-    args = argparse.Namespace(workflow_id="wf-1", capability_name=None, approval_request_id=None)
+    args = argparse.Namespace(
+        workflow_id="wf-1", capability_name=None, approval_request_id=None
+    )
 
     exit_code = await cmd_history_list(FakeAuditService(), args)
     payload = json.loads(capsys.readouterr().out)
@@ -80,7 +88,15 @@ def test_parser_supports_approvals_and_history_commands() -> None:
     parser = create_parser()
 
     approvals_args = parser.parse_args(
-        ["approvals", "decide", "apr-1", "--decision", "approved", "--approver", "manager-1"]
+        [
+            "approvals",
+            "decide",
+            "apr-1",
+            "--decision",
+            "approved",
+            "--approver",
+            "manager-1",
+        ]
     )
     history_args = parser.parse_args(["history", "--workflow-id", "wf-1"])
 

@@ -205,9 +205,7 @@ class OpsProtocol:
         self._record(action)
         return action
 
-    def config_update(
-        self, target: str, config: Optional[dict[str, Any]]
-    ) -> OpsAction:
+    def config_update(self, target: str, config: Optional[dict[str, Any]]) -> OpsAction:
         """Create a CONFIG_UPDATE action (requires config dict)."""
         self._validate_target(target)
         if config is None:

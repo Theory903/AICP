@@ -54,7 +54,9 @@ class FakeCapabilityProvider:
         return val
 
 
-def make_runtime(provider: FakeCapabilityProvider | None = None) -> DefaultWorkflowRuntime:
+def make_runtime(
+    provider: FakeCapabilityProvider | None = None,
+) -> DefaultWorkflowRuntime:
     return DefaultWorkflowRuntime(
         capability_provider=provider or FakeCapabilityProvider(),
     )
@@ -491,7 +493,9 @@ class TestPublishEventAPI:
     @pytest.mark.asyncio
     async def test_publish_event_method_exists_on_runtime(self) -> None:
         rt = make_runtime()
-        assert hasattr(rt, "publish_event"), "DefaultWorkflowRuntime must have publish_event()"
+        assert hasattr(rt, "publish_event"), (
+            "DefaultWorkflowRuntime must have publish_event()"
+        )
 
     @pytest.mark.asyncio
     async def test_publish_event_for_unknown_workflow_does_not_raise(self) -> None:

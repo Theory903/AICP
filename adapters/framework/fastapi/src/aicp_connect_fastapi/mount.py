@@ -5,7 +5,10 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from aicp_connect_fastapi.mapper import create_discovery_response, map_routes_to_capabilities
+from aicp_connect_fastapi.mapper import (
+    create_discovery_response,
+    map_routes_to_capabilities,
+)
 from aicp_connect_fastapi.overlay import find_overlay_file, load_overlay, merge_overlay
 from aicp_connect_fastapi.types import AicpConfig
 

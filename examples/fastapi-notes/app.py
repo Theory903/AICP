@@ -26,8 +26,10 @@ app = FastAPI(
 
 # ── Models ──────────────────────────────────────────────────────
 
+
 class NoteCreate(BaseModel):
     """Input model for creating a note."""
+
     title: str = Field(..., min_length=1, max_length=200, description="Note title")
     content: str = Field(..., description="Note content body")
     tags: list[str] = Field(default_factory=list, description="Optional tags")
@@ -35,6 +37,7 @@ class NoteCreate(BaseModel):
 
 class NoteUpdate(BaseModel):
     """Input model for updating a note."""
+
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     content: Optional[str] = None
     tags: Optional[list[str]] = None
@@ -43,6 +46,7 @@ class NoteUpdate(BaseModel):
 
 class Note(BaseModel):
     """Output model for a note."""
+
     id: int
     title: str
     content: str
@@ -65,6 +69,7 @@ def _next_id() -> int:
 
 
 # ── Routes ──────────────────────────────────────────────────────
+
 
 @app.get("/ping")
 async def ping():

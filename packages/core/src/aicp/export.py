@@ -188,9 +188,7 @@ def export_capability_yaml(capability: Capability, path: Path) -> Path:
     try:
         import yaml
     except ImportError as exc:
-        raise ImportError(
-            "PyYAML is required for YAML export. Install with: pip install pyyaml"
-        ) from exc
+        raise ImportError("PyYAML is required for YAML export. Install with: pip install pyyaml") from exc
 
     data = capability_to_dict(capability)
 
@@ -233,9 +231,7 @@ def export_all_capabilities(
 
     for capability in capabilities:
         if capability.name in seen_names:
-            raise CapabilityExportError(
-                f"Duplicate capability name during export: {capability.name}"
-            )
+            raise CapabilityExportError(f"Duplicate capability name during export: {capability.name}")
         seen_names.add(capability.name)
 
         file_path = output_path / capability_filename(capability.name)

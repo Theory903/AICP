@@ -56,7 +56,9 @@ def make_capability(
 
 
 class FakeProvider(CapabilityProvider):
-    def __init__(self, capabilities: list[Capability], results: dict[str, Any] | None = None):
+    def __init__(
+        self, capabilities: list[Capability], results: dict[str, Any] | None = None
+    ):
         self._caps = {c.name: c for c in capabilities}
         self._results = results or {}
         self.execute_calls: list[tuple[str, dict]] = []
@@ -267,7 +269,9 @@ class TestBuildToolNode:
 
     @pytest.mark.asyncio
     async def test_tool_node_dispatches_by_capability_name(self):
-        provider = FakeProvider([make_capability("orders.place"), make_capability("orders.cancel")])
+        provider = FakeProvider(
+            [make_capability("orders.place"), make_capability("orders.cancel")]
+        )
         adapter = AicpLangGraphAdapter(provider)
         tool_node = await adapter.build_tool_node()
         state = {"capability_name": "orders.place", "input": {"item": "burger"}}

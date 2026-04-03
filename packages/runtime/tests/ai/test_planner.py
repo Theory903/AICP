@@ -45,7 +45,9 @@ class TestPlannerOutput:
     def test_planner_output_creation(self):
         steps = [
             PlanStep(step_id="s1", capability_name="cart.add_item"),
-            PlanStep(step_id="s2", capability_name="checkout.confirm", depends_on=["s1"]),
+            PlanStep(
+                step_id="s2", capability_name="checkout.confirm", depends_on=["s1"]
+            ),
         ]
         output = PlannerOutput(
             goal="Place food order",
@@ -74,7 +76,12 @@ class TestPlannerOutput:
         from jsonschema import Draft202012Validator
 
         # packages/runtime/tests/ai/ -> packages/runtime/tests/ -> packages/runtime/ -> packages/ -> AICP/
-        schema_path = Path(__file__).parent.parent.parent.parent.parent / "spec" / "schemas" / "session.schema.json"
+        schema_path = (
+            Path(__file__).parent.parent.parent.parent.parent
+            / "spec"
+            / "schemas"
+            / "session.schema.json"
+        )
         with open(schema_path) as f:
             full_schema = json.load(f)
 
@@ -95,7 +102,12 @@ class TestAICPlanner:
 
     def test_planner_generates_plan_from_goal(self):
         """Given a goal and a list of available capabilities, produce a plan."""
-        available = ["cart.add_item", "checkout.confirm", "payments.charge", "order.track"]
+        available = [
+            "cart.add_item",
+            "checkout.confirm",
+            "payments.charge",
+            "order.track",
+        ]
         output = self.planner.plan(
             goal="Place a food order and track delivery",
             available_capabilities=available,
@@ -150,13 +162,20 @@ class TestAICPlanner:
 
     def test_planner_output_has_unique_step_ids(self):
         available = ["cart.add_item", "checkout.confirm", "payments.charge"]
-        output = self.planner.plan(goal="Full checkout flow", available_capabilities=available)
+        output = self.planner.plan(
+            goal="Full checkout flow", available_capabilities=available
+        )
         step_ids = [s.step_id for s in output.steps]
         assert len(step_ids) == len(set(step_ids)), "Step IDs must be unique"
 
     def test_plan_with_context_filters_capabilities(self):
         """Context hints narrow the capability set used in the plan."""
-        available = ["cart.add_item", "checkout.confirm", "payments.charge", "admin.delete_all"]
+        available = [
+            "cart.add_item",
+            "checkout.confirm",
+            "payments.charge",
+            "admin.delete_all",
+        ]
         output = self.planner.plan(
             goal="Checkout the cart",
             available_capabilities=available,

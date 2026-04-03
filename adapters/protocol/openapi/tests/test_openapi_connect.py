@@ -69,7 +69,9 @@ async def test_openapi_discovery_source_maps_provider_and_required_fields() -> N
 
 
 @pytest.mark.asyncio
-async def test_openapi_discovery_source_handles_optional_inputs_without_none_required() -> None:
+async def test_openapi_discovery_source_handles_optional_inputs_without_none_required() -> (
+    None
+):
     source = OpenAPIDiscoverySource(
         name="users-api",
         spec={
@@ -105,14 +107,20 @@ async def test_openapi_discovery_source_handles_optional_inputs_without_none_req
 
 @pytest.mark.asyncio
 async def test_core_openapi_import_is_backed_by_connect_package() -> None:
-    from aicp.adapters.protocol.openapi import OpenAPIDiscoverySource as CoreOpenAPISource
+    from aicp.adapters.protocol.openapi import (
+        OpenAPIDiscoverySource as CoreOpenAPISource,
+    )
 
     source = CoreOpenAPISource(
         name="orders-api",
         spec={
             "openapi": "3.0.0",
             "info": {"title": "Orders API", "version": "1.0.0"},
-            "paths": {"/orders": {"get": {"operationId": "orders.list", "responses": {"200": {}}}}},
+            "paths": {
+                "/orders": {
+                    "get": {"operationId": "orders.list", "responses": {"200": {}}}
+                }
+            },
         },
     )
 
@@ -132,14 +140,24 @@ async def test_openapi_discovery_source_preserves_security_and_header_tags() -> 
             "components": {
                 "securitySchemes": {
                     "bearerAuth": {"type": "http", "scheme": "bearer"},
-                    "apiKeyAuth": {"type": "apiKey", "in": "header", "name": "X-API-Key"},
+                    "apiKeyAuth": {
+                        "type": "apiKey",
+                        "in": "header",
+                        "name": "X-API-Key",
+                    },
                 }
             },
             "paths": {
                 "/users": {
                     "get": {
                         "operationId": "users.list",
-                        "parameters": [{"name": "X-Trace-Id", "in": "header", "schema": {"type": "string"}}],
+                        "parameters": [
+                            {
+                                "name": "X-Trace-Id",
+                                "in": "header",
+                                "schema": {"type": "string"},
+                            }
+                        ],
                         "security": [{"bearerAuth": []}, {"apiKeyAuth": []}],
                         "responses": {"200": {"description": "ok"}},
                     }
@@ -156,7 +174,9 @@ async def test_openapi_discovery_source_preserves_security_and_header_tags() -> 
 
 
 @pytest.mark.asyncio
-async def test_openapi_discovery_source_generates_human_friendly_names_and_metadata() -> None:
+async def test_openapi_discovery_source_generates_human_friendly_names_and_metadata() -> (
+    None
+):
     source = OpenAPIDiscoverySource(
         name="small-sms-openapi",
         spec={
@@ -258,14 +278,20 @@ async def test_openapi_discovery_source_generates_human_friendly_names_and_metad
     assert "risk:medium" in activate.tags
     assert "governance:approval_candidate" in activate.tags
     assert activate.continuation is not None
-    assert activate.continuation.next_capabilities == ["school_years.get", "school_years.list"]
+    assert activate.continuation.next_capabilities == [
+        "school_years.get",
+        "school_years.list",
+    ]
 
     assign_subject = capabilities["grades.assign_subject"]
     assert assign_subject.description == "Assign subject to grade"
     assert "grades" in assign_subject.tags
     assert "risk:medium" in assign_subject.tags
     assert assign_subject.continuation is not None
-    assert assign_subject.continuation.next_capabilities == ["grades.get", "subjects.get"]
+    assert assign_subject.continuation.next_capabilities == [
+        "grades.get",
+        "subjects.get",
+    ]
 
     assert "school_years.list" in capabilities
     assert "school_years.get" in capabilities
@@ -293,7 +319,9 @@ async def test_openapi_discovery_source_warns_and_skips_unresolvable_refs() -> N
                             "200": {
                                 "content": {
                                     "application/json": {
-                                        "schema": {"$ref": "#/components/schemas/Missing"}
+                                        "schema": {
+                                            "$ref": "#/components/schemas/Missing"
+                                        }
                                     }
                                 }
                             }

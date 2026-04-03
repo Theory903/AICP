@@ -40,7 +40,13 @@ class FakeProvider:
     def set_error(self, cap: str, msg: str) -> None:
         self._results[cap] = RuntimeError(msg)
 
-    async def execute(self, capability_name: str, arguments: dict, context: dict | None = None, **kw: Any) -> Any:
+    async def execute(
+        self,
+        capability_name: str,
+        arguments: dict,
+        context: dict | None = None,
+        **kw: Any,
+    ) -> Any:
         self.calls.append(capability_name)
         val = self._results.get(capability_name, {"ok": True})
         if isinstance(val, Exception):
@@ -126,7 +132,9 @@ steps:
         provider = FakeProvider()
         captured: list[dict] = []
 
-        async def fake_execute(cap: str, args: dict, context: dict | None = None, **kw: Any) -> Any:
+        async def fake_execute(
+            cap: str, args: dict, context: dict | None = None, **kw: Any
+        ) -> Any:
             captured.append(dict(args))
             return {"done": True}
 

@@ -10,10 +10,10 @@ from __future__ import annotations
 try:
     from aicp_connect_fastapi import AicpConfig, RouteMapping, mount_aicp
 except ImportError:  # pragma: no cover
+
     def _missing_adapter(*args, **kwargs):
         raise RuntimeError(
-            "FastAPI adapter is not installed. "
-            "Install the FastAPI adapter package to use these helpers."
+            "FastAPI adapter is not installed. Install the FastAPI adapter package to use these helpers."
         )
 
     mount_aicp = _missing_adapter

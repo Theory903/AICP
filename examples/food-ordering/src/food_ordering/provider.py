@@ -32,9 +32,7 @@ class FoodOrderProvider(CapabilityProvider):
         # Per-instance cart: keyed by session key (we use "default")
         self._cart: list[dict[str, Any]] = []
         self._capabilities: list[Capability] = create_menu_capabilities()
-        self._cap_map: dict[str, Capability] = {
-            c.name: c for c in self._capabilities
-        }
+        self._cap_map: dict[str, Capability] = {c.name: c for c in self._capabilities}
 
     # ------------------------------------------------------------------
     # CapabilityProvider — identity

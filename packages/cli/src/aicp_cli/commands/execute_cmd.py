@@ -24,9 +24,22 @@ from aicp_cli.context import get_server_client, require_runtime_context
     show_default=True,
     help="JSON context",
 )
-@click.option("--server", "-u", "server_url", help="AICP server URL (default: http://127.0.0.1:8000)")
-@click.option("--yes", "-y", "auto_approve", is_flag=True, help="Auto-approve the current approval request")
-@click.option("--no-input", is_flag=True, help="Never prompt; print approval ID and exit")
+@click.option(
+    "--server",
+    "-u",
+    "server_url",
+    help="AICP server URL (default: http://127.0.0.1:8000)",
+)
+@click.option(
+    "--yes",
+    "-y",
+    "auto_approve",
+    is_flag=True,
+    help="Auto-approve the current approval request",
+)
+@click.option(
+    "--no-input", is_flag=True, help="Never prompt; print approval ID and exit"
+)
 @click.option("--verbose", is_flag=True, help="Show full approval payload")
 def run_cmd(
     capability: str,
@@ -48,12 +61,17 @@ def run_cmd(
     args = _load_json_input(input_data, flag_name="--input", default={})
     context = _parse_json_object(context_data, flag_name="--context")
 
-    exit_code = asyncio.run(_run_execution(
-        capability, args, context, server_url,
-        auto_approve=auto_approve,
-        no_input=no_input,
-        verbose=verbose,
-    ))
+    exit_code = asyncio.run(
+        _run_execution(
+            capability,
+            args,
+            context,
+            server_url,
+            auto_approve=auto_approve,
+            no_input=no_input,
+            verbose=verbose,
+        )
+    )
     raise SystemExit(exit_code)
 
 
@@ -146,7 +164,7 @@ def _compact_args(args: dict[str, Any], max_width: int = 60) -> str:
     compact = json.dumps(args, separators=(",", ":"), default=str)
     if len(compact) <= max_width:
         return compact
-    return compact[:max_width - 3] + "..."
+    return compact[: max_width - 3] + "..."
 
 
 async def _run_execution(
@@ -164,7 +182,9 @@ async def _run_execution(
 
     if client is not None:
         return await _run_execution_server(
-            client, capability_name, args,
+            client,
+            capability_name,
+            args,
             auto_approve=auto_approve,
             no_input=no_input,
             verbose=verbose,
@@ -221,7 +241,11 @@ async def _run_execution_server(
 
         if status == "success" or status == "completed":
             if not verbose:
-                click.echo(json.dumps(_normalize_output(result.get("data")), indent=2, default=str))
+                click.echo(
+                    json.dumps(
+                        _normalize_output(result.get("data")), indent=2, default=str
+                    )
+                )
             return 0
 
         approval_req = result.get("approval_request")
@@ -234,7 +258,9 @@ async def _run_execution_server(
         if not approval_id:
             return 1
 
-        approval_status = result.get("approval_status") or approval_req.get("status", "")
+        approval_status = result.get("approval_status") or approval_req.get(
+            "status", ""
+        )
 
         if approval_status.lower() in ("approved",):
             continue
@@ -246,7 +272,9 @@ async def _run_execution_server(
         if approval_status.lower() != "pending":
             return 1
 
-        reason = result.get("error", {}).get("message", "") or approval_req.get("trigger", {}).get("reason", "")
+        reason = result.get("error", {}).get("message", "") or approval_req.get(
+            "trigger", {}
+        ).get("reason", "")
         approval_args = approval_req.get("arguments", {})
         compact_input = _compact_args(approval_args)
 
@@ -274,7 +302,9 @@ async def _run_execution_server(
 
         if decision.lower() != "y":
             try:
-                client.decide_approval(approval_id, "rejected", "cli-user", "Rejected by user")
+                client.decide_approval(
+                    approval_id, "rejected", "cli-user", "Rejected by user"
+                )
             except Exception:
                 pass
             click.secho("  Rejected.", fg="red")

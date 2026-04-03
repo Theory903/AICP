@@ -169,7 +169,9 @@ class WorkflowService:
             actor=actor,
             workflow_id=workflow_id,
             step_id=current_step.id if current_step is not None else result.step_id,
-            capability_name=current_step.capability_name if current_step is not None else None,
+            capability_name=current_step.capability_name
+            if current_step is not None
+            else None,
             approval_request_id=self._get_approval_request_id(result, workflow),
             status="awaiting_approval"
             if result.requires_approval
@@ -292,7 +294,9 @@ class WorkflowService:
             actor=str(approval.get("decided_by") or approver or "approver"),
             workflow_id=workflow_id,
             step_id=current_step.id if current_step is not None else None,
-            capability_name=current_step.capability_name if current_step is not None else None,
+            capability_name=current_step.capability_name
+            if current_step is not None
+            else None,
             approval_request_id=approval_id,
             status="running",
             metadata={"approval_status": approval.get("status")},
@@ -321,7 +325,9 @@ class WorkflowService:
             actor=str(approval.get("decided_by") or approver or "approver"),
             workflow_id=workflow_id,
             step_id=current_step.id if current_step is not None else None,
-            capability_name=current_step.capability_name if current_step is not None else None,
+            capability_name=current_step.capability_name
+            if current_step is not None
+            else None,
             approval_request_id=approval_id,
             status="success" if result.success else "failure",
             metadata={"error": result.error},
@@ -433,14 +439,23 @@ class WorkflowService:
         for entry in history:
             approval_request_id = entry.get("approval_request_id")
             step_id = entry.get("step_id")
-            if not isinstance(approval_request_id, str) or not approval_request_id.strip():
+            if (
+                not isinstance(approval_request_id, str)
+                or not approval_request_id.strip()
+            ):
                 continue
             if isinstance(step_id, str) and step_id.strip():
-                step_approvals.setdefault(step_id, {})["approval_request_id"] = approval_request_id
-            if entry.get("event_type") == "approval_request_created" and isinstance(step_id, str):
+                step_approvals.setdefault(step_id, {})["approval_request_id"] = (
+                    approval_request_id
+                )
+            if entry.get("event_type") == "approval_request_created" and isinstance(
+                step_id, str
+            ):
                 step_approvals.setdefault(step_id, {})["approval_status"] = "pending"
             metadata = entry.get("metadata") or {}
-            if entry.get("event_type") == "approval_decision_made" and isinstance(step_id, str):
+            if entry.get("event_type") == "approval_decision_made" and isinstance(
+                step_id, str
+            ):
                 decision = str(metadata.get("decision") or "").strip()
                 if decision:
                     step_approvals.setdefault(step_id, {})["approval_status"] = decision
@@ -449,7 +464,9 @@ class WorkflowService:
         current_step = workflow.current_step
         if isinstance(approval_request_id, str) and approval_request_id.strip():
             if current_step is not None:
-                step_approvals.setdefault(current_step.id, {})["approval_request_id"] = approval_request_id
+                step_approvals.setdefault(current_step.id, {})[
+                    "approval_request_id"
+                ] = approval_request_id
 
         if self._approvals is None:
             return step_approvals
@@ -541,9 +558,7 @@ class WorkflowService:
             if not isinstance(capability_name, str) or not capability_name.strip():
                 capability_name = step.capability_name if step is not None else None
 
-            approval = (
-                approval_map.get(step_id, {}) if isinstance(step_id, str) else {}
-            )
+            approval = approval_map.get(step_id, {}) if isinstance(step_id, str) else {}
             approval_request_id = entry.get("approval_request_id") or approval.get(
                 "approval_request_id"
             )
@@ -555,7 +570,9 @@ class WorkflowService:
             if entry.get("event_type") == "approval_request_created":
                 approval_status = "pending"
             if entry.get("event_type") == "approval_decision_made":
-                approval_status = str(metadata.get("decision") or approval_status or "") or None
+                approval_status = (
+                    str(metadata.get("decision") or approval_status or "") or None
+                )
 
             compensation = {"rollback_capability": None, "available": False}
             if isinstance(capability_name, str) and capability_name.strip():
@@ -610,7 +627,11 @@ class WorkflowService:
 
         if result.requires_confirmation or result.requires_approval:
             event_type = "workflow_step_waiting"
-            status = "awaiting_approval" if result.requires_approval else "awaiting_confirmation"
+            status = (
+                "awaiting_approval"
+                if result.requires_approval
+                else "awaiting_confirmation"
+            )
             metadata["approval_status"] = (
                 "pending" if result.requires_approval else None
             )
@@ -627,7 +648,8 @@ class WorkflowService:
             workflow_id=workflow.id if workflow is not None else None,
             step_id=step.id,
             capability_name=step.capability_name,
-            approval_request_id=approval_request_id or self._get_approval_request_id(result, workflow),
+            approval_request_id=approval_request_id
+            or self._get_approval_request_id(result, workflow),
             status=status,
             metadata=metadata,
         )
@@ -665,7 +687,9 @@ class WorkflowService:
         }
         return title_map.get(str(event_type), str(event_type or "event"))
 
-    def _timeline_summary(self, entry: dict[str, Any], capability_name: str | None) -> str:
+    def _timeline_summary(
+        self, entry: dict[str, Any], capability_name: str | None
+    ) -> str:
         """Build a readable summary for a workflow timeline event."""
         event_type = entry.get("event_type")
         metadata = entry.get("metadata") or {}

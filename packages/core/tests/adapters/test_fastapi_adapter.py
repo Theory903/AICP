@@ -1,6 +1,5 @@
 """Tests for FastAPI adapter."""
 
-
 from fastapi import FastAPI, Query
 from fastapi import Path as PathParam
 from fastapi.testclient import TestClient

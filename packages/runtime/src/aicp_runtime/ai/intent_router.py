@@ -92,9 +92,32 @@ _CLARIFY_THRESHOLD_DEFAULT = 0.15
 def _tokenise(text: str) -> set[str]:
     """Lowercase, split on non-word chars, discard stop words."""
     _STOP = {
-        "a", "an", "the", "to", "of", "for", "is", "are", "in", "on",
-        "my", "me", "i", "it", "at", "by", "with", "from", "this", "that",
-        "and", "or", "not", "be", "do", "please",
+        "a",
+        "an",
+        "the",
+        "to",
+        "of",
+        "for",
+        "is",
+        "are",
+        "in",
+        "on",
+        "my",
+        "me",
+        "i",
+        "it",
+        "at",
+        "by",
+        "with",
+        "from",
+        "this",
+        "that",
+        "and",
+        "or",
+        "not",
+        "be",
+        "do",
+        "please",
     }
     tokens = re.findall(r"[a-z0-9]+", text.lower())
     return {t for t in tokens if t not in _STOP}
@@ -194,8 +217,7 @@ class IntentRouter:
                 destination=RoutingDestination.CLARIFY,
                 confidence=1.0 - best_score,
                 clarification_prompt=(
-                    "I'm not sure what you'd like to do. "
-                    "Could you be more specific?"
+                    "I'm not sure what you'd like to do. Could you be more specific?"
                 ),
             )
 

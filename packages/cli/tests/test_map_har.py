@@ -9,7 +9,9 @@ from aicp_cli.commands.map_har import cmd_map_har
 
 
 @pytest.mark.asyncio
-async def test_cmd_map_har_outputs_capabilities_with_nested_provider(tmp_path, capsys) -> None:
+async def test_cmd_map_har_outputs_capabilities_with_nested_provider(
+    tmp_path, capsys
+) -> None:
     har_file = tmp_path / "checkout.har"
     har_file.write_text(
         json.dumps(
@@ -21,7 +23,10 @@ async def test_cmd_map_har_outputs_capabilities_with_nested_provider(tmp_path, c
                                 "method": "POST",
                                 "url": "https://api.example.com/orders/123/checkout",
                                 "queryString": [],
-                                "postData": {"mimeType": "application/json", "text": '{"coupon":"SAVE10"}'},
+                                "postData": {
+                                    "mimeType": "application/json",
+                                    "text": '{"coupon":"SAVE10"}',
+                                },
                             }
                         }
                     ]
@@ -61,7 +66,9 @@ async def test_cmd_map_har_writes_output_file(tmp_path, capsys) -> None:
             }
         )
     )
-    args = argparse.Namespace(file=str(har_file), name="users-har", output=str(output_file))
+    args = argparse.Namespace(
+        file=str(har_file), name="users-har", output=str(output_file)
+    )
 
     exit_code = await cmd_map_har(args)
     output = capsys.readouterr().out

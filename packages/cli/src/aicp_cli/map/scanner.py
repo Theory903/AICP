@@ -60,6 +60,7 @@ class MapScanner:
     def scan(self, path: str | Path, deep: bool = False) -> MapResult:
         """Execute the full map scan pipeline."""
         import time
+
         start = time.time()
 
         path = Path(path)
@@ -88,7 +89,9 @@ class MapScanner:
         # Layer 5: Capability inference
         capability_candidates = []
         if routes or services:
-            extracted_routes = [self._dict_to_route(r) for r in routes] if routes else []
+            extracted_routes = (
+                [self._dict_to_route(r) for r in routes] if routes else []
+            )
             caps = self.capability_inferrer.infer(
                 extracted_routes,
                 extracted_entities,
@@ -97,7 +100,9 @@ class MapScanner:
             capability_candidates = [self._cap_to_dict(c) for c in caps]
 
         # Layer 6: Workflow inference (deep mode enables richer pattern matching)
-        workflow_candidates = self._infer_workflows(routes, capability_candidates, deep=deep)
+        workflow_candidates = self._infer_workflows(
+            routes, capability_candidates, deep=deep
+        )
 
         # Layer 7: Frontend extraction
         frontend_result = self.frontend_extractor.extract(path)
@@ -114,14 +119,17 @@ class MapScanner:
 
         if frontend_api_calls:
             from dataclasses import asdict
-            br = asdict(MapResult(
-                backend_framework=backend_framework,
-                backend_confidence=backend_confidence,
-                routes=routes,
-                entities=entities,
-                services=services,
-                capability_candidates=capability_candidates,
-            ))
+
+            br = asdict(
+                MapResult(
+                    backend_framework=backend_framework,
+                    backend_confidence=backend_confidence,
+                    routes=routes,
+                    entities=entities,
+                    services=services,
+                    capability_candidates=capability_candidates,
+                )
+            )
             # Use simple dict for linker
             br["framework"] = backend_framework
             br["confidence"] = backend_confidence
@@ -200,9 +208,11 @@ class MapScanner:
             file_path=d.get("file", ""),
         )
 
-    def _infer_workflows(self, routes: list[dict], capabilities: list[dict], deep: bool = False) -> list[dict]:
+    def _infer_workflows(
+        self, routes: list[dict], capabilities: list[dict], deep: bool = False
+    ) -> list[dict]:
         """Simple workflow inference from route patterns.
-        
+
         When deep=True, uses extended pattern set for richer inference.
         """
         workflows = []
@@ -216,13 +226,24 @@ class MapScanner:
 
         # Deep mode: add more workflow patterns
         if deep:
-            patterns.extend([
-                {"name": "crud_lifecycle", "steps": ["create", "get", "update", "delete"]},
-                {"name": "approval_flow", "steps": ["create", "get", "approve"]},
-                {"name": "review_flow", "steps": ["create", "get", "review", "update"]},
-                {"name": "search_flow", "steps": ["list", "get"]},
-                {"name": "auth_flow", "steps": ["create", "authenticate", "verify"]},
-            ])
+            patterns.extend(
+                [
+                    {
+                        "name": "crud_lifecycle",
+                        "steps": ["create", "get", "update", "delete"],
+                    },
+                    {"name": "approval_flow", "steps": ["create", "get", "approve"]},
+                    {
+                        "name": "review_flow",
+                        "steps": ["create", "get", "review", "update"],
+                    },
+                    {"name": "search_flow", "steps": ["list", "get"]},
+                    {
+                        "name": "auth_flow",
+                        "steps": ["create", "authenticate", "verify"],
+                    },
+                ]
+            )
 
         # Match patterns to actual capabilities
         for pattern in patterns:
@@ -234,11 +255,13 @@ class MapScanner:
                         break
 
             if len(matched_steps) >= 2:
-                workflows.append({
-                    "name": pattern["name"],
-                    "steps": matched_steps,
-                    "inferred": True,
-                })
+                workflows.append(
+                    {
+                        "name": pattern["name"],
+                        "steps": matched_steps,
+                        "inferred": True,
+                    }
+                )
 
         return workflows
 

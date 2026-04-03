@@ -349,6 +349,10 @@ def build_workflows_router(workflow_service: WorkflowService) -> APIRouter:
                 detail=f"Failed to publish event: {exc}",
             ) from exc
 
-        return {"published": True, "workflow_id": workflow_id, "event_name": request.name}
+        return {
+            "published": True,
+            "workflow_id": workflow_id,
+            "event_name": request.name,
+        }
 
     return router

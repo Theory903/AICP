@@ -284,9 +284,7 @@ def capability(
         raise ValueError(f"Invalid risk '{risk}'. Expected one of: {sorted(_ALLOWED_RISK)}")
 
     if approval is not None and approval not in _ALLOWED_APPROVAL:
-        raise ValueError(
-            f"Invalid approval '{approval}'. Expected one of: {sorted(_ALLOWED_APPROVAL)}"
-        )
+        raise ValueError(f"Invalid approval '{approval}'. Expected one of: {sorted(_ALLOWED_APPROVAL)}")
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         cap_name = (name or func.__name__).strip()

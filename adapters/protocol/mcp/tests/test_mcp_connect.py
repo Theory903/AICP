@@ -6,7 +6,9 @@ from aicp_connect_mcp import McpAdapter
 
 
 @pytest.mark.asyncio
-async def test_mcp_adapter_discovers_capabilities_with_provider_metadata(monkeypatch) -> None:
+async def test_mcp_adapter_discovers_capabilities_with_provider_metadata(
+    monkeypatch,
+) -> None:
     adapter = McpAdapter(
         name="demo-mcp",
         mcp_config={"mcpServers": {"filesystem": {"transport": "stdio"}}},
@@ -63,7 +65,13 @@ async def test_core_mcp_import_is_backed_by_connect_package(monkeypatch) -> None
     )
 
     async def fake_list_tools(server_name, config):
-        return [{"name": "search", "description": "Search memory", "inputSchema": {"properties": {}}}]
+        return [
+            {
+                "name": "search",
+                "description": "Search memory",
+                "inputSchema": {"properties": {}},
+            }
+        ]
 
     monkeypatch.setattr(adapter, "_list_tools", fake_list_tools)
     capabilities = await adapter.discover()

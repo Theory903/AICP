@@ -275,7 +275,10 @@ class CurlImporter:
         ]
 
         # For GET requests with no meaningful last segment, append a verb
-        if method.upper() == "GET" and (not path_parts or self._slugify(path_parts[-1]) not in ("list", "search", "get", "find")):
+        if method.upper() == "GET" and (
+            not path_parts
+            or self._slugify(path_parts[-1]) not in ("list", "search", "get", "find")
+        ):
             suffix = "list"
         elif method.upper() in ("DELETE",):
             suffix = "delete"
@@ -288,7 +291,9 @@ class CurlImporter:
             else:
                 base = ".".join(path_parts)
         else:
-            host_part = self._slugify(parsed.netloc.split("@")[-1].split(":")[0]) or "remote"
+            host_part = (
+                self._slugify(parsed.netloc.split("@")[-1].split(":")[0]) or "remote"
+            )
             base = f"{host_part}.{suffix or method.lower()}"
 
         if multi_request:

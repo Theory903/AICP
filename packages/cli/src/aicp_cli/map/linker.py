@@ -5,7 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from aicp_cli.map.graph import CodebaseGraph, Node, Edge, NodeType, EdgeType, make_node_id
+from aicp_cli.map.graph import (
+    CodebaseGraph,
+    Node,
+    Edge,
+    NodeType,
+    EdgeType,
+    make_node_id,
+)
 
 
 @dataclass
@@ -61,7 +68,9 @@ class CrossLayerLinker:
         # Route nodes
         routes = result.get("routes", [])
         for route in routes:
-            node_id = make_node_id(NodeType.ROUTE, f"{route.get('method', 'GET')}_{route.get('path', '/')}")
+            node_id = make_node_id(
+                NodeType.ROUTE, f"{route.get('method', 'GET')}_{route.get('path', '/')}"
+            )
             node = Node(
                 id=node_id,
                 type=NodeType.ROUTE,
@@ -118,7 +127,9 @@ class CrossLayerLinker:
         """Add frontend nodes to graph."""
         # Framework node
         if result.get("framework"):
-            node_id = make_node_id(NodeType.FRAMEWORK, f"frontend_{result['framework']}")
+            node_id = make_node_id(
+                NodeType.FRAMEWORK, f"frontend_{result['framework']}"
+            )
             node = Node(
                 id=node_id,
                 type=NodeType.FRAMEWORK,
@@ -141,7 +152,10 @@ class CrossLayerLinker:
 
         # API call nodes
         for call in result.get("api_calls", []):
-            node_id = make_node_id(NodeType.API_CALL, f"{call.get('method', 'GET')}_{call.get('path', '/')}")
+            node_id = make_node_id(
+                NodeType.API_CALL,
+                f"{call.get('method', 'GET')}_{call.get('path', '/')}",
+            )
             node = Node(
                 id=node_id,
                 type=NodeType.API_CALL,
@@ -167,12 +181,16 @@ class CrossLayerLinker:
         # Build backend route lookup
         backend_routes = {}
         for route in backend_result.get("routes", []):
-            key = f"{route.get('method', 'GET').upper()}_{route.get('path', '/').lower()}"
+            key = (
+                f"{route.get('method', 'GET').upper()}_{route.get('path', '/').lower()}"
+            )
             backend_routes[key] = route
 
         # Link API calls to backend routes
         for call in frontend_result.get("api_calls", []):
-            call_key = f"{call.get('method', 'GET').upper()}_{call.get('path', '/').lower()}"
+            call_key = (
+                f"{call.get('method', 'GET').upper()}_{call.get('path', '/').lower()}"
+            )
 
             # Try exact match first
             route = backend_routes.get(call_key)
@@ -180,13 +198,22 @@ class CrossLayerLinker:
             # Try fuzzy match
             if not route:
                 for bk, br in backend_routes.items():
-                    if call.get("path", "").lower() in bk or bk.split("_", 1)[-1] in call.get("path", "").lower():
+                    if (
+                        call.get("path", "").lower() in bk
+                        or bk.split("_", 1)[-1] in call.get("path", "").lower()
+                    ):
                         route = br
                         break
 
             if route:
-                call_node_id = make_node_id(NodeType.API_CALL, f"{call.get('method', 'GET')}_{call.get('path', '/')}")
-                route_node_id = make_node_id(NodeType.ROUTE, f"{route.get('method', 'GET')}_{route.get('path', '/')}")
+                call_node_id = make_node_id(
+                    NodeType.API_CALL,
+                    f"{call.get('method', 'GET')}_{call.get('path', '/')}",
+                )
+                route_node_id = make_node_id(
+                    NodeType.ROUTE,
+                    f"{route.get('method', 'GET')}_{route.get('path', '/')}",
+                )
 
                 route_key = f"{route.get('method', 'GET').upper()}_{route.get('path', '/').lower()}"
                 confidence = 1.0 if call_key == route_key else 0.7
@@ -214,7 +241,9 @@ class CrossLayerLinker:
                 matched_backend.add(edge.target_id)
 
         for route in backend_result.get("routes", []):
-            route_node_id = make_node_id(NodeType.ROUTE, f"{route.get('method', 'GET')}_{route.get('path', '/')}")
+            route_node_id = make_node_id(
+                NodeType.ROUTE, f"{route.get('method', 'GET')}_{route.get('path', '/')}"
+            )
             if route_node_id not in matched_backend:
                 unmatched_be.append(route)
 
@@ -239,12 +268,14 @@ class CrossLayerLinker:
         for path in paths:
             path_dict = []
             for node in path:
-                path_dict.append({
-                    "id": node.id,
-                    "type": node.type.value,
-                    "label": node.label,
-                    "file": node.file_path,
-                })
+                path_dict.append(
+                    {
+                        "id": node.id,
+                        "type": node.type.value,
+                        "label": node.label,
+                        "file": node.file_path,
+                    }
+                )
             result.append(path_dict)
 
         return result

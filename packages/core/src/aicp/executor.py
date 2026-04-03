@@ -157,9 +157,7 @@ class AicpExecutor(Executor):
             return self._error_result(
                 capability_name=self._approval_capability_name(approval_request),
                 error_code="approval_denied",
-                error_message=(
-                    f"Approval request is not approved: {status_value}"
-                ),
+                error_message=(f"Approval request is not approved: {status_value}"),
                 execution_time_ms=0.0,
             )
 
@@ -382,9 +380,7 @@ class AicpExecutor(Executor):
         execution_context = dict(context)
         execution_context["capability_name"] = capability_name
         execution_context["kind"] = capability.kind.value
-        execution_context["is_destructive"] = bool(
-            getattr(capability, "is_destructive", False)
-        )
+        execution_context["is_destructive"] = bool(getattr(capability, "is_destructive", False))
         execution_context["tags"] = list(getattr(capability, "tags", []) or [])
         if resumed_execution is not None:
             execution_context["resumed_execution"] = resumed_execution.to_dict()
@@ -482,6 +478,7 @@ class AicpExecutor(Executor):
 
         try:
             from aicp_runtime.services.approvals import ApprovalService as RuntimeApprovalService
+
             if isinstance(approval_service, RuntimeApprovalService):
                 result: Any = await approval_service.get_approval(approval_request_id)
                 return result
@@ -511,9 +508,7 @@ class AicpExecutor(Executor):
             execution_id = f"exec_{uuid.uuid4().hex[:12]}"
             intent_hash = self._generate_intent_hash(capability_name, arguments, context)
 
-            existing_approved = await self._check_existing_approval(
-                capability_name, arguments, context
-            )
+            existing_approved = await self._check_existing_approval(capability_name, arguments, context)
             if existing_approved is not None:
                 approved_execution_id = existing_approved.get("execution_id")
                 return ExecutionResult(
@@ -602,9 +597,7 @@ class AicpExecutor(Executor):
     ) -> ExecutionResult:
         """Create a success result with continuation and rendering hints."""
         validation_issue = self._validate_output(capability, data)
-        validation_mode = str(
-            getattr(capability, "output_validation_mode", "") or "disabled"
-        )
+        validation_mode = str(getattr(capability, "output_validation_mode", "") or "disabled")
         if validation_issue is not None and validation_mode == "strict":
             return self._error_result(
                 capability_name=capability.name,
@@ -745,62 +738,30 @@ class AicpExecutor(Executor):
                 "Use list_capabilities() to inspect available capabilities."
             ),
             "policy_denied": (
-                "Review the policy that denied this execution. "
-                "Check permissions, auth context, and policy rules."
+                "Review the policy that denied this execution. Check permissions, auth context, and policy rules."
             ),
             "rate_limited": "Too many requests. Wait and retry later.",
-            "requires_confirmation": (
-                "This capability requires confirmation before execution."
-            ),
-            "requires_approval": (
-                "This capability requires approval before execution."
-            ),
-            "execution_failed": (
-                "Check the capability implementation, inputs, and downstream service health."
-            ),
-            "authentication_failed": (
-                "Check auth configuration, credentials, and provider-specific headers."
-            ),
-            "missing_session": (
-                "Attach a compatible session before retrying this capability."
-            ),
-            "needs_reauthentication": (
-                "Refresh or recreate the session before retrying this capability."
-            ),
-            "provider_session_mismatch": (
-                "Use a session created for the capability's provider."
-            ),
-            "tenant_session_mismatch": (
-                "Use a session scoped to the requested tenant or switch tenant context."
-            ),
+            "requires_confirmation": ("This capability requires confirmation before execution."),
+            "requires_approval": ("This capability requires approval before execution."),
+            "execution_failed": ("Check the capability implementation, inputs, and downstream service health."),
+            "authentication_failed": ("Check auth configuration, credentials, and provider-specific headers."),
+            "missing_session": ("Attach a compatible session before retrying this capability."),
+            "needs_reauthentication": ("Refresh or recreate the session before retrying this capability."),
+            "provider_session_mismatch": ("Use a session created for the capability's provider."),
+            "tenant_session_mismatch": ("Use a session scoped to the requested tenant or switch tenant context."),
             "output_validation_failed": (
-                "Inspect the provider response and update the declared "
-                "output schema or execution adapter."
+                "Inspect the provider response and update the declared output schema or execution adapter."
             ),
-            "resource_not_found": (
-                "Check the target resource identifier or backend route mapping."
-            ),
-            "validation_failed": (
-                "Review the backend validation error and retry with corrected inputs."
-            ),
+            "resource_not_found": ("Check the target resource identifier or backend route mapping."),
+            "validation_failed": ("Review the backend validation error and retry with corrected inputs."),
             "server_error": "The backend failed. Retry once, then inspect service health.",
             "connectivity_error": "The backend could not be reached. Check network and base URL.",
             "timeout": "The backend timed out. Retry later or reduce request complexity.",
-            "circuit_open": (
-                "The backend is failing repeatedly. Wait for the circuit breaker to reset."
-            ),
-            "invalid_arguments": (
-                "Review the capability input schema and supply valid arguments."
-            ),
-            "approval_not_configured": (
-                "Configure ApprovalService to support HITL approval flows."
-            ),
-            "approval_not_found": (
-                "Check the approval request ID and ensure it still exists."
-            ),
-            "approval_denied": (
-                "Approval is not in an approved state. Review the approval decision."
-            ),
+            "circuit_open": ("The backend is failing repeatedly. Wait for the circuit breaker to reset."),
+            "invalid_arguments": ("Review the capability input schema and supply valid arguments."),
+            "approval_not_configured": ("Configure ApprovalService to support HITL approval flows."),
+            "approval_not_found": ("Check the approval request ID and ensure it still exists."),
+            "approval_denied": ("Approval is not in an approved state. Review the approval decision."),
         }
         return hints.get(error_code, "Review the error and retry with corrected input.")
 
@@ -809,9 +770,7 @@ class AicpExecutor(Executor):
         capability: Capability,
         data: Any,
     ) -> dict[str, Any] | None:
-        validation_mode = str(
-            getattr(capability, "output_validation_mode", "") or "disabled"
-        )
+        validation_mode = str(getattr(capability, "output_validation_mode", "") or "disabled")
         if validation_mode == "disabled":
             return None
 
@@ -836,8 +795,7 @@ class AicpExecutor(Executor):
         return {
             "code": "output_validation_warning",
             "message": (
-                "Execution result did not match declared output schema: "
-                f"{first_error.message} at {path_text}."
+                f"Execution result did not match declared output schema: {first_error.message} at {path_text}."
             ),
             "details": {
                 "path": path_text,
@@ -872,10 +830,9 @@ class AicpExecutor(Executor):
         has been approved, allowing auto-resume after approval.
         """
         normalized_args = self._normalize_for_hashing(arguments or {})
-        normalized_context = self._normalize_for_hashing({
-            k: v for k, v in (context or {}).items()
-            if k in {"tenant_id", "user_id", "session_id"}
-        })
+        normalized_context = self._normalize_for_hashing(
+            {k: v for k, v in (context or {}).items() if k in {"tenant_id", "user_id", "session_id"}}
+        )
 
         hash_input = f"{capability_name}:{normalized_args}:{normalized_context}"
         return hashlib.sha256(hash_input.encode("utf-8")).hexdigest()[:16]
@@ -883,9 +840,7 @@ class AicpExecutor(Executor):
     def _normalize_for_hashing(self, data: Any) -> str:
         """Normalize data for consistent hashing."""
         if isinstance(data, dict):
-            normalized_items = sorted(
-                (k, self._normalize_for_hashing(v)) for k, v in data.items()
-            )
+            normalized_items = sorted((k, self._normalize_for_hashing(v)) for k, v in data.items())
             return f"{{{','.join(f'{k}:{v}' for k, v in normalized_items)}}}"
         if isinstance(data, list):
             return f"[{','.join(self._normalize_for_hashing(item) for item in data)}]"
@@ -906,6 +861,7 @@ class AicpExecutor(Executor):
         """Check if there's an already approved execution for the same intent."""
         try:
             from aicp_runtime.services.approvals import ApprovalService as RuntimeApprovalService
+
             if isinstance(self._approval_service, RuntimeApprovalService):
                 return await self._approval_service.find_approved_for_intent(
                     capability_name=capability_name,

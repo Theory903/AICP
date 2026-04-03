@@ -67,7 +67,7 @@ class SkillEngine:
     ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
         """Execute skill if input matches any skill pattern."""
         user_input = user_input.strip().lower()
-        
+
         for skill_name, skill in self._skills.items():
             match = re.match(skill["pattern"], user_input, re.IGNORECASE)
             if match:
@@ -75,7 +75,7 @@ class SkillEngine:
                 args = dict(skill["args"])
                 if match.groups():
                     args["captured"] = match.groups()
-                
+
                 return (
                     {
                         "command": skill["command"],
@@ -85,7 +85,7 @@ class SkillEngine:
                     },
                     {"skill_name": skill_name},
                 )
-        
+
         return None, {}
 
     def list_skills(self) -> list[str]:

@@ -157,7 +157,9 @@ def _route_description(endpoint: Any, operation: dict[str, Any] | None) -> str:
     return ""
 
 
-def _extract_input_schema(operation: dict[str, Any] | None, endpoint: Any) -> dict[str, Any]:
+def _extract_input_schema(
+    operation: dict[str, Any] | None, endpoint: Any
+) -> dict[str, Any]:
     if operation:
         schema = _extract_input_schema_from_openapi(operation)
         if schema["properties"]:

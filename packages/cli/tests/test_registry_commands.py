@@ -29,7 +29,9 @@ async def test_cmd_register_adds_capability_to_registry(capsys) -> None:
 async def test_cmd_list_prints_registered_capabilities(capsys) -> None:
     registry = AicpRegistry()
     registry.register_capability(
-        Capability(name="users.list", description="List users", kind=CapabilityKind.QUERY)
+        Capability(
+            name="users.list", description="List users", kind=CapabilityKind.QUERY
+        )
     )
 
     exit_code = await cmd_list(registry, argparse.Namespace())
@@ -43,7 +45,9 @@ async def test_cmd_list_prints_registered_capabilities(capsys) -> None:
 async def test_cmd_call_executes_capability(capsys) -> None:
     repo = InMemoryCapabilityRepository()
     repo.add_capability(
-        Capability(name="payments.transfer", description="Transfer", kind=CapabilityKind.ACTION)
+        Capability(
+            name="payments.transfer", description="Transfer", kind=CapabilityKind.ACTION
+        )
     )
     executor = AicpExecutor(repo)
     args = argparse.Namespace(name="payments.transfer", args='{"amount": 25}')

@@ -115,9 +115,7 @@ class InMemoryApprovalStore(ApprovalStore):
     async def create(self, request: ApprovalRequest) -> ApprovalRequest:
         async with self._lock:
             if request.id in self._requests:
-                raise ApprovalValidationError(
-                    f"Approval request already exists: {request.id}"
-                )
+                raise ApprovalValidationError(f"Approval request already exists: {request.id}")
             self._requests[request.id] = request
             return request
 
@@ -129,9 +127,7 @@ class InMemoryApprovalStore(ApprovalStore):
     async def update(self, request: ApprovalRequest) -> ApprovalRequest:
         async with self._lock:
             if request.id not in self._requests:
-                raise ApprovalNotFoundError(
-                    f"Approval request not found for update: {request.id}"
-                )
+                raise ApprovalNotFoundError(f"Approval request not found for update: {request.id}")
             self._requests[request.id] = request
             return request
 
@@ -166,11 +162,7 @@ class InMemoryApprovalStore(ApprovalStore):
             raise ApprovalValidationError("execution_id cannot be empty")
 
         async with self._lock:
-            results = [
-                request
-                for request in self._requests.values()
-                if request.execution_id == execution_id
-            ]
+            results = [request for request in self._requests.values() if request.execution_id == execution_id]
             results.sort(key=lambda r: getattr(r, "created_at", None) or "")
             return results
 
@@ -179,11 +171,7 @@ class InMemoryApprovalStore(ApprovalStore):
             raise ApprovalValidationError("workflow_id cannot be empty")
 
         async with self._lock:
-            results = [
-                request
-                for request in self._requests.values()
-                if request.workflow_id == workflow_id
-            ]
+            results = [request for request in self._requests.values() if request.workflow_id == workflow_id]
             results.sort(key=lambda r: getattr(r, "created_at", None) or "")
             return results
 
@@ -353,9 +341,7 @@ class ApprovalService:
         if normalized == "revoked":
             return await self.revoke(request_id, decided_by, reason)
 
-        raise ApprovalValidationError(
-            "decision must be one of: approved, rejected, revoked"
-        )
+        raise ApprovalValidationError("decision must be one of: approved, rejected, revoked")
 
     async def list_pending(
         self,
@@ -490,9 +476,7 @@ class ApprovalService:
     @staticmethod
     def _validate_capability_name(capability_name: str) -> None:
         if not isinstance(capability_name, str) or not capability_name.strip():
-            raise ApprovalValidationError(
-                "capability_name must be a non-empty string"
-            )
+            raise ApprovalValidationError("capability_name must be a non-empty string")
 
     @staticmethod
     def _validate_arguments(arguments: dict[str, Any]) -> None:
@@ -502,6 +486,4 @@ class ApprovalService:
     @staticmethod
     def _validate_expiry(expires_in_seconds: int) -> None:
         if not isinstance(expires_in_seconds, int) or expires_in_seconds <= 0:
-            raise ApprovalValidationError(
-                "expires_in_seconds must be a positive integer"
-            )
+            raise ApprovalValidationError("expires_in_seconds must be a positive integer")

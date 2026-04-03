@@ -23,6 +23,7 @@ from aicp.interfaces.workflow_runtime import WorkflowState, WorkflowStatus
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def parse(yaml_text: str) -> WorkflowState:
     """Parse a dedented YAML string into a WorkflowState."""
     parser = WorkflowDSLParser()
@@ -32,6 +33,7 @@ def parse(yaml_text: str) -> WorkflowState:
 # ---------------------------------------------------------------------------
 # Happy-path: minimal workflow
 # ---------------------------------------------------------------------------
+
 
 class TestDSLMinimalWorkflow:
     def test_minimal_workflow_produces_workflow_state(self):
@@ -119,6 +121,7 @@ class TestDSLMinimalWorkflow:
 # ---------------------------------------------------------------------------
 # Step parsing
 # ---------------------------------------------------------------------------
+
 
 class TestDSLStepParsing:
     def test_single_step_is_created(self):
@@ -266,8 +269,12 @@ class TestDSLStepParsing:
                 output_mapping:
                   result: steps.step1.result
         """)
-        assert wf.steps[0].metadata.get("input_mapping") == {"order_id": "context.order_id"}
-        assert wf.steps[0].metadata.get("output_mapping") == {"result": "steps.step1.result"}
+        assert wf.steps[0].metadata.get("input_mapping") == {
+            "order_id": "context.order_id"
+        }
+        assert wf.steps[0].metadata.get("output_mapping") == {
+            "result": "steps.step1.result"
+        }
 
     def test_compensation_stored_in_metadata(self):
         wf = parse("""
@@ -289,6 +296,7 @@ class TestDSLStepParsing:
 # ---------------------------------------------------------------------------
 # Step type: parallel
 # ---------------------------------------------------------------------------
+
 
 class TestDSLParallelSteps:
     def test_parallel_step_stored_in_metadata(self):
@@ -348,6 +356,7 @@ class TestDSLParallelSteps:
 # Step type: wait_event
 # ---------------------------------------------------------------------------
 
+
 class TestDSLWaitEventStep:
     def test_wait_event_step_stored(self):
         wf = parse("""
@@ -373,7 +382,9 @@ class TestDSLWaitEventStep:
                 event_filter:
                   order_id: "${context.order_id}"
         """)
-        assert wf.steps[0].metadata.get("event_filter") == {"order_id": "${context.order_id}"}
+        assert wf.steps[0].metadata.get("event_filter") == {
+            "order_id": "${context.order_id}"
+        }
 
     def test_wait_event_with_timeout(self):
         wf = parse("""
@@ -394,6 +405,7 @@ class TestDSLWaitEventStep:
 # ---------------------------------------------------------------------------
 # Step type: branch
 # ---------------------------------------------------------------------------
+
 
 class TestDSLBranchStep:
     def test_branch_conditions_stored(self):
@@ -427,6 +439,7 @@ class TestDSLBranchStep:
 # Step type: loop
 # ---------------------------------------------------------------------------
 
+
 class TestDSLLoopStep:
     def test_loop_step_stored(self):
         wf = parse("""
@@ -456,6 +469,7 @@ class TestDSLLoopStep:
 # ---------------------------------------------------------------------------
 # Validation errors
 # ---------------------------------------------------------------------------
+
 
 class TestDSLValidation:
     def test_missing_name_raises_validation_error(self):
@@ -550,6 +564,7 @@ class TestDSLValidation:
 # from_file / from_string factories
 # ---------------------------------------------------------------------------
 
+
 class TestDSLFactories:
     def test_parse_from_string(self):
         yaml_text = textwrap.dedent("""
@@ -564,12 +579,14 @@ class TestDSLFactories:
 
     def test_parse_from_file(self, tmp_path):
         dsl_file = tmp_path / "workflow.yaml"
-        dsl_file.write_text(textwrap.dedent("""
+        dsl_file.write_text(
+            textwrap.dedent("""
             name: File Workflow
             steps:
               - id: step1
                 capability_name: foo.bar
-        """))
+        """)
+        )
         parser = WorkflowDSLParser()
         wf = parser.parse_file(str(dsl_file))
         assert wf.name == "File Workflow"

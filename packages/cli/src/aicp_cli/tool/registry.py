@@ -38,7 +38,12 @@ class ToolRegistry:
     def __init__(self):
         pass
 
-    def register(self, tool_class: type["AicpTool"], spec: "ToolSpec", file_path: str | None = None) -> None:
+    def register(
+        self,
+        tool_class: type["AicpTool"],
+        spec: "ToolSpec",
+        file_path: str | None = None,
+    ) -> None:
         """Register a tool."""
         self._tools[spec.name] = ToolInfo(
             name=spec.name,
@@ -48,7 +53,9 @@ class ToolRegistry:
             file_path=file_path,
         )
 
-        category = spec.category.split(".")[0] if "." in spec.category else spec.category
+        category = (
+            spec.category.split(".")[0] if "." in spec.category else spec.category
+        )
         if category not in self._categories:
             self._categories[category] = []
         self._categories[category].append(spec.name)
@@ -60,7 +67,8 @@ class ToolRegistry:
     def get_by_category(self, category: str) -> list[ToolInfo]:
         """Get all tools in a category."""
         return [
-            info for info in self._tools.values()
+            info
+            for info in self._tools.values()
             if info.category.split(".")[0] == category
         ]
 
@@ -92,18 +100,20 @@ class ToolRegistry:
         """Export all tools in discovery format."""
         tools = []
         for info in self._tools.values():
-            tools.append({
-                "name": info.spec.name,
-                "description": info.spec.description,
-                "kind": info.spec.kind.value,
-                "category": info.spec.category,
-                "tags": info.spec.tags,
-                "side_effect": info.spec.side_effect.value,
-                "risk_level": info.spec.risk_level.value,
-                "input_schema": info.spec.input_schema,
-                "output_schema": info.spec.output_schema,
-                "next_capabilities": info.spec.next_capabilities,
-            })
+            tools.append(
+                {
+                    "name": info.spec.name,
+                    "description": info.spec.description,
+                    "kind": info.spec.kind.value,
+                    "category": info.spec.category,
+                    "tags": info.spec.tags,
+                    "side_effect": info.spec.side_effect.value,
+                    "risk_level": info.spec.risk_level.value,
+                    "input_schema": info.spec.input_schema,
+                    "output_schema": info.spec.output_schema,
+                    "next_capabilities": info.spec.next_capabilities,
+                }
+            )
         return {"tools": tools, "count": len(tools)}
 
     def save_to_file(self, path: str | Path) -> None:
@@ -121,8 +131,10 @@ class ToolRegistry:
 
 def register_tool(spec: "ToolSpec", category: str | None = None):
     """Decorator to register a tool class."""
+
     def decorator(tool_class: type["AicpTool"]) -> type["AicpTool"]:
         registry = ToolRegistry()
         registry.register(tool_class, spec)
         return tool_class
+
     return decorator

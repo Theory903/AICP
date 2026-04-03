@@ -94,9 +94,7 @@ class ResumedExecution:
             "approval_id": self.approval_id,
             "workflow_id": self.workflow_id,
             "authorized_by": self.authorized_by,
-            "authorized_at": self.authorized_at.isoformat()
-            if self.authorized_at is not None
-            else None,
+            "authorized_at": self.authorized_at.isoformat() if self.authorized_at is not None else None,
         }
 
 

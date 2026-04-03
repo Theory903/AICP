@@ -28,6 +28,7 @@ async def test_cmd_serve_creates_minimal_app_and_runs_server(monkeypatch) -> Non
     import aicp_cli.commands.serve as serve_module
 
     monkeypatch.setattr(serve_module, "_load_uvicorn", lambda: (FakeConfig, FakeServer))
+
     def fake_create_runtime_app(**kwargs):
         seen["runtime_app_kwargs"] = kwargs
         return object()
@@ -70,7 +71,9 @@ async def test_cmd_serve_errors_for_bad_app_import(capsys) -> None:
 
 
 @pytest.mark.asyncio
-async def test_cmd_serve_passes_store_path_to_runtime_app(monkeypatch, tmp_path) -> None:
+async def test_cmd_serve_passes_store_path_to_runtime_app(
+    monkeypatch, tmp_path
+) -> None:
     seen = {}
 
     class FakeConfig:
@@ -110,7 +113,9 @@ async def test_cmd_serve_passes_store_path_to_runtime_app(monkeypatch, tmp_path)
 
 
 @pytest.mark.asyncio
-async def test_cmd_serve_passes_sqlite_backend_to_runtime_app(monkeypatch, tmp_path) -> None:
+async def test_cmd_serve_passes_sqlite_backend_to_runtime_app(
+    monkeypatch, tmp_path
+) -> None:
     seen = {}
 
     class FakeConfig:

@@ -9,7 +9,9 @@ from aicp_cli.commands.map_openapi import cmd_map_openapi
 
 
 @pytest.mark.asyncio
-async def test_cmd_map_openapi_outputs_capabilities_with_nested_provider(tmp_path, capsys) -> None:
+async def test_cmd_map_openapi_outputs_capabilities_with_nested_provider(
+    tmp_path, capsys
+) -> None:
     spec_file = tmp_path / "payments.json"
     spec_file.write_text(
         json.dumps(
@@ -35,7 +37,9 @@ async def test_cmd_map_openapi_outputs_capabilities_with_nested_provider(tmp_pat
             }
         )
     )
-    args = argparse.Namespace(file=str(spec_file), name=None, base_url=None, output=None)
+    args = argparse.Namespace(
+        file=str(spec_file), name=None, base_url=None, output=None
+    )
 
     exit_code = await cmd_map_openapi(args)
     captured = capsys.readouterr()
@@ -48,7 +52,9 @@ async def test_cmd_map_openapi_outputs_capabilities_with_nested_provider(tmp_pat
 
 
 @pytest.mark.asyncio
-async def test_cmd_map_openapi_writes_output_file_without_workaround_message(tmp_path, capsys) -> None:
+async def test_cmd_map_openapi_writes_output_file_without_workaround_message(
+    tmp_path, capsys
+) -> None:
     spec_file = tmp_path / "users.json"
     output_file = tmp_path / "mapped.json"
     spec_file.write_text(

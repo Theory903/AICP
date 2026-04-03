@@ -9,6 +9,7 @@ from __future__ import annotations
 try:
     from aicp_connect_fastapi.discovery import create_discovery_handler
 except ImportError:  # pragma: no cover
+
     def create_discovery_handler(*args, **kwargs):
         """Raise a clear error when the FastAPI adapter is not installed."""
         raise RuntimeError(
