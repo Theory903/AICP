@@ -193,6 +193,16 @@ class WorkflowService:
 
         return result
 
+    async def publish_event(
+        self,
+        workflow_id: str,
+        name: str,
+        payload: dict[str, Any],
+    ) -> None:
+        """Publish an event to a waiting workflow step."""
+        workflow_id = self._require_text(workflow_id, field_name="workflow_id")
+        await self._runtime.publish_event(workflow_id, name, payload)
+
     async def resume_after_approval(
         self,
         workflow_id: str,

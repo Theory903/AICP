@@ -1,16 +1,16 @@
 # AICP -- Current State
 
-> **Version:** 0.3.0-dev | **Date:** 2026-04-03 | **Compliance Level:** 4 (AI Planning Support) — Phase 2 in progress
+> **Version:** 0.3.0 | **Date:** 2026-04-03 | **Compliance Level:** 4 (AI Planning Support) — Phase 2 complete
 
 ---
 
 ## Product Definition
 
-AICP is the Agentic Web Operating System -- the protocol, runtime, memory, governance, perception, execution, and federation layer that turns the human web into an agent-operable web. The current release is v0.3.0-dev, a Python reference implementation covering Compliance Level 4 (AI Planning Support) with full governance, planner, judge, memory system, intent router, cognitive protocols, 11 JSON schemas, 8 runtime services, and 638 passing tests. Phase 2 (Orchestration) is in progress: parallel step execution, event-driven wait/resume, and the YAML Workflow DSL are complete and integrated into the runtime. Everything described below as "built" is tested and working. Everything described as "planned" does not exist yet.
+AICP is the Agentic Web Operating System -- the protocol, runtime, memory, governance, perception, execution, and federation layer that turns the human web into an agent-operable web. The current release is v0.3.0, a Python reference implementation at Compliance Level 3 (Event-Driven Orchestration) with full governance, planner, judge, memory system, intent router, cognitive protocols, parallel/loop/subflow/event-driven workflow execution, YAML DSL round-trip, 11 JSON schemas, 8 runtime services, and 692 passing tests. Phase 2 (Orchestration) is complete. Everything described below as "built" is tested and working. Everything described as "planned" does not exist yet.
 
 ---
 
-## What is Built (v0.3.0-dev)
+## What is Built (v0.3.0)
 
 ### Spec
 
@@ -155,7 +155,7 @@ This is the canonical module list. See ARCHITECTURE.md Section 3 for the same ta
 | 2 | Identity and Trust | Governance | **Partial** | Session tokens, basic auth | DID-based auth, trust tiers 0-4, credential verification, trust decay |
 | 3 | Capability Registry | Capability | **Complete (L2)** | In-memory, file, SQLite stores; 5 kinds; schema validation | Distributed CRDT registry, 50k+ capabilities via domain packs + federation |
 | 4 | Tool Runtime | Execution | **Complete (L2)** | Sync invocation, result normalization, persistence | Three execution classes, sandboxing, resource locks, idempotency engine |
-| 5 | Workflow Engine | Workflow | **Partial (L3)** | Sequential + compensation, approval checkpoints, state persistence, parallel steps (fork/join), event-driven wait/resume, YAML DSL | Loops, subflows, `compensation_policy` at workflow level |
+| 5 | Workflow Engine | Workflow | **Complete (L3)** | Sequential + compensation, approval checkpoints, state persistence, parallel steps (fork/join), event-driven wait/resume, YAML DSL, loop support (for-each/while), subflow invocation, `compensation_policy` at workflow level | -- |
 | 6 | Perception and Signal Layer | Signal / Perception | **Not started** | Nothing | DOM observers, a11y tree, screenshots, behavioral signals, sub-ms event ingestion |
 | 7 | Human Cognitive Protocols | Supervision | **Partial** | Approval CLI + API, review packets | 5-view dashboard, risk visualization, replay debugger, policy editor |
 | 8 | AI Plane | AI | **Complete (L4)** | Planner (`AICPlanner`), judge (`AICJudge`), intent router (`IntentRouter`), 5 cognitive protocols (UX, SWE, Ops, Research, Finance), `/v1/plan`, `/v1/judge`, `/v1/route` endpoints | Code intelligence DB, semantic memory retrieval |
@@ -183,7 +183,7 @@ This is the canonical module list. See ARCHITECTURE.md Section 3 for the same ta
 | 0 | Capability Discovery | **Complete** | Registry, schema validation, basic execution | -- |
 | 1 | Governed Execution | **Complete** | Policy evaluation, approval checkpoints, audit trail, session management | -- |
 | 2 | Resumable Workflows | **Complete** | Sequential workflows, compensation, state persistence, resume after approval | -- |
-| 3 | Event-Driven Orchestration | **Partial** | Parallel steps (fork/join, fail_fast/wait_all), event-driven wait/resume (`wait_for_event`), timeout branching, YAML DSL round-trip | Loop support, subflow invocation, L3 conformance tests |
+| 3 | Event-Driven Orchestration | **Complete** | Parallel steps (fork/join, fail_fast/wait_all), event-driven wait/resume (`wait_for_event`), timeout branching, loop support (for-each/while), subflow invocation, YAML DSL round-trip, L3 conformance tests | -- |
 | 4 | AI Planning Support | **Complete** | Planner, judge, intent router, context budget manager, 5 cognitive protocols, `allowed_next_actions` schema, L4 HTTP conformance tests | -- |
 | 5 | Full Orchestration | **Not started** | -- | Multi-agent coordination, subflows, cross-flow events, federation, supervision console |
 
@@ -212,7 +212,7 @@ Each phase maps to a specific version. See ROADMAP.md for full details per phase
 
 | Metric | Value |
 |--------|-------|
-| Tests Passing | 638 |
+| Tests Passing | 692 |
 | API Endpoints | 30+ |
 | Runtime Services | 8 |
 | Persistence Backends | 3 |
@@ -220,7 +220,7 @@ Each phase maps to a specific version. See ROADMAP.md for full details per phase
 | Working Adapters | 6 (+ MCP server) |
 | Empty Adapter Dirs | 11 |
 | JSON Schemas | 11 |
-| Compliance Level | 4 (of 5), L3 partial |
+| Compliance Level | 4 (of 5), L3 complete |
 | Modules Complete | 7 (of 20) |
 | Modules Partial | 4 (of 20) |
 | Modules Not Started | 9 (of 20) |
@@ -261,6 +261,19 @@ The current JSON policy schema is the v0.x format. The architecture doc describe
 ---
 
 ## Recent Changes (2026-04-03)
+
+### Phase 2 Complete — v0.3.0 / Compliance Level 3
+
+- Wired `LoopStepExecutor` into `DefaultWorkflowRuntime`: for-each (items_variable), while (exit_condition), max_iterations cap, do-while semantics
+- Wired `SubflowExecutor` into `DefaultWorkflowRuntime`: creates child workflow via parent runtime, drives to completion, propagates failures
+- Added `publish_event(workflow_id, name, payload)` HTTP endpoint (`POST /workflows/{workflow_id}/events`)
+- Added `compensation_policy` field to workflow schema
+- Added 17 L3 conformance tests (parallel, wait_event, loop, subflow, DSL round-trip)
+- Fixed `SubflowExecutor` infinite loop: checks `child_wf.is_complete` before entering polling loop
+- Fixed `FakeProvider.execute()` signature in integration tests to accept 3rd positional `context` arg
+- Fixed `WorkflowDSL` → `WorkflowDSLParser` import in conformance tests
+- Fixed `provider.call_count` → `len(provider.calls)` in loop integration tests
+- Total tests: 692 (was 638 at v0.2.0)
 
 ### Phase 2 In Progress — v0.3.0-dev / Orchestration
 

@@ -12,6 +12,11 @@ Phase 2 extensions
   ``step.metadata["event_name"]`` and ``step.metadata["timeout_ms"]`` configure
   the wait; ``step.metadata["event_filter"]`` optionally narrows matching.
   Use :meth:`publish_event` from outside to deliver events.
+* ``type: loop`` steps — dispatched to :class:`LoopStepExecutor`.
+  ``step.metadata["loop_condition"]`` configures for-each or while semantics.
+* ``type: subflow`` steps — dispatched to :class:`SubflowExecutor`.
+  ``step.metadata["subflow_name"]`` and ``step.metadata["subflow_steps"]`` define
+  the child workflow.
 * Normal capability steps have no ``type`` key in metadata (or type == "capability").
 """
 
@@ -41,6 +46,8 @@ if TYPE_CHECKING:
 # deferred import at call-site rather than at module level.
 _PARALLEL_EXECUTOR_CLASS = None
 _EVENT_WAITER_CLASS = None
+_LOOP_EXECUTOR_CLASS = None
+_SUBFLOW_EXECUTOR_CLASS = None
 
 
 def _get_parallel_executor_class() -> type:
@@ -61,8 +68,26 @@ def _get_event_waiter_class() -> type:
     return _EVENT_WAITER_CLASS
 
 
+def _get_loop_executor_class() -> type:
+    global _LOOP_EXECUTOR_CLASS  # noqa: PLW0603
+    if _LOOP_EXECUTOR_CLASS is None:
+        from aicp_runtime.workflow.loop import LoopStepExecutor  # type: ignore[import]
+
+        _LOOP_EXECUTOR_CLASS = LoopStepExecutor
+    return _LOOP_EXECUTOR_CLASS
+
+
+def _get_subflow_executor_class() -> type:
+    global _SUBFLOW_EXECUTOR_CLASS  # noqa: PLW0603
+    if _SUBFLOW_EXECUTOR_CLASS is None:
+        from aicp_runtime.workflow.subflow import SubflowExecutor  # type: ignore[import]
+
+        _SUBFLOW_EXECUTOR_CLASS = SubflowExecutor
+    return _SUBFLOW_EXECUTOR_CLASS
+
+
 # Step types that do NOT require a capability_name
-_NON_CAPABILITY_STEP_TYPES = frozenset({"parallel", "wait_event", "branch", "loop"})
+_NON_CAPABILITY_STEP_TYPES = frozenset({"parallel", "wait_event", "branch", "loop", "subflow"})
 
 
 class DefaultWorkflowRuntime(WorkflowRuntime):
@@ -188,6 +213,12 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
 
             if step_type == "wait_event":
                 return await self._execute_wait_event_step(workflow, step)
+
+            if step_type == "loop":
+                return await self._execute_loop_step(workflow, step)
+
+            if step_type == "subflow":
+                return await self._execute_subflow_step(workflow, step)
 
             # Default: capability step
             policy_result = await self._evaluate_policy(workflow, step, merged_args)
@@ -508,6 +539,98 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
             EventWaiter = _get_event_waiter_class()
             self._event_waiters[workflow_id] = EventWaiter(workflow_id=workflow_id)
         return self._event_waiters[workflow_id]
+
+    async def _execute_loop_step(
+        self,
+        workflow: WorkflowState,
+        step: Step,
+    ) -> StepResult:
+        """Execute a loop step using LoopStepExecutor."""
+        step_dict = {
+            "id": step.id,
+            "capability_name": step.capability_name,
+            "arguments": step.arguments,
+            "metadata": step.metadata,
+        }
+
+        try:
+            LoopStepExecutor = _get_loop_executor_class()
+            executor = LoopStepExecutor(self._provider)
+            loop_result = await executor.execute(step_dict, context=workflow.context)
+        except Exception as exc:
+            step.mark_failed(str(exc))
+            workflow.sync_status()
+            return StepResult.fail(
+                str(exc),
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        if loop_result.success:
+            step.mark_completed(loop_result)
+            workflow.advance()
+            workflow.sync_status()
+            return StepResult.ok(
+                result=loop_result,
+                next=self._generate_next(workflow, workflow.current_step),
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+        else:
+            error_msg = loop_result.error or "Loop step failed"
+            step.mark_failed(error_msg)
+            workflow.sync_status()
+            return StepResult.fail(
+                error_msg,
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+    async def _execute_subflow_step(
+        self,
+        workflow: WorkflowState,
+        step: Step,
+    ) -> StepResult:
+        """Execute a subflow step using SubflowExecutor."""
+        step_dict = {
+            "id": step.id,
+            "capability_name": step.capability_name,
+            "arguments": step.arguments,
+            "metadata": step.metadata,
+        }
+
+        try:
+            SubflowExecutor = _get_subflow_executor_class()
+            executor = SubflowExecutor(self)
+            subflow_result = await executor.execute(step_dict, context=workflow.context)
+        except Exception as exc:
+            step.mark_failed(str(exc))
+            workflow.sync_status()
+            return StepResult.fail(
+                str(exc),
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        if subflow_result.success:
+            step.mark_completed(subflow_result)
+            workflow.advance()
+            workflow.sync_status()
+            return StepResult.ok(
+                result=subflow_result,
+                next=self._generate_next(workflow, workflow.current_step),
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+        else:
+            error_msg = subflow_result.error or "Subflow step failed"
+            step.mark_failed(error_msg)
+            workflow.sync_status()
+            return StepResult.fail(
+                error_msg,
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
 
     async def publish_event(
         self,

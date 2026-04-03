@@ -1,0 +1,29 @@
+{
+  "id": "saga_flow",
+  "name": "saga_flow",
+  "description": "Order saga with automatic compensation on failure",
+  "status": "created",
+  "compensation_policy": "automatic",
+  "created_at": "2026-04-03T00:00:00Z",
+  "updated_at": "2026-04-03T00:00:00Z",
+  "steps": [
+    {
+      "id": "reserve_inventory",
+      "capability_name": "inventory.reserve",
+      "arguments": {},
+      "compensation": {
+        "capability_name": "inventory.release",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "charge_payment",
+      "capability_name": "payments.charge",
+      "arguments": {},
+      "compensation": {
+        "capability_name": "payments.refund",
+        "arguments": {}
+      }
+    }
+  ]
+}

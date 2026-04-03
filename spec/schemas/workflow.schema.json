@@ -50,6 +50,12 @@
       "type": "string",
       "format": "date-time",
       "description": "Last time the workflow was updated"
+    },
+    "compensation_policy": {
+      "type": "string",
+      "enum": ["automatic", "explicit", "none"],
+      "default": "none",
+      "description": "Compensation (rollback) policy for this workflow: 'automatic' runs compensation steps on failure automatically, 'explicit' requires the caller to trigger compensation, 'none' performs no rollback."
     }
   },
     "$defs": {

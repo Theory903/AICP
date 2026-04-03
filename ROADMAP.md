@@ -1,6 +1,6 @@
 # AICP Roadmap
 
-> **Version:** 0.3.0-dev | **Target:** 1.0.0
+> **Version:** 0.3.0 | **Target:** 1.0.0
 > **Last updated:** 2026-04-03
 
 ---
@@ -21,7 +21,7 @@
 |-------|---------|-------|------------------|--------|
 | 0 | **0.1.1-alpha** | Foundation | L2 (Resumable Workflows) | **Complete** |
 | 1 | 0.2.0 | AI Core | L4 (AI Planning Support) | **Complete** |
-| 2 | 0.3.0 | Orchestration | L3+L4 | **In Progress** |
+| 2 | 0.3.0 | Orchestration | L3+L4 | **Complete** |
 | 3 | 0.4.0 | Agent Integration | L4 | Not started |
 | 4 | 0.5.0 | Perception | L4 | Not started |
 | 5 | 0.6.0 | Multi-Agent | L5 (Full Orchestration) | Not started |
@@ -93,7 +93,7 @@ See STATUS.md "Known Spec Gaps" for full details.
 
 ---
 
-## Phase 2: Orchestration (v0.3.0) -- IN PROGRESS
+## Phase 2: Orchestration (v0.3.0) -- COMPLETE
 
 **Goal:** Upgrade the workflow engine from sequential-only to full orchestration: parallel steps, loops, event-driven wait/resume, subflows, and a YAML DSL for workflow authoring.
 
@@ -108,10 +108,21 @@ See STATUS.md "Known Spec Gaps" for full details.
 
 - [x] Parallel step execution with configurable join strategies (all, any, n-of-m)
 - [x] Event-driven flows with wait-for-event and timeout
-- [ ] Loop support (for-each, while, repeat-until)
+- [x] Loop support (for-each, while, repeat-until)
+- [x] Subflow invocation (child workflows driven to completion)
 - [x] YAML DSL can express all workflow patterns
-- [ ] `compensation_policy` added at workflow level in spec
-- [ ] Compliance Level 3 conformance tests pass
+- [x] `compensation_policy` added at workflow level in spec
+- [x] `publish_event` HTTP endpoint on WorkflowService
+- [x] Compliance Level 3 conformance tests pass (17 tests)
+
+### Delivered
+
+- `LoopStepExecutor`: for-each (items_variable), while (exit_condition), max_iterations cap, do-while post-check semantics
+- `SubflowExecutor`: creates child workflow via parent runtime, drives to completion, propagates failures
+- `publish_event` API on `DefaultWorkflowRuntime` and `POST /workflows/{workflow_id}/events` route
+- 17 L3 conformance tests (parallel, wait_event, loop, subflow, DSL round-trip)
+- `compensation_policy` field added to workflow schema
+- 692 total tests (was 638)
 
 ---
 

@@ -1,0 +1,16 @@
+{
+  "id": "bad_policy_flow",
+  "name": "bad_policy_flow",
+  "description": "Invalid compensation_policy value",
+  "status": "created",
+  "compensation_policy": "rollback",
+  "created_at": "2026-04-03T00:00:00Z",
+  "updated_at": "2026-04-03T00:00:00Z",
+  "steps": [
+    {
+      "id": "step_one",
+      "capability_name": "foo.bar",
+      "arguments": {}
+    }
+  ]
+}

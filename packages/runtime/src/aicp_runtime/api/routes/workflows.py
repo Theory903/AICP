@@ -72,6 +72,30 @@ class ResumeWorkflowRequest(BaseModel):
         return approval_id
 
 
+class PublishEventRequest(BaseModel):
+    """Publish event payload."""
+
+    name: str = Field(min_length=1)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _normalize_name(cls, value: Any) -> str:
+        name = str(value or "").strip()
+        if not name:
+            raise ValueError("name cannot be empty")
+        return name
+
+    @field_validator("payload", mode="before")
+    @classmethod
+    def _normalize_payload(cls, value: Any) -> dict[str, Any]:
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise ValueError("payload must be an object")
+        return value
+
+
 class WorkflowCompensationView(BaseModel):
     """Compensation metadata associated with a workflow step or event."""
 
@@ -295,5 +319,36 @@ def build_workflows_router(workflow_service: WorkflowService) -> APIRouter:
             ) from exc
 
         return _dump_model(result)
+
+    @router.post("/workflows/{workflow_id}/events")
+    async def publish_workflow_event(
+        workflow_id: str,
+        request: PublishEventRequest,
+    ) -> dict[str, Any]:
+        """Publish an event to a waiting workflow step."""
+        try:
+            await workflow_service.publish_event(
+                workflow_id=workflow_id,
+                name=request.name,
+                payload=request.payload,
+            )
+        except ValueError as exc:
+            message = str(exc)
+            if "not found" in message.lower():
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=message,
+                ) from exc
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=message,
+            ) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to publish event: {exc}",
+            ) from exc
+
+        return {"published": True, "workflow_id": workflow_id, "event_name": request.name}
 
     return router

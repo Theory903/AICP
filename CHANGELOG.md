@@ -7,29 +7,36 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.3.0-dev] — 2026-04-03 — Phase 2: Orchestration (In Progress)
+## [0.3.0] — 2026-04-03 — Phase 2: Orchestration (Complete)
 
 ### Added
 
-- **Parallel step execution** — `DefaultWorkflowRuntime` now dispatches `type:parallel` steps to `ParallelStepExecutor` with `fail_fast` and `wait_all` join strategies
-- **Event-driven flows** — `DefaultWorkflowRuntime` now dispatches `type:wait_event` steps to `EventWaiter`; supports configurable timeout
+- **Parallel step execution** — `DefaultWorkflowRuntime` dispatches `type:parallel` steps to `ParallelStepExecutor` with `fail_fast` and `wait_all` join strategies
+- **Event-driven flows** — `DefaultWorkflowRuntime` dispatches `type:wait_event` steps to `EventWaiter`; supports configurable timeout
+- **Loop support** — `LoopStepExecutor` wired into runtime: for-each (items_variable), while (exit_condition), max_iterations cap, do-while post-check semantics
+- **Subflow invocation** — `SubflowExecutor` wired into runtime: creates child workflow via parent runtime, drives to completion, propagates failures
 - **`publish_event()` API** — `DefaultWorkflowRuntime.publish_event(workflow_id, name, payload)` delivers external events to waiting workflows
-- **DSL key compatibility** — parallel steps read `parallel_failure_policy` (DSL) or `failure_policy` (direct); wait steps read `wait_for_event` (DSL) or `event_name` (direct)
+- **`publish_event` HTTP endpoint** — `POST /workflows/{workflow_id}/events` with `PublishEventRequest(name, payload)` model
+- **`compensation_policy`** — added at workflow level in spec schema
+- **17 L3 conformance tests** — parallel, wait_event, loop, subflow, DSL round-trip
 - **16 new runtime parallel integration tests** — `packages/runtime/tests/workflow/test_runtime_parallel_integration.py`
 - **11 new DSL→runtime integration tests** — `packages/runtime/tests/workflow/test_dsl_runtime_integration.py`
+- **Loop integration tests** — `test_loop_executor.py`, `test_runtime_loop_integration.py`
+- **Subflow integration tests** — `test_subflow_executor.py`, `test_runtime_subflow_integration.py`
 
 ### Changed
 
 - `create_workflow()` relaxed — steps with `metadata.type` in `{parallel, wait_event, branch, loop}` no longer require `capability_name`
-- Total tests: **638** (was 611)
+- `"subflow"` added to `_NON_CAPABILITY_STEP_TYPES` in `DefaultWorkflowRuntime`
+- DSL key compatibility: reads both `wait_for_event` / `parallel_failure_policy` (DSL keys) and `event_name` / `failure_policy` (direct keys)
+- Total tests: **692** (was 611)
 
-### In Progress
+### Fixed
 
-- Loop support (for-each, while, repeat-until)
-- Subflow invocation
-- `compensation_policy` at workflow level in spec
-- Compliance Level 3 conformance tests
-- `publish_event` HTTP endpoint on `WorkflowService`
+- `SubflowExecutor` infinite loop: checks `child_wf.is_complete` before entering polling loop
+- `FakeProvider.execute()` signature in integration tests to accept 3rd positional `context` arg
+- `WorkflowDSL` → `WorkflowDSLParser` import in conformance tests
+- `provider.call_count` → `len(provider.calls)` in loop integration tests
 
 ---
 
