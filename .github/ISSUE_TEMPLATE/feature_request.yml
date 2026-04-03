@@ -1,0 +1,62 @@
+name: Feature Request
+description: Propose a new capability, module, or enhancement
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature. AICP uses spec-first development -- protocol changes must be documented in `/spec` before runtime implementation.
+
+  - type: dropdown
+    id: plane
+    attributes:
+      label: Architectural Plane
+      description: Which plane does this feature belong to?
+      options:
+        - "0: Signal"
+        - "1: Perception"
+        - "2: AI"
+        - "3: Capability"
+        - "4: Workflow"
+        - "5: Governance"
+        - "6: Execution"
+        - "7: Multi-Agent"
+        - "8: Federation"
+        - "9: Supervision"
+        - "10: Learning"
+        - Cross-cutting / Infrastructure
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem does this feature solve? Why doesn't the current implementation cover it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed solution. Include schema changes, API design, or architecture decisions if applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches did you consider?
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have checked the ROADMAP.md and this is not already planned
+          required: true
+        - label: I am willing to contribute an implementation
+          required: false

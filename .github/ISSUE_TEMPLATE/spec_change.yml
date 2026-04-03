@@ -1,0 +1,58 @@
+name: Spec Change
+description: Propose a change to the AICP protocol (schemas, invariants, compliance levels)
+title: "spec: "
+labels: ["spec"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AICP uses **spec-first** development. Protocol changes MUST be documented in `/spec` before runtime implementation.
+
+  - type: dropdown
+    id: change-type
+    attributes:
+      label: Change Type
+      options:
+        - New schema or field
+        - Schema modification (backward-compatible)
+        - Breaking schema change
+        - New compliance level
+        - New capability kind
+        - Protocol invariant change
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current Spec
+      description: What does the spec say today? Reference specific schema files or sections.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed Change
+      description: What should the spec say after this change? Include JSON schema diffs if applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact Analysis
+      description: Which existing implementations would break? What migration path is needed?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have read AGENTS.md and understand the spec-first process
+          required: true
+        - label: This change maintains backward compatibility (or I have documented the migration path)
+          required: true

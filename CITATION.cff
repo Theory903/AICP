@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "AICP — The Agentic Web Operating System"
+abstract: >
+  AICP (AI Capability Protocol) is the protocol, runtime, memory, governance,
+  perception, execution, and federation layer that turns the human web into an
+  agent-operable web. It provides a layered operating system for autonomous AI
+  agents with capability discovery, policy governance, workflow orchestration,
+  multi-agent coordination, and federation across organizational boundaries.
+type: software
+authors:
+  - family-names: AICP Contributors
+    given-names: The
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+version: 0.3.0
+date-released: "2026-04-03"
+url: "https://github.com/Theory903/AICP"
+repository-code: "https://github.com/Theory903/AICP"
+license: Apache-2.0
+keywords:
+  - "agentic-web"
+  - "ai-protocol"
+  - "agent-operating-system"
+  - "workflow-orchestration"
+  - "governance"
+  - "multi-agent"
+  - "capability-discovery"
+  - "policy-engine"
+  - "autonomous-agents"
+  - "agent-governance"

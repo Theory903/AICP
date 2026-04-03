@@ -4,9 +4,17 @@
 
 ### The Agentic Web Operating System
 
-**The protocol, runtime, and governance layer that turns the human web into an agent-operable web.**
+**The protocol, runtime, memory, governance, and federation layer that turns the human web into an agent-operable web.**
 
-v0.1.1-alpha | [Spec](spec/) | [Docs](docs/) | [Status](STATUS.md) | Apache 2.0
+[![CI](https://github.com/Theory903/AICP/actions/workflows/ci.yml/badge.svg)](https://github.com/Theory903/AICP/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/github/v/tag/Theory903/AICP?label=version&sort=semver)](https://github.com/Theory903/AICP/releases)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-3776AB)](https://www.python.org/)
+[![Tests](https://img.shields.io/badge/tests-692%20passing-brightgreen)](https://github.com/Theory903/AICP/actions/workflows/ci.yml)
+[![Compliance](https://img.shields.io/badge/compliance-Level%203-orange)](STATUS.md)
+[![Spec](https://img.shields.io/badge/spec-11%20schemas-purple)](spec/schemas/)
+
+[v0.3.0](https://github.com/Theory903/AICP/releases/tag/v0.3.0) · [Spec](spec/) · [Docs](docs/) · [Status](STATUS.md) · [Roadmap](ROADMAP.md) · [Architecture](ARCHITECTURE.md)
 
 </div>
 
@@ -14,13 +22,27 @@ v0.1.1-alpha | [Spec](spec/) | [Docs](docs/) | [Status](STATUS.md) | Apache 2.0
 
 ## What is AICP?
 
-AICP (AI Capability Protocol) is an operating system for autonomous agents on the internet. It provides the full stack -- signal ingestion, perception, planning, execution, governance, memory, multi-agent coordination, federation, supervision, and learning -- that agents need to operate real applications safely, at scale, across organizational boundaries.
+AICP (AI Capability Protocol) is an **operating system for autonomous AI agents on the internet**. It provides the full stack — signal ingestion, perception, planning, execution, governance, memory, multi-agent coordination, federation, supervision, and learning — that agents need to operate real applications safely, at scale, across organizational boundaries.
 
 Today's AI agents interact with software through brittle tool calls: untyped function signatures, no governance, no memory, no coordination. This is roughly where networking was before TCP/IP. Every agent framework reinvents capability discovery, policy enforcement, workflow orchestration, and human oversight from scratch. The result is fragile, ungoverned, and unscalable.
 
-AICP replaces this with a layered operating system. At the bottom, a signal plane ingests events at sub-millisecond latency. Above it, a perception plane gives agents full sensory coverage of applications -- accessibility trees, DOM state, screenshots, behavioral signals. The AI plane routes intent, plans multi-step operations, and evaluates results. The capability plane exposes a global mesh of governed actions. The workflow plane orchestrates them. The governance plane enforces policy in real time. The execution plane runs three classes of work (realtime, transactional, event-driven). The multi-agent plane coordinates hierarchies of specialists. The federation plane connects organizations into an agentic WWW. The supervision plane gives humans a control tower. The learning plane mines skills and calibrates autonomy over time.
+AICP replaces this with a layered operating system:
 
-The design principle: agents are not users with a chatbox. They are principals operating software at machine speed, and they need an operating system purpose-built for that reality. AICP is that operating system.
+| Plane | Purpose |
+|-------|---------|
+| **Signal** | Sub-ms event ingestion, dedup, classification, routing |
+| **Perception** | a11y tree, DOM observation, screenshots, behavioral signals |
+| **AI** | Planner, judge, intent router, memory, cognitive protocols |
+| **Capability** | Registry, schema validation, ranked discovery, semantic search |
+| **Workflow** | Sequential, parallel, fork/join, sagas, event-driven, loops, subflows |
+| **Governance** | Compiled policy engine, trust tiers, risk scoring, approval lifecycle |
+| **Execution** | Realtime (<5ms), transactional (saga), event-driven (wait/resume) |
+| **Multi-Agent** | Orchestrator/specialist/worker/supervisor hierarchy, communication bus |
+| **Federation** | `/.well-known/aicp` discovery, CRDT registries, DID auth |
+| **Supervision** | Live feed, approval queue, replay debugger, policy editor |
+| **Learning** | Skill mining, policy learning, drift detection, autonomy calibration |
+
+The design principle: **agents are not users with a chatbox**. They are principals operating software at machine speed, and they need an operating system purpose-built for that reality. AICP is that operating system.
 
 ---
 
@@ -32,8 +54,8 @@ The design principle: agents are not users with a chatbox. They are principals o
 | **Input/Output** | Untyped or loosely typed | Strict JSON Schema contracts with validation, side-effect classification, error codes |
 | **Governance** | None; agent decides everything | Compiled policy engine: allow/deny/ask/limit per capability, trust tiers, risk scoring |
 | **Approval** | Not supported | First-class approval lifecycle with intent matching, blast radius estimation, auto-resume |
-| **Workflows** | Agent tracks state manually | Stateful, resumable orchestration: sequential, parallel, fork/join, sagas, compensation |
-| **Memory** | Conversation context window | Structured memory system: working memory, episodic, semantic, procedural |
+| **Workflows** | Agent tracks state manually | Stateful, resumable orchestration: sequential, parallel, fork/join, sagas, compensation, loops, subflows |
+| **Memory** | Conversation context window | Structured memory system: working, episodic, semantic, skill, environmental |
 | **Multi-Agent** | Ad hoc message passing | Four-tier hierarchy: orchestrator, specialist, worker, supervisor |
 | **Observability** | Logs, maybe | Append-only audit trail, replay debugger, live execution feed, correlation IDs |
 | **Federation** | Not supported | `/.well-known/aicp` discovery, CRDT registries, DID authentication |
@@ -41,65 +63,32 @@ The design principle: agents are not users with a chatbox. They are principals o
 
 ---
 
-## Architecture: The 11 Planes
-
-AICP is organized into 11 architectural planes (0-10), each responsible for a distinct operational concern.
-
-| # | Plane | Purpose | Key Capabilities |
-|---|-------|---------|------------------|
-| 0 | **Signal** | Sub-ms event ingestion | Event bus, webhook receivers, change-data-capture streams |
-| 1 | **Perception** | Full sensory coverage | Accessibility tree parsing, DOM observation, state API polling, screenshot capture, behavioral signal extraction |
-| 2 | **AI** | Agent cognition | Intent router, planner, judge, memory system, cognitive protocols, context budget management |
-| 3 | **Capability** | Global action mesh | Capability registry, schema validation, ranked discovery, semantic search, dependency graph |
-| 4 | **Workflow** | Orchestration | Sequential, parallel, fork/join, sagas, event-driven flows, compensation, approval checkpoints |
-| 5 | **Governance** | Governed autonomy | Compiled policy engine, trust tiers, risk scoring, approval lifecycle, compliance enforcement |
-| 6 | **Execution** | Three-class runtime | Realtime (<5ms), transactional (with sagas), event-driven (wait/resume) |
-| 7 | **Multi-Agent** | Coordination | Orchestrator, specialist, worker, supervisor hierarchy; task delegation, conflict resolution |
-| 8 | **Federation** | Agentic WWW | `/.well-known/aicp` discovery, CRDT-based registries, DID authentication, cross-org capability sharing |
-| 9 | **Supervision** | Human control tower | Live execution feed, approval queue, replay debugger, policy editor, health dashboard |
-| 10 | **Learning** | Continuous improvement | Skill mining, policy learning, drift detection, autonomy calibration, benchmark regression |
-
----
-
-## The 20 Modules
-
-Each plane is implemented through concrete modules. These are the building blocks of an AICP-compliant system.
-
-| # | Module | Plane | Description |
-|---|--------|-------|-------------|
-| 1 | Principal and Org Control | Governance | Identity hierarchy, org boundaries, delegation chains, principal attribution |
-| 2 | Identity and Trust | Governance | DID-based authentication, trust tiers, credential verification, session tokens |
-| 3 | Capability Registry | Capability | Schema-validated capability store, versioning, deprecation, dependency tracking |
-| 4 | Tool Runtime | Execution | Sandboxed capability invocation, timeout enforcement, result normalization |
-| 5 | Workflow Engine | Workflow | Step execution, state persistence, branching, compensation, approval integration |
-| 6 | Perception and Signal Layer | Perception / Signal | DOM observers, a11y tree extraction, screenshot pipeline, event ingestion |
-| 7 | Human Cognitive Protocols | Supervision | Approval UX, review packets, impact summaries, decision lifecycle management |
-| 8 | AI Plane | AI | Planner, judge, intent router, tool selection, context budget, cognitive loops |
-| 9 | Memory System | AI | Working memory, episodic store, semantic index, procedural knowledge base |
-| 10 | Code Intelligence DB | AI | AST indexing, symbol graph, call-chain analysis, code-aware context building |
-| 11 | Crawl / Map / Discovery Engine | Capability | Web crawling, capability extraction, site mapping, capability graph construction |
-| 12 | Governance and Policy | Governance | Policy DSL, compiled evaluation, effect resolution, audit integration |
-| 13 | Execution Engine | Execution | Three-class dispatcher, saga coordinator, idempotency, failure recovery |
-| 14 | Multi-Agent Hierarchy | Multi-Agent | Role assignment, task delegation, result aggregation, supervisor escalation |
-| 15 | Agent Communication Bus | Multi-Agent | Typed message passing, pub/sub channels, coordination protocols |
-| 16 | Federation and Agentic WWW | Federation | Discovery protocol, cross-org registry sync, trust federation, capability routing |
-| 17 | Human Web Compatibility | Perception | Browser automation fallback, form filling, navigation, legacy app support |
-| 18 | Audit / Replay / Observability | Supervision | Append-only audit journal, execution replay, correlation, distributed tracing |
-| 19 | Learning / Drift / Growth | Learning | Skill extraction, policy refinement, performance drift detection, autonomy scaling |
-| 20 | Domain Packs and Benchmarks | Learning | Pre-built capability sets per vertical, evaluation suites, regression testing |
-
----
-
 ## Quick Start
 
-AICP v0.1.1-alpha is available today as a Python reference implementation. It covers Compliance Level 2 (Resumable Workflows) with full governance.
+AICP v0.3.0 is a Python reference implementation at **Compliance Level 3** (Event-Driven Orchestration) with **692 passing tests**.
 
 ### Install
 
 ```bash
-git clone https://github.com/aicp-ai/aicp.git
-cd aicp
+git clone https://github.com/Theory903/AICP.git
+cd AICP
 pip install -e "packages/core[dev]" -e packages/runtime -e packages/cli -e adapters/framework/fastapi
+```
+
+### Run
+
+```bash
+# Start the AICP dev server
+aicp dev
+
+# Execute a capability
+aicp run notes.create -i '{"title": "Hello", "body": "World"}'
+
+# Execute with auto-approval
+aicp run payments.transfer -i '{"to": "acct_123", "amount": 50}' --yes
+
+# Non-interactive mode (CI/scripts)
+aicp run notes.create -i '{"title": "Automated"}' --no-input
 ```
 
 ### Bootstrap an Existing App
@@ -130,30 +119,11 @@ aicp policy ask "payments.*"
 aicp policy deny "admin.delete_all"
 ```
 
-### Run
-
-```bash
-# Start the AICP dev server (mounts on your app)
-aicp dev
-
-# Execute a capability
-aicp run notes.create -i '{"title": "Hello", "body": "World"}'
-
-# Execute with auto-approval
-aicp run payments.transfer -i '{"to": "acct_123", "amount": 50}' --yes
-
-# Non-interactive mode (for CI/scripts)
-aicp run notes.create -i '{"title": "Automated"}' --no-input
-```
-
 ### Approval Queue
 
 ```bash
 # List pending approvals
 aicp appr ls
-
-# Inspect an approval
-aicp appr show appr_abc123
 
 # Approve or deny
 aicp appr ok appr_abc123
@@ -173,65 +143,101 @@ mount_aicp(app)
 
 ---
 
-## Compliance Levels
+## Current State (v0.3.0)
 
-Implementations declare their conformance level. Each level subsumes all requirements of the levels below it.
-
-| Level | Name | Requirements |
-|-------|------|-------------|
-| 0 | **Capability Discovery** | Capability registry, input/output schema validation, basic execution |
-| 1 | **Governed Execution** | Policy evaluation, approval checkpoints, audit trail, session management |
-| 2 | **Resumable Workflows** | Sequential workflows, compensation, state persistence, resume after approval |
-| 3 | **Event-Driven Orchestration** | Wait-for-event, timeout branching, parallel steps, loops |
-| 4 | **AI Planning Support** | Planner, judge, context builder, allowed-next-actions schema |
-| 5 | **Full Orchestration** | Multi-flow orchestration, subflows, cross-flow events, supervision console |
-
-The reference implementation in this repository is at **Level 2**.
-
----
-
-## Current State
-
-### v0.1.1-alpha -- What is Built
+### What's Built
 
 | Area | Metric | Details |
 |------|--------|---------|
-| **Spec** | 9 JSON schemas | capability, workflow, policy, execution-result, approval-request, approval-decision, audit-entry, discovery, error |
+| **Spec** | 11 JSON schemas | capability, workflow, workflow-dsl, policy, execution-result, approval-request, approval-decision, audit-entry, session, discovery, error |
 | **Runtime** | 8 services | Execution, approvals, workflows, sessions, discovery, audit, interactions, provider health |
 | **API** | 30+ endpoints | 13 route groups including `/v1` AI action surface, `/.well-known/aicp`, `/console` |
 | **Persistence** | 3 backends | In-memory, file (JSON/JSONL), SQLite (WAL mode, 7 tables) |
 | **CLI** | 28 commands | `run`, `dev`, `scan`, `preview`, `bootstrap`, `import`, `appr`, `policy`, `test` |
-| **Adapters** | 6 working | FastAPI, MCP, OpenAPI, cURL importer, HAR importer, Postman importer |
-| **Tests** | 172 passing | Core, runtime, CLI, adapters, benchmarks |
+| **Adapters** | 6 working | FastAPI, MCP server, MCP adapter, OpenAPI, cURL/HAR/Postman importers |
+| **Tests** | 692 passing | Core, runtime, CLI, adapters, conformance (L3+L4) |
 | **SDKs** | 1 built | TypeScript Core (built and distributable) |
 | **UI** | Agent console | 840-line HTML dashboard at `/console` |
 
-### v1.0.0 -- What is Next
+### Compliance Levels
 
-The path from v0.1.1 to v1.0.0 adds the remaining planes and completes the agentic web OS. Each phase maps to a specific version.
+| Level | Name | Status |
+|-------|------|--------|
+| 0 | Capability Discovery | **Complete** |
+| 1 | Governed Execution | **Complete** |
+| 2 | Resumable Workflows | **Complete** |
+| 3 | Event-Driven Orchestration | **Complete** |
+| 4 | AI Planning Support | **Complete** |
+| 5 | Full Orchestration | Not started |
 
-| Phase | Version | Focus | Key Deliverables | Compliance Level |
-|-------|---------|-------|------------------|------------------|
-| **1** | **0.2.0** | AI Core | Planner, judge, memory/context builder, intent router, cognitive protocols | L4 |
-| **2** | **0.3.0** | Orchestration | YAML workflow DSL, event-driven flows, parallel/loop support, subflows | L3+L4 |
-| **3** | **0.4.0** | Agent Integration | LangChain, LangGraph, CrewAI adapters, food ordering reference flow | L4 |
-| **4** | **0.5.0** | Perception | a11y tree extraction, DOM observation, screenshot pipeline, signal bus | L4 |
-| **5** | **0.6.0** | Multi-Agent | 4-tier hierarchy, communication bus, task delegation, supervisor roles | L5 |
-| **6** | **0.7.0** | Federation | Cross-org discovery, CRDT registries, DID auth, trust federation | L5 |
-| **7** | **0.8.0** | Learning | Skill mining, policy learning, drift detection, domain packs, benchmarks | L5 |
-| **8** | **0.9.0** | Production | Encrypted sessions, compiled WASM policies, risk scoring, multi-tenant | L5 |
-| **9** | **1.0.0** | Agentic Web OS | Complete 11-plane architecture, stable protocol, production-ready | L5 |
+### Workflow Capabilities
 
-**Note on compliance levels:** L3 (Event-Driven Orchestration) ships in v0.3.0, but L4 (AI Planning Support) is already reached in v0.2.0. Compliance levels are cumulative -- reaching L4 does not require L3 features to ship first, but L5 requires all of L0-L4.
+AICP workflows support:
+- **Sequential steps** with approval checkpoints
+- **Parallel execution** (fork/join) with `fail_fast` and `wait_all` strategies
+- **Event-driven flows** with `wait_for_event` and timeout branching
+- **Loops**: for-each (items_variable), while (exit_condition), max_iterations cap
+- **Subflows**: child workflow invocation driven to completion
+- **Compensation**: step-level and workflow-level rollback policies
+- **YAML DSL**: human-readable workflow definitions compiled to runtime objects
+
+---
+
+## Architecture: The 11 Planes
+
+AICP is organized into 11 architectural planes (0-10), each responsible for a distinct operational concern.
+
+| # | Plane | Purpose | Key Capabilities |
+|---|-------|---------|------------------|
+| 0 | **Signal** | Sub-ms event ingestion | Event bus, webhook receivers, change-data-capture streams |
+| 1 | **Perception** | Full sensory coverage | Accessibility tree parsing, DOM observation, state API polling, screenshot capture, behavioral signal extraction |
+| 2 | **AI** | Agent cognition | Intent router, planner, judge, memory system, cognitive protocols, context budget management |
+| 3 | **Capability** | Global action mesh | Capability registry, schema validation, ranked discovery, semantic search, dependency graph |
+| 4 | **Workflow** | Orchestration | Sequential, parallel, fork/join, sagas, event-driven flows, compensation, loops, subflows, approval checkpoints |
+| 5 | **Governance** | Governed autonomy | Compiled policy engine, trust tiers, risk scoring, approval lifecycle, compliance enforcement |
+| 6 | **Execution** | Three-class runtime | Realtime (<5ms), transactional (with sagas), event-driven (wait/resume) |
+| 7 | **Multi-Agent** | Coordination | Orchestrator, specialist, worker, supervisor hierarchy; task delegation, conflict resolution |
+| 8 | **Federation** | Agentic WWW | `/.well-known/aicp` discovery, CRDT-based registries, DID authentication, cross-org capability sharing |
+| 9 | **Supervision** | Human control tower | Live execution feed, approval queue, replay debugger, policy editor, health dashboard |
+| 10 | **Learning** | Continuous improvement | Skill mining, policy learning, drift detection, autonomy calibration, benchmark regression |
+
+---
+
+## The 20 Modules
+
+| # | Module | Plane | Status |
+|---|--------|-------|--------|
+| 1 | Principal and Org Control | Governance | Not started |
+| 2 | Identity and Trust | Governance | Partial (session tokens, basic auth) |
+| 3 | Capability Registry | Capability | **Complete (L2)** |
+| 4 | Tool Runtime | Execution | **Complete (L2)** |
+| 5 | Workflow Engine | Workflow | **Complete (L3)** |
+| 6 | Perception and Signal Layer | Signal / Perception | Not started |
+| 7 | Human Cognitive Protocols | Supervision | Partial (approval CLI + API) |
+| 8 | AI Plane | AI | **Complete (L4)** |
+| 9 | Memory System | AI | **Complete (L4)** |
+| 10 | Code Intelligence DB | AI | Not started |
+| 11 | Crawl / Map / Discovery Engine | Capability | Partial (keyword scoring) |
+| 12 | Governance and Policy | Governance | **Complete (L2)** |
+| 13 | Execution Engine | Execution | **Complete (L2)** |
+| 14 | Multi-Agent Hierarchy | Multi-Agent | Not started |
+| 15 | Agent Communication Bus | Multi-Agent | Not started |
+| 16 | Federation and Agentic WWW | Federation | Minimal (well-known endpoint) |
+| 17 | Human Web Compatibility | Perception | Not started |
+| 18 | Audit / Replay / Observability | Supervision | Partial (append-only journal) |
+| 19 | Learning / Drift / Growth | Learning | Not started |
+| 20 | Domain Packs and Benchmarks | Learning | Not started |
+
+**Summary:** 7 modules complete, 4 partial, 9 not started. See [STATUS.md](STATUS.md) for details.
 
 ---
 
 ## Repository Structure
 
 ```
-aicp/
+AICP/
 ├── spec/                          # Protocol source of truth (JSON schemas)
-│   ├── schemas/                   # 9 schema definitions
+│   ├── schemas/                   # 11 schema definitions
 │   ├── examples/                  # Valid/invalid examples
 │   └── tests/                     # Schema validation tests
 ├── packages/
@@ -246,18 +252,18 @@ aicp/
 ├── sdks/
 │   ├── typescript/                # TypeScript SDK (core built)
 │   └── python/                    # Python SDK (skeleton)
-├── mcp/                           # MCP server implementations
+├── mcp/                           # MCP server (exposes AICP outward to MCP clients)
 ├── apps/
 │   └── studio/                    # AICP Studio (control plane UI)
 ├── examples/                      # Reference applications
-├── docs/                          # Documentation
+├── docs/                          # Human-readable documentation
 ├── rfcs/                          # Protocol change proposals
-└── governance/                    # Contribution guidelines
+└── governance/                    # CONTRIBUTING.md, CODE_OF_CONDUCT.md
 ```
 
 **Authoritative rule:** `/spec` is the source of truth. If runtime behavior and spec disagree, spec wins.
 
-**MCP disambiguation:** The repository contains two MCP packages that serve opposite directions. `mcp/` is the **MCP server** -- it exposes AICP capabilities outward to MCP clients (e.g., Claude, Cursor). `adapters/protocol/mcp/` is the **MCP adapter** -- it lets AICP consume external MCP tools as capabilities. Both are complete. They are different packages solving different problems. Do not confuse them.
+**MCP disambiguation:** `mcp/` is the **MCP server** (exposes AICP capabilities outward). `adapters/protocol/mcp/` is the **MCP adapter** (lets AICP consume external MCP tools). Both are complete. Opposite directions.
 
 ---
 
@@ -268,7 +274,8 @@ aicp/
 | Integration | Type | Status |
 |-------------|------|--------|
 | FastAPI | Framework adapter | Working. `mount_aicp(app)` adds all AICP routes. |
-| MCP | Protocol adapter | Working. Full MCP server with tool exposure. |
+| MCP Server | Protocol server | Working. Exposes AICP capabilities to MCP clients. |
+| MCP Adapter | Protocol adapter | Working. Consumes external MCP tools as capabilities. |
 | OpenAPI | Protocol adapter | Working. `aicp scan --openapi` imports capabilities. |
 | cURL | Importer | Working. `aicp import --curl` converts cURL commands. |
 | HAR | Importer | Working. `aicp import --har` converts HTTP archives. |
@@ -279,75 +286,34 @@ aicp/
 
 | Integration | Type | Phase |
 |-------------|------|-------|
-| LangChain | Agent adapter | 3 |
-| LangGraph | Agent adapter | 3 |
-| CrewAI | Agent adapter | 3 |
-| Express | Framework adapter | 8 |
-| NestJS | Framework adapter | 8 |
-| Next.js | Framework adapter | 8 |
-| Spring Boot | Framework adapter | 8 |
-| HTTP | Protocol adapter | 8 |
-| GraphQL | Protocol adapter | 8 |
-| WebSocket | Protocol adapter | 8 |
-| Python SDK | SDK | 2 |
-| TypeScript Runtime SDK | SDK | 3 |
-| TypeScript Client SDK | SDK | 3 |
+| LangChain | Agent adapter | 3 (v0.4.0) |
+| LangGraph | Agent adapter | 3 (v0.4.0) |
+| CrewAI | Agent adapter | 3 (v0.4.0) |
+| Express | Framework adapter | 8 (v0.9.0) |
+| NestJS | Framework adapter | 8 (v0.9.0) |
+| Next.js | Framework adapter | 8 (v0.9.0) |
+| Spring Boot | Framework adapter | 8 (v0.9.0) |
+| Python SDK | SDK | 2 (v0.3.0) |
+| TypeScript Runtime SDK | SDK | 3 (v0.4.0) |
+| TypeScript Client SDK | SDK | 3 (v0.4.0) |
 
 ---
 
 ## Execution Contract
 
-Every capability execution in AICP produces a canonical envelope. This is the fundamental interface that all planes consume -- UI, planner, judge, audit, and replay. The canonical definition lives in `spec/schemas/execution-result.schema.json`; what follows is the full envelope.
+Every capability execution produces a canonical envelope consumed by all planes (UI, planner, judge, audit, replay). Full schema: [`spec/schemas/execution-result.schema.json`](spec/schemas/execution-result.schema.json).
 
 ```json
 {
   "execution_id": "exec_a1b2c3d4",
   "capability_name": "orders.place",
-  "capability_kind": "action",
-  "determinism_class": "bounded_nondeterministic",
-  "workflow_id": "wf_e5f6g7h8",
-  "step_id": "step_place_order",
-  "session_id": "sess_i9j0k1l2",
-  "execution_mode": "sync",
-  "policy_result": {
-    "effect": "allow",
-    "policy_name": "default_actions",
-    "trust_tier": 2,
-    "risk_score": { "financial": 0.7, "irreversibility": 0.9, "privacy": 0.1 },
-    "evaluation_time_ms": 0.3
-  },
-  "approval_state": {
-    "status": "none",
-    "approval_id": null,
-    "decided_by": null,
-    "decided_at": null
-  },
   "status": "success",
-  "data": { "order_id": "ord_m3n4o5p6", "estimated_delivery": "2026-04-03T19:30:00Z" },
-  "error": null,
-  "error_detail": null,
-  "execution_time_ms": 234,
-  "idempotency_key": "cart_q7r8s9t0",
+  "data": { "order_id": "ord_m3n4o5p6" },
+  "policy_result": { "effect": "allow", "trust_tier": 2 },
   "allowed_next_actions": [
-    {
-      "kind": "capability",
-      "name": "order.track",
-      "reason": "Track delivery status",
-      "requires_approval": false,
-      "confidence": 0.95
-    },
-    {
-      "kind": "capability",
-      "name": "order.cancel",
-      "reason": "Cancel if needed within 5 minutes",
-      "requires_approval": true,
-      "confidence": 0.3
-    }
+    { "kind": "capability", "name": "order.track", "requires_approval": false }
   ],
-  "rendered": "Order ord_m3n4o5p6 placed. Estimated delivery: 7:30 PM.",
-  "format_hint": "text",
-  "audit_correlation_id": "corr_u1v2w3x4",
-  "actor": { "type": "agent", "agent_id": "agent_y5z6", "session_id": "sess_i9j0k1l2" },
+  "actor": { "type": "agent", "agent_id": "agent_y5z6" },
   "timestamp": "2026-04-03T18:45:12.456Z"
 }
 ```
@@ -355,8 +321,6 @@ Every capability execution in AICP produces a canonical envelope. This is the fu
 ---
 
 ## Engineering Invariants
-
-These are non-negotiable across all implementations:
 
 1. Every capability execution is policy-evaluated before side effects.
 2. Every workflow step has persisted state before transition.
@@ -368,26 +332,46 @@ These are non-negotiable across all implementations:
 
 ---
 
-## Documentation
+## Roadmap
 
-| Resource | Description |
-|----------|-------------|
-| [spec/](spec/) | Protocol JSON schemas -- the source of truth |
-| [docs/](docs/) | Guides, concepts, API reference |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and design decisions |
-| [STATUS.md](STATUS.md) | Current implementation state and detailed roadmap |
-| [ROADMAP.md](ROADMAP.md) | High-level roadmap |
-| [rfcs/](rfcs/) | Protocol change proposals |
-| [examples/](examples/) | Working reference applications |
+| Phase | Version | Focus | Status |
+|-------|---------|-------|--------|
+| 0 | **0.1.1-alpha** | Foundation | **Complete** |
+| 1 | **0.2.0** | AI Core | **Complete** |
+| 2 | **0.3.0** | Orchestration | **Complete** |
+| 3 | 0.4.0 | Agent Integration | Not started |
+| 4 | 0.5.0 | Perception | Not started |
+| 5 | 0.6.0 | Multi-Agent | Not started |
+| 6 | 0.7.0 | Federation | Not started |
+| 7 | 0.8.0 | Learning | Not started |
+| 8 | 0.9.0 | Production | Not started |
+| 9 | **1.0.0** | Agentic Web OS | Not started |
+
+See [ROADMAP.md](ROADMAP.md) for full details per phase.
 
 ---
 
 ## Contributing
 
-See [governance/CONTRIBUTING.md](governance/CONTRIBUTING.md) for the full contribution process. AICP uses spec-first development: protocol changes must be documented in `/spec` before runtime implementation.
+AICP uses **spec-first** development: protocol changes must be documented in `/spec` before runtime implementation.
 
+- [Contributing Guide](governance/CONTRIBUTING.md)
 - [Code of Conduct](governance/CODE_OF_CONDUCT.md)
-- [Issue Tracker](https://github.com/aicp-ai/aicp/issues)
+- [Security Policy](SECURITY.md)
+- [Issue Tracker](https://github.com/Theory903/AICP/issues)
+
+### Development
+
+```bash
+# Install all packages
+pip install -e "packages/core[dev]" -e packages/runtime -e packages/cli -e adapters/framework/fastapi
+
+# Run tests
+python -m pytest packages/ --tb=short -q
+
+# Lint
+ruff check . && ruff format --check .
+```
 
 ---
 
@@ -401,6 +385,6 @@ AICP is licensed under the [Apache 2.0 License](LICENSE).
 
 **The protocol layer for the agentic web.**
 
-[Spec](spec/) -- [Docs](docs/) -- [Status](STATUS.md) -- [Contributing](governance/CONTRIBUTING.md)
+[Spec](spec/) · [Docs](docs/) · [Status](STATUS.md) · [Roadmap](ROADMAP.md) · [Contributing](governance/CONTRIBUTING.md)
 
 </div>

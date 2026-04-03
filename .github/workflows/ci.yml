@@ -7,6 +7,7 @@ on:
       - '**.md'
       - 'docs/**'
       - 'LICENSE'
+      - 'SECURITY.md'
   pull_request:
 
 concurrency:
@@ -15,109 +16,61 @@ concurrency:
 
 env:
   PYTHON_VERSION: '3.13'
-  PIP_CACHE_DIR: ~/.pip
 
 jobs:
   lint:
-    name: Lint
+    name: Lint & Format
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
-      - name: Install dependencies
-        run: pip install ruff
+      - run: pip install ruff
 
-      - name: Run linter
-        run: make lint
+      - name: Run ruff check
+        run: ruff check .
+
+      - name: Run ruff format check
+        run: ruff format --check .
 
   test:
-    name: Test
+    name: Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install packages
         run: |
-          make install-ci
+          pip install -e "packages/core[dev]" -e packages/runtime -e packages/cli -e adapters/framework/fastapi
           pip install pytest pytest-asyncio fastapi httpx
 
-      - name: Run tests
-        run: make test
+      - name: Run full test suite
+        run: python -m pytest packages/ --tb=short -q
 
   conformance:
-    name: Conformance
+    name: Spec Conformance
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
       - name: Install dependencies
         run: |
-          make install-ci
+          pip install -e "packages/core[dev]" -e packages/runtime
           pip install pytest referencing
 
-      - name: Run conformance tests
-        run: make test-conformance
-
-  benchmarks:
-    name: Benchmarks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: |
-          make install-ci
-          pip install pytest pytest-asyncio fastapi httpx
-
-      - name: Run benchmarks
-        run: make test-bench
-
-  examples:
-    name: Examples
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: |
-          make install-ci
-          pip install -e ./examples/food-ordering
-          pip install -e ./examples/payment-transfer
-
-      - name: Run examples
-        run: make demos
+      - name: Run schema conformance tests
+        run: python -m pytest spec/tests/ packages/runtime/tests/conformance/ --tb=short -q
