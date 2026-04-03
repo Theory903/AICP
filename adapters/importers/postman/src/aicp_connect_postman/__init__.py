@@ -251,7 +251,7 @@ class PostmanCollectionImporter:
         return InputSchema(
             type="object",
             properties=properties,
-            required=sorted(set(required)),
+            required=list(dict.fromkeys(required)),
             description=str(request.get("description", "")).strip() or None,
         )
 

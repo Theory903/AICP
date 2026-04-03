@@ -121,11 +121,7 @@ async def cmd_map_postman(args) -> int:
         )
         return 1
 
-    name = (
-        getattr(args, "name", None)
-        or collection.get("info", {}).get("name")
-        or file_path.stem
-    )
+    name = getattr(args, "name", None) or file_path.stem
 
     try:
         importer = PostmanCollectionImporter(name=name, collection=collection)

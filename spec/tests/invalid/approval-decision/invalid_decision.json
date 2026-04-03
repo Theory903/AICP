@@ -1,0 +1,7 @@
+{
+  "_comment": "Invalid decision value not in enum",
+  "id": "dec_bad",
+  "request_id": "req_001",
+  "decision": "maybe",
+  "decided_at": "2026-04-03T10:05:00Z"
+}

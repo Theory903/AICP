@@ -1,0 +1,8 @@
+{
+  "id": "req_003",
+  "capability_name": "admin.delete_user",
+  "requester": "agent_admin_02",
+  "requested_at": "2026-04-03T14:00:00Z",
+  "status": "approved",
+  "urgency": "low"
+}

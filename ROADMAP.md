@@ -1,6 +1,6 @@
 # AICP Roadmap
 
-> **Version:** 0.1.1-alpha | **Target:** 1.0.0
+> **Version:** 0.3.0-dev | **Target:** 1.0.0
 > **Last updated:** 2026-04-03
 
 ---
@@ -19,9 +19,9 @@
 
 | Phase | Version | Focus | Compliance Level | Status |
 |-------|---------|-------|------------------|--------|
-| 0 | **0.1.1-alpha** | Foundation | L2 (Resumable Workflows) | **Current** |
-| 1 | 0.2.0 | AI Core | L4 (AI Planning Support) | Not started |
-| 2 | 0.3.0 | Orchestration | L3+L4 | Not started |
+| 0 | **0.1.1-alpha** | Foundation | L2 (Resumable Workflows) | **Complete** |
+| 1 | 0.2.0 | AI Core | L4 (AI Planning Support) | **Complete** |
+| 2 | 0.3.0 | Orchestration | L3+L4 | **In Progress** |
 | 3 | 0.4.0 | Agent Integration | L4 | Not started |
 | 4 | 0.5.0 | Perception | L4 | Not started |
 | 5 | 0.6.0 | Multi-Agent | L5 (Full Orchestration) | Not started |
@@ -34,20 +34,21 @@
 
 ---
 
-## Phase 0: Foundation (v0.1.1-alpha) -- CURRENT
+## Phase 0: Foundation (v0.1.1-alpha) -- COMPLETE
 
 **Goal:** Prove that the protocol works end-to-end. Deliver a reference implementation covering capability discovery, governance, and resumable workflows.
 
 ### Delivered
 
-- [x] 9 JSON schemas in `spec/schemas/`
+- [x] 11 JSON schemas in `spec/schemas/` (including `session.schema.json` and `workflow-dsl.schema.json`)
+- [x] Full fixture coverage for all 11 schemas (valid + invalid in `spec/tests/`)
 - [x] 8 runtime services (execution, approvals, workflows, sessions, discovery, audit, interactions, provider health)
 - [x] 30+ API endpoints across 13 route groups
 - [x] 3 persistence backends (in-memory, file, SQLite)
 - [x] 28 CLI commands with inline approval prompt
 - [x] 6 working adapters (FastAPI, MCP, OpenAPI, cURL, HAR, Postman)
 - [x] MCP server exposing AICP capabilities to MCP clients
-- [x] 172 passing tests
+- [x] 445 passing tests
 - [x] Agent console UI at `/console` (840 lines HTML)
 - [x] TypeScript Core SDK (built, distributable)
 - [x] Approval auto-resume with intent matching
@@ -55,7 +56,6 @@
 
 ### Known Gaps
 
-- No `session.schema.json` -- sessions exist but have no formal schema
 - No workflow-level `compensation_policy` -- compensation is step-level only
 - No `often_follows` enforcement semantics
 - No policy schema migration path (JSON to WASM)
@@ -84,17 +84,16 @@ See STATUS.md "Known Spec Gaps" for full details.
 
 ### Exit Criteria
 
-- [ ] Planner can generate a multi-step plan from a natural language goal
-- [ ] Judge can evaluate plan quality and execution results
-- [ ] Memory system persists across sessions
-- [ ] Context budget manager stays within token limits
-- [ ] `session.schema.json` added to spec
-- [ ] At least 2 cognitive protocols implemented (UX and SWE)
-- [ ] Compliance Level 4 conformance tests pass
+- [x] Planner can generate a multi-step plan from a natural language goal
+- [x] Judge can evaluate plan quality and execution results
+- [x] Memory system persists across sessions
+- [x] Context budget manager stays within token limits
+- [x] At least 2 cognitive protocols implemented (UX and SWE)
+- [x] Compliance Level 4 conformance tests pass
 
 ---
 
-## Phase 2: Orchestration (v0.3.0)
+## Phase 2: Orchestration (v0.3.0) -- IN PROGRESS
 
 **Goal:** Upgrade the workflow engine from sequential-only to full orchestration: parallel steps, loops, event-driven wait/resume, subflows, and a YAML DSL for workflow authoring.
 
@@ -107,10 +106,10 @@ See STATUS.md "Known Spec Gaps" for full details.
 
 ### Exit Criteria
 
-- [ ] Parallel step execution with configurable join strategies (all, any, n-of-m)
-- [ ] Event-driven flows with wait-for-event and timeout
+- [x] Parallel step execution with configurable join strategies (all, any, n-of-m)
+- [x] Event-driven flows with wait-for-event and timeout
 - [ ] Loop support (for-each, while, repeat-until)
-- [ ] YAML DSL can express all workflow patterns
+- [x] YAML DSL can express all workflow patterns
 - [ ] `compensation_policy` added at workflow level in spec
 - [ ] Compliance Level 3 conformance tests pass
 

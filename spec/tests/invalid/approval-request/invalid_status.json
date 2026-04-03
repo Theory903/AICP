@@ -1,0 +1,8 @@
+{
+  "_comment": "Invalid status value not in enum",
+  "id": "req_bad",
+  "capability_name": "payments.transfer",
+  "requester": "agent_01",
+  "requested_at": "2026-04-03T10:00:00Z",
+  "status": "in_review"
+}

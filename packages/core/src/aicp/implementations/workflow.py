@@ -2,6 +2,17 @@
 
 A workflow runtime that manages multi-step execution with state,
 confirmation handling, approval handling, and agent guidance.
+
+Phase 2 extensions
+------------------
+* ``type: parallel`` steps — dispatched to :class:`ParallelStepExecutor`.
+  Sub-steps are listed in ``step.metadata["parallel_steps"]``.
+  Optional ``step.metadata["failure_policy"]`` controls fail_fast / wait_all.
+* ``type: wait_event`` steps — dispatched to a per-workflow :class:`EventWaiter`.
+  ``step.metadata["event_name"]`` and ``step.metadata["timeout_ms"]`` configure
+  the wait; ``step.metadata["event_filter"]`` optionally narrows matching.
+  Use :meth:`publish_event` from outside to deliver events.
+* Normal capability steps have no ``type`` key in metadata (or type == "capability").
 """
 
 from __future__ import annotations
@@ -25,6 +36,34 @@ from aicp.interfaces.workflow_runtime import (
 if TYPE_CHECKING:
     from aicp.approval_service import ApprovalService
 
+# Phase 2 primitives — imported lazily inside methods to keep core package clean.
+# The runtime package sits above core in the dependency tree, so we do a
+# deferred import at call-site rather than at module level.
+_PARALLEL_EXECUTOR_CLASS = None
+_EVENT_WAITER_CLASS = None
+
+
+def _get_parallel_executor_class() -> type:
+    global _PARALLEL_EXECUTOR_CLASS  # noqa: PLW0603
+    if _PARALLEL_EXECUTOR_CLASS is None:
+        from aicp_runtime.workflow.parallel import ParallelStepExecutor  # type: ignore[import]
+
+        _PARALLEL_EXECUTOR_CLASS = ParallelStepExecutor
+    return _PARALLEL_EXECUTOR_CLASS
+
+
+def _get_event_waiter_class() -> type:
+    global _EVENT_WAITER_CLASS  # noqa: PLW0603
+    if _EVENT_WAITER_CLASS is None:
+        from aicp_runtime.workflow.events import EventWaiter  # type: ignore[import]
+
+        _EVENT_WAITER_CLASS = EventWaiter
+    return _EVENT_WAITER_CLASS
+
+
+# Step types that do NOT require a capability_name
+_NON_CAPABILITY_STEP_TYPES = frozenset({"parallel", "wait_event", "branch", "loop"})
+
 
 class DefaultWorkflowRuntime(WorkflowRuntime):
     """Default workflow runtime with in-memory step orchestration."""
@@ -39,6 +78,8 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         self._policy_engine = policy_engine
         self._approval_service = approval_service
         self._workflows: dict[str, WorkflowState] = {}
+        # Per-workflow EventWaiter instances (created on demand)
+        self._event_waiters: dict[str, Any] = {}
 
     @property
     def runtime_type(self) -> str:
@@ -55,7 +96,10 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         step_objects: list[Step] = []
 
         for index, step_def in enumerate(steps or []):
-            if "capability_name" not in step_def:
+            step_type = (step_def.get("metadata") or {}).get("type", "capability")
+            requires_cap_name = step_type not in _NON_CAPABILITY_STEP_TYPES
+
+            if requires_cap_name and "capability_name" not in step_def:
                 raise WorkflowError(
                     "Each workflow step must include 'capability_name'",
                     workflow_id=workflow_id,
@@ -65,7 +109,7 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
             step_objects.append(
                 Step(
                     id=str(step_def.get("id", f"step_{index}")),
-                    capability_name=step_def["capability_name"],
+                    capability_name=step_def.get("capability_name", ""),
                     arguments=dict(step_def.get("arguments", {})),
                     metadata=dict(step_def.get("metadata", {})),
                 )
@@ -134,6 +178,18 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         workflow.touch()
 
         try:
+            # ------------------------------------------------------------------
+            # Phase 2: dispatch on step type
+            # ------------------------------------------------------------------
+            step_type = step.metadata.get("type", "capability")
+
+            if step_type == "parallel":
+                return await self._execute_parallel_step(workflow, step)
+
+            if step_type == "wait_event":
+                return await self._execute_wait_event_step(workflow, step)
+
+            # Default: capability step
             policy_result = await self._evaluate_policy(workflow, step, merged_args)
             if policy_result is not None:
                 return policy_result
@@ -289,7 +345,7 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         workflow = self._require_workflow(workflow_id)
         step = workflow.current_step
 
-        workflow.status = WorkflowStatus.PAUSED_FOR_APPROVAL
+        workflow.status = WorkflowStatus.WAITING_APPROVAL
         workflow.metadata["approval_request_id"] = approval_request_id
         if step is not None:
             step.status = StepStatus.AWAITING_APPROVAL
@@ -305,7 +361,7 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         """Resume a workflow after approval decision."""
         workflow = self._require_workflow(workflow_id)
 
-        if workflow.status != WorkflowStatus.PAUSED_FOR_APPROVAL:
+        if workflow.status != WorkflowStatus.WAITING_APPROVAL:
             raise WorkflowError(
                 f"Workflow not paused for approval: {workflow_id}",
                 workflow_id=workflow_id,
@@ -343,6 +399,133 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
     async def list_workflows(self) -> list[WorkflowState]:
         """List all workflows."""
         return list(self._workflows.values())
+
+    # ------------------------------------------------------------------
+    # Phase 2: parallel and wait_event step handlers
+    # ------------------------------------------------------------------
+
+    async def _execute_parallel_step(
+        self,
+        workflow: WorkflowState,
+        step: Step,
+    ) -> StepResult:
+        """Execute a parallel step using ParallelStepExecutor."""
+        sub_steps: list[dict[str, Any]] = step.metadata.get("parallel_steps", [])
+        # Support both DSL key (parallel_failure_policy) and direct key (failure_policy)
+        failure_policy: str = (
+            step.metadata.get("failure_policy")
+            or step.metadata.get("parallel_failure_policy")
+            or "fail_fast"
+        )
+
+        try:
+            ParallelStepExecutor = _get_parallel_executor_class()
+            executor = ParallelStepExecutor(self._provider)
+            par_result = await executor.execute(
+                sub_steps,
+                context={
+                    "workflow_id": workflow.id,
+                    "workflow_name": workflow.name,
+                    "step_id": step.id,
+                },
+                failure_policy=failure_policy,
+            )
+        except Exception as exc:
+            step.mark_failed(str(exc))
+            workflow.sync_status()
+            return StepResult.fail(
+                str(exc),
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        if par_result.success:
+            step.mark_completed(par_result)
+            workflow.advance()
+            workflow.sync_status()
+            return StepResult.ok(
+                result=par_result,
+                next=self._generate_next(workflow, workflow.current_step),
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+        else:
+            error_msg = f"Parallel step failed: {par_result.failed_count} sub-step(s) failed"
+            step.mark_failed(error_msg)
+            workflow.sync_status()
+            return StepResult.fail(
+                error_msg,
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+    async def _execute_wait_event_step(
+        self,
+        workflow: WorkflowState,
+        step: Step,
+    ) -> StepResult:
+        """Execute a wait_event step using EventWaiter."""
+        # Support both DSL format (wait_for_event) and direct format (event_name)
+        event_name: str = step.metadata.get("event_name") or step.metadata.get("wait_for_event", "")
+        timeout_ms: int = int(step.metadata.get("timeout_ms", 5000))
+        event_filter: dict[str, Any] | None = step.metadata.get("event_filter")
+
+        # Ensure we have an EventWaiter for this workflow
+        waiter = self._get_or_create_event_waiter(workflow.id)
+
+        # Set workflow to WAITING_EVENT while we wait
+        workflow.status = WorkflowStatus.WAITING_EVENT
+        workflow.touch()
+
+        try:
+            payload = await waiter.wait_for_event(
+                event_name,
+                timeout_ms=timeout_ms,
+                event_filter=event_filter,
+            )
+        except Exception as exc:
+            step.mark_failed(str(exc))
+            workflow.sync_status()
+            return StepResult.fail(
+                str(exc),
+                step_id=step.id,
+                workflow_status=workflow.status,
+            )
+
+        step.mark_completed(payload)
+        workflow.advance()
+        workflow.sync_status()
+        return StepResult.ok(
+            result=payload,
+            next=self._generate_next(workflow, workflow.current_step),
+            step_id=step.id,
+            workflow_status=workflow.status,
+        )
+
+    def _get_or_create_event_waiter(self, workflow_id: str) -> Any:
+        """Return the EventWaiter for this workflow, creating it if needed."""
+        if workflow_id not in self._event_waiters:
+            EventWaiter = _get_event_waiter_class()
+            self._event_waiters[workflow_id] = EventWaiter(workflow_id=workflow_id)
+        return self._event_waiters[workflow_id]
+
+    async def publish_event(
+        self,
+        workflow_id: str,
+        name: str,
+        payload: dict[str, Any],
+    ) -> None:
+        """Publish an event to the EventWaiter for the given workflow.
+
+        Safe to call even if no waiter is registered (event is dropped).
+        """
+        waiter = self._event_waiters.get(workflow_id)
+        if waiter is not None:
+            await waiter.publish_event(name, payload)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
     def _require_workflow(self, workflow_id: str) -> WorkflowState:
         """Get workflow or raise."""

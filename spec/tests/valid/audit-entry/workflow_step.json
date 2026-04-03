@@ -1,0 +1,16 @@
+{
+  "id": "audit_e5f6g7h8",
+  "timestamp": "2026-04-03T18:45:11.900Z",
+  "event_type": "workflow_step_start",
+  "actor": "agent_y5z6",
+  "actor_context": {
+    "agent_id": "agent_y5z6",
+    "session_id": "sess_i9j0k1l2"
+  },
+  "workflow_id": "wf_e5f6g7h8",
+  "step_id": "step_place_order",
+  "status": "pending",
+  "correlation_id": "corr_u1v2w3x4",
+  "causation_id": "audit_d4e5f6g7",
+  "event_version": "1.0"
+}

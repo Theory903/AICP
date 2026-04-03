@@ -1,0 +1,43 @@
+{
+  "name": "risk_based_transfer",
+  "description": "Branch on transfer amount: auto-approve low-value, require approval for high-value",
+  "steps": [
+    {
+      "id": "evaluate_transfer",
+      "type": "capability",
+      "capability_name": "risk.score_transfer",
+      "output_mapping": {"risk_score": "steps.evaluate_transfer.risk_score"}
+    },
+    {
+      "id": "risk_branch",
+      "type": "branch",
+      "branch_conditions": [
+        {"condition": "context.risk_score < 0.3", "then_step_id": "auto_approve"},
+        {"condition": "context.risk_score >= 0.3 && context.risk_score < 0.7", "then_step_id": "manual_review"}
+      ],
+      "default_branch": "reject_transfer"
+    },
+    {
+      "id": "auto_approve",
+      "type": "capability",
+      "capability_name": "payments.execute_transfer",
+      "on_success": "done"
+    },
+    {
+      "id": "manual_review",
+      "type": "approval",
+      "message": "Transfer requires manual review due to elevated risk",
+      "approval_policy": {"required": true, "role": "compliance_officer"},
+      "on_approved": "auto_approve",
+      "on_rejected": "reject_transfer"
+    },
+    {
+      "id": "reject_transfer",
+      "type": "terminal"
+    },
+    {
+      "id": "done",
+      "type": "terminal"
+    }
+  ]
+}

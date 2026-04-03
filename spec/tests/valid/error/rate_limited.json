@@ -1,0 +1,11 @@
+{
+  "code": "rate_limited",
+  "message": "Too many requests. Rate limit of 100 requests per minute exceeded.",
+  "fix_hint": "Wait 30 seconds before retrying. Consider batching requests to reduce call frequency.",
+  "details": {
+    "limit": 100,
+    "window_seconds": 60,
+    "retry_after_seconds": 30
+  },
+  "trace_id": "trace_c3d4e5f6"
+}

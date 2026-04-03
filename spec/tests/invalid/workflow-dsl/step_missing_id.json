@@ -1,0 +1,7 @@
+{
+  "_comment": "Step missing required 'id' field",
+  "name": "bad_step_flow",
+  "steps": [
+    {"type": "capability", "capability_name": "test.action"}
+  ]
+}

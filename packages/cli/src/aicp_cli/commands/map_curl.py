@@ -266,22 +266,35 @@ class CurlImporter:
         multi_request: bool,
     ) -> str:
         parsed = urlparse(url)
+
+        # Keep only non-numeric, non-empty path segments
         path_parts = [
-            self._slugify(part) for part in parsed.path.split("/") if part.strip()
+            self._slugify(part)
+            for part in parsed.path.split("/")
+            if part.strip() and not re.fullmatch(r"\d+", part.strip())
         ]
-        host_part = (
-            self._slugify(parsed.netloc.split("@")[-1].split(":")[0]) or "remote"
-        )
+
+        # For GET requests with no meaningful last segment, append a verb
+        if method.upper() == "GET" and (not path_parts or self._slugify(path_parts[-1]) not in ("list", "search", "get", "find")):
+            suffix = "list"
+        elif method.upper() in ("DELETE",):
+            suffix = "delete"
+        else:
+            suffix = None
 
         if path_parts:
-            base = ".".join([host_part, *path_parts])
+            if suffix and path_parts[-1] != suffix:
+                base = ".".join([*path_parts, suffix])
+            else:
+                base = ".".join(path_parts)
         else:
-            base = f"{host_part}.root"
+            host_part = self._slugify(parsed.netloc.split("@")[-1].split(":")[0]) or "remote"
+            base = f"{host_part}.{suffix or method.lower()}"
 
         if multi_request:
-            return f"{base}.{method.lower()}_{request_index}_{url_index}"
+            return f"{base}_{request_index}_{url_index}"
 
-        return f"{base}.{method.lower()}"
+        return base
 
     def _build_input_schema(self, request: CurlRequest, url: str) -> InputSchema:
         """Build input schema from parsed cURL flags."""
@@ -654,4 +667,68 @@ class CurlImporter:
         return result
 
 
-__all__ = ["CurlImporter"]
+def _normalize(value: Any) -> Any:
+    """Normalize values for JSON serialization."""
+    if value is None:
+        return None
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, list):
+        return [_normalize(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _normalize(item) for key, item in value.items()}
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        return model_dump(exclude_none=True, mode="json")
+    if hasattr(value, "__dict__"):
+        return {
+            key: _normalize(item)
+            for key, item in vars(value).items()
+            if not key.startswith("_")
+        }
+    return str(value)
+
+
+async def cmd_map_curl(args: Any) -> int:
+    """Map a cURL command to AICP capabilities.
+
+    Reads ``args.command_text``, ``args.name``, and ``args.output``.
+    Prints a JSON payload to stdout and optionally writes to a file.
+    """
+    command_text: str = getattr(args, "command_text", "") or ""
+    name: str = getattr(args, "name", None) or "curl-import"
+    output_path: str | None = getattr(args, "output", None)
+
+    if not command_text.strip():
+        print(json.dumps({"error": "Missing cURL command text"}))
+        return 1
+
+    try:
+        importer = CurlImporter(name=name, curl_command=command_text)
+        capabilities = await importer.discover()
+    except Exception as exc:
+        print(json.dumps({"error": str(exc), "source_type": "curl"}))
+        return 1
+
+    payload = {
+        "source": name,
+        "source_type": "curl",
+        "capability_count": len(capabilities),
+        "capabilities": [_normalize(cap) for cap in capabilities],
+    }
+    output_json = json.dumps(payload, indent=2)
+
+    if output_path:
+        from pathlib import Path as _Path
+
+        dest = _Path(output_path)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(output_json, encoding="utf-8")
+        print(f"Mapped {len(capabilities)} capabilities to {output_path}")
+    else:
+        print(output_json)
+
+    return 0
+
+
+__all__ = ["CurlImporter", "cmd_map_curl"]

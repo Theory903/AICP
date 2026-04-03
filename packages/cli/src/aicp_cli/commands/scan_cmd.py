@@ -242,11 +242,17 @@ async def _scan_fastapi(module_app: str, output: str | None, write: bool) -> Non
     click.echo(f"Scanning {module_name}:{app_name}...")
     click.echo()
 
+    provider_url = getattr(config, "provider_url", None)
+    if not provider_url:
+        runtime = getattr(config, "runtime", None)
+        if runtime is not None:
+            provider_url = f"http://{runtime.host}:{runtime.port}"
+
     try:
         capabilities = await _discover_fastapi_capabilities(
             app,
             provider_name=config.provider_name,
-            base_url=config.provider_url or f"http://{config.runtime.host}:{config.runtime.port}",
+            base_url=provider_url,
         )
     except Exception as exc:
         raise click.ClickException(f"Failed to inspect FastAPI app: {exc}") from exc

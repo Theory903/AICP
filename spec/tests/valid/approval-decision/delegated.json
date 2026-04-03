@@ -1,0 +1,9 @@
+{
+  "id": "dec_003",
+  "request_id": "req_003",
+  "decision": "delegated",
+  "approver": "manager_bob",
+  "delegated_to": "senior_compliance_alice",
+  "delegation_reason": "Manager is on PTO; escalating to senior compliance",
+  "decided_at": "2026-04-03T11:00:00Z"
+}

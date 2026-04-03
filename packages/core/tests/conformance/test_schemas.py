@@ -160,7 +160,7 @@ class TestWorkflowSchemaConformance:
             id="wf-123",
             name="checkout_flow",
             description="Checkout flow",
-            status="pending",
+            status="created",
             created_at="2026-03-30T12:00:00Z",
             updated_at="2026-03-30T12:00:00Z",
         )
@@ -713,3 +713,614 @@ class TestAuditEntrySchemaConformance:
         }
         valid, errors = validate_against_schema("audit-entry.schema.json", data)
         assert not valid, "Should reject audit entry without required fields"
+
+
+class TestSessionSchemaConformance:
+    """Test session schema conformance."""
+
+    def test_minimal_session_conforms(self):
+        data = {
+            "id": "sess_abc123",
+            "status": "active",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T10:00:00Z",
+            "updated_at": "2026-04-03T10:00:00Z",
+        }
+        valid, errors = validate_against_schema("session.schema.json", data)
+        assert valid, f"Minimal session does not conform: {errors}"
+
+    def test_all_statuses_valid(self):
+        for status in ["active", "paused", "completed", "expired", "cancelled"]:
+            data = {
+                "id": "sess_x",
+                "status": status,
+                "trust_tier": 0,
+                "created_at": "2026-04-03T10:00:00Z",
+                "updated_at": "2026-04-03T10:00:00Z",
+            }
+            valid, errors = validate_against_schema("session.schema.json", data)
+            assert valid, f"Status {status!r} should be valid: {errors}"
+
+    def test_all_trust_tiers_valid(self):
+        for tier in range(5):
+            data = {
+                "id": "sess_tier",
+                "status": "active",
+                "trust_tier": tier,
+                "created_at": "2026-04-03T10:00:00Z",
+                "updated_at": "2026-04-03T10:00:00Z",
+            }
+            valid, errors = validate_against_schema("session.schema.json", data)
+            assert valid, f"Trust tier {tier} should be valid: {errors}"
+
+    def test_full_session_with_memory_and_planner_conforms(self):
+        data = {
+            "id": "sess_full001",
+            "status": "active",
+            "trust_tier": 2,
+            "agent_id": "agent_planner_01",
+            "user_id": "user_jsmith",
+            "created_at": "2026-04-03T10:00:00Z",
+            "updated_at": "2026-04-03T10:05:00Z",
+            "goal": "Place a food order",
+            "memory": {
+                "working": {"current_step": "checkout"},
+                "episodic": [
+                    {"event": "session_started", "timestamp": "2026-04-03T10:00:00Z"}
+                ],
+                "semantic": {"preferred_restaurant": "Tacos El Rey"},
+                "procedural": [{"pattern": "cart.add -> checkout", "confidence": 0.9}],
+                "meta": {
+                    "token_budget_remaining": 48000,
+                    "capability_coverage": ["cart.*"],
+                    "preference_weights": {"speed": 0.8},
+                },
+            },
+            "planner_output": {
+                "goal": "Place a food order",
+                "plan_id": "plan_001",
+                "steps": [
+                    {
+                        "step_id": "step_1",
+                        "capability_name": "cart.add_item",
+                        "depends_on": [],
+                    }
+                ],
+                "generated_at": "2026-04-03T10:00:30Z",
+            },
+            "judge_verdict": {
+                "verdict": "approved",
+                "score": 0.91,
+                "rationale": "Plan is coherent",
+                "evaluated_at": "2026-04-03T10:00:45Z",
+            },
+        }
+        valid, errors = validate_against_schema("session.schema.json", data)
+        assert valid, f"Full session does not conform: {errors}"
+
+    def test_missing_id_rejected(self):
+        data = {
+            "status": "active",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T10:00:00Z",
+            "updated_at": "2026-04-03T10:00:00Z",
+        }
+        valid, _ = validate_against_schema("session.schema.json", data)
+        assert not valid, "Should reject session without id"
+
+    def test_invalid_status_rejected(self):
+        data = {
+            "id": "sess_x",
+            "status": "running",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T10:00:00Z",
+            "updated_at": "2026-04-03T10:00:00Z",
+        }
+        valid, _ = validate_against_schema("session.schema.json", data)
+        assert not valid, "Should reject invalid status"
+
+    def test_trust_tier_above_max_rejected(self):
+        data = {
+            "id": "sess_x",
+            "status": "active",
+            "trust_tier": 5,
+            "created_at": "2026-04-03T10:00:00Z",
+            "updated_at": "2026-04-03T10:00:00Z",
+        }
+        valid, _ = validate_against_schema("session.schema.json", data)
+        assert not valid, "Should reject trust_tier > 4"
+
+    def test_additional_property_rejected(self):
+        data = {
+            "id": "sess_x",
+            "status": "active",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T10:00:00Z",
+            "updated_at": "2026-04-03T10:00:00Z",
+            "unknown_field": "not_allowed",
+        }
+        valid, _ = validate_against_schema("session.schema.json", data)
+        assert not valid, "Should reject additional properties"
+
+
+class TestComplianceLevel4:
+    """Compliance Level 4 conformance tests.
+
+    Level 4 (AI Planning Support) requirements:
+      - Planner output conforms to session.schema.json planner_output sub-schema
+      - Judge verdict conforms to session.schema.json judge_verdict sub-schema
+      - allowed_next_actions conforms to session.schema.json sub-schema
+      - 5-layer memory snapshot conforms to session.schema.json memory sub-schema
+      - IntentRouter, UX Protocol, SWE Protocol are importable from aicp_runtime
+    """
+
+    # ------------------------------------------------------------------
+    # Planner output sub-schema conformance
+    # ------------------------------------------------------------------
+
+    def test_valid_planner_output_conforms(self):
+        planner_output = {
+            "goal": "Order a pizza and track delivery",
+            "plan_id": "plan_l4_01",
+            "steps": [
+                {
+                    "step_id": "step_1",
+                    "capability_name": "cart.add_item",
+                    "arguments": {"item": "pizza"},
+                    "depends_on": [],
+                    "rationale": "Add pizza to cart",
+                },
+                {
+                    "step_id": "step_2",
+                    "capability_name": "checkout.start",
+                    "depends_on": ["step_1"],
+                },
+            ],
+            "generated_at": "2026-04-03T12:00:00Z",
+        }
+        session = {
+            "id": "sess_l4_planner",
+            "status": "active",
+            "trust_tier": 2,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:00:00Z",
+            "planner_output": planner_output,
+        }
+        valid, errors = validate_against_schema("session.schema.json", session)
+        assert valid, f"Valid planner output rejected: {errors}"
+
+    def test_planner_output_step_requires_capability_name(self):
+        planner_output = {
+            "goal": "test",
+            "plan_id": "plan_bad",
+            "steps": [
+                {
+                    "step_id": "step_1",
+                    # missing capability_name
+                }
+            ],
+        }
+        session = {
+            "id": "sess_l4_bad_planner",
+            "status": "active",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:00:00Z",
+            "planner_output": planner_output,
+        }
+        valid, _ = validate_against_schema("session.schema.json", session)
+        assert not valid, "Should reject planner step missing capability_name"
+
+    # ------------------------------------------------------------------
+    # Judge verdict sub-schema conformance
+    # ------------------------------------------------------------------
+
+    def test_valid_judge_verdict_conforms(self):
+        verdict = {
+            "verdict": "approved",
+            "score": 0.95,
+            "rationale": "Plan is coherent and executable",
+            "evaluated_at": "2026-04-03T12:05:00Z",
+        }
+        session = {
+            "id": "sess_l4_judge",
+            "status": "active",
+            "trust_tier": 2,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:05:00Z",
+            "judge_verdict": verdict,
+        }
+        valid, errors = validate_against_schema("session.schema.json", session)
+        assert valid, f"Valid judge verdict rejected: {errors}"
+
+    def test_judge_verdict_invalid_enum_rejected(self):
+        verdict = {
+            "verdict": "uncertain",  # not in enum
+            "score": 0.5,
+        }
+        session = {
+            "id": "sess_l4_bad_judge",
+            "status": "active",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:00:00Z",
+            "judge_verdict": verdict,
+        }
+        valid, _ = validate_against_schema("session.schema.json", session)
+        assert not valid, "Should reject verdict not in enum"
+
+    def test_judge_verdict_score_above_1_rejected(self):
+        verdict = {
+            "verdict": "approved",
+            "score": 1.1,  # above max
+        }
+        session = {
+            "id": "sess_l4_bad_score",
+            "status": "active",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:00:00Z",
+            "judge_verdict": verdict,
+        }
+        valid, _ = validate_against_schema("session.schema.json", session)
+        assert not valid, "Should reject score > 1"
+
+    # ------------------------------------------------------------------
+    # allowed_next_actions sub-schema conformance
+    # ------------------------------------------------------------------
+
+    def test_valid_allowed_next_actions_conforms(self):
+        session = {
+            "id": "sess_l4_ana",
+            "status": "active",
+            "trust_tier": 2,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:00:00Z",
+            "allowed_next_actions": [
+                {
+                    "kind": "capability",
+                    "name": "order.track",
+                    "reason": "Track the placed order",
+                    "requires_approval": False,
+                    "confidence": 0.92,
+                },
+                {
+                    "kind": "workflow_step",
+                    "name": "confirm_delivery",
+                    "requires_approval": True,
+                },
+            ],
+        }
+        valid, errors = validate_against_schema("session.schema.json", session)
+        assert valid, f"Valid allowed_next_actions rejected: {errors}"
+
+    def test_allowed_next_action_invalid_kind_rejected(self):
+        session = {
+            "id": "sess_l4_bad_ana",
+            "status": "active",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:00:00Z",
+            "allowed_next_actions": [
+                {
+                    "kind": "unknown_kind",  # not in enum
+                    "name": "something",
+                }
+            ],
+        }
+        valid, _ = validate_against_schema("session.schema.json", session)
+        assert not valid, "Should reject unknown kind in allowed_next_actions"
+
+    def test_allowed_next_action_missing_name_rejected(self):
+        session = {
+            "id": "sess_l4_no_name",
+            "status": "active",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:00:00Z",
+            "allowed_next_actions": [
+                {
+                    "kind": "capability",
+                    # missing "name"
+                }
+            ],
+        }
+        valid, _ = validate_against_schema("session.schema.json", session)
+        assert not valid, "Should reject action missing name"
+
+    # ------------------------------------------------------------------
+    # Memory sub-schema conformance
+    # ------------------------------------------------------------------
+
+    def test_valid_memory_snapshot_conforms(self):
+        session = {
+            "id": "sess_l4_mem",
+            "status": "active",
+            "trust_tier": 2,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:00:00Z",
+            "memory": {
+                "working": {"current_step": "checkout"},
+                "episodic": [
+                    {
+                        "event": "capability_executed",
+                        "timestamp": "2026-04-03T12:01:00Z",
+                        "data": {"cap": "cart.add_item"},
+                    }
+                ],
+                "semantic": {"dietary_restrictions": ["gluten-free"]},
+                "procedural": [{"pattern": "cart.add -> checkout", "confidence": 0.85}],
+                "meta": {
+                    "token_budget_remaining": 50000,
+                    "capability_coverage": ["cart.*", "checkout.*"],
+                    "preference_weights": {"speed": 0.8},
+                },
+            },
+        }
+        valid, errors = validate_against_schema("session.schema.json", session)
+        assert valid, f"Valid memory snapshot rejected: {errors}"
+
+    def test_episodic_event_requires_timestamp(self):
+        session = {
+            "id": "sess_l4_no_ts",
+            "status": "active",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:00:00Z",
+            "memory": {
+                "episodic": [
+                    {
+                        "event": "something",
+                        # missing timestamp
+                    }
+                ]
+            },
+        }
+        valid, _ = validate_against_schema("session.schema.json", session)
+        assert not valid, "Should reject episodic event missing timestamp"
+
+    def test_procedural_pattern_confidence_above_1_rejected(self):
+        session = {
+            "id": "sess_l4_bad_conf",
+            "status": "active",
+            "trust_tier": 1,
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:00:00Z",
+            "memory": {
+                "procedural": [{"pattern": "a -> b", "confidence": 2.0}]
+            },
+        }
+        valid, _ = validate_against_schema("session.schema.json", session)
+        assert not valid, "Should reject procedural pattern confidence > 1"
+
+    # ------------------------------------------------------------------
+    # AI plane module imports (smoke test: modules are importable)
+    # ------------------------------------------------------------------
+
+    def test_planner_importable(self):
+        from aicp_runtime.ai.planner import AICPlanner, PlannerOutput, PlanStep  # noqa: F401
+        assert AICPlanner is not None
+
+    def test_judge_importable(self):
+        from aicp_runtime.ai.judge import AICJudge, JudgeResult, JudgeVerdict  # noqa: F401
+        assert AICJudge is not None
+
+    def test_intent_router_importable(self):
+        from aicp_runtime.ai.intent_router import IntentRouter, RouteDecision, RoutingDestination  # noqa: F401
+        assert IntentRouter is not None
+
+    def test_memory_store_importable(self):
+        from aicp_runtime.memory.store import MemoryStore, MemorySnapshot  # noqa: F401
+        assert MemoryStore is not None
+
+    def test_ux_protocol_importable(self):
+        from aicp_runtime.protocols.ux import UXProtocol, PromptBlock  # noqa: F401
+        assert UXProtocol is not None
+
+    def test_swe_protocol_importable(self):
+        from aicp_runtime.protocols.swe import SWEProtocol, CodeAction  # noqa: F401
+        assert SWEProtocol is not None
+
+    # ------------------------------------------------------------------
+    # Planner → Judge pipeline integration (schema-level)
+    # ------------------------------------------------------------------
+
+    def test_planner_output_with_judge_verdict_in_same_session(self):
+        """A session MAY carry both planner_output and judge_verdict."""
+        session = {
+            "id": "sess_l4_full_ai",
+            "status": "active",
+            "trust_tier": 3,
+            "goal": "Complete food order",
+            "created_at": "2026-04-03T12:00:00Z",
+            "updated_at": "2026-04-03T12:10:00Z",
+            "planner_output": {
+                "goal": "Complete food order",
+                "plan_id": "plan_full_01",
+                "steps": [
+                    {"step_id": "s1", "capability_name": "cart.add_item"},
+                    {"step_id": "s2", "capability_name": "checkout.start", "depends_on": ["s1"]},
+                ],
+                "generated_at": "2026-04-03T12:05:00Z",
+            },
+            "judge_verdict": {
+                "verdict": "approved",
+                "score": 0.88,
+                "rationale": "Steps are valid and ordered correctly",
+                "evaluated_at": "2026-04-03T12:08:00Z",
+            },
+            "allowed_next_actions": [
+                {"kind": "capability", "name": "payments.charge", "requires_approval": True, "confidence": 0.9}
+            ],
+        }
+        valid, errors = validate_against_schema("session.schema.json", session)
+        assert valid, f"Full AI planning session rejected: {errors}"
+
+
+class TestWorkflowDSLFixtureConformance:
+    """Test that canonical workflow-dsl fixtures conform to schema."""
+
+    def _load_fixtures(self, validity: str) -> list[tuple[Path, dict]]:
+        fixtures = []
+        base_dir = FIXTURES_DIR / validity / "workflow-dsl"
+        if not base_dir.exists():
+            pytest.skip(f"Fixture directory not found: {base_dir}")
+        for f in base_dir.glob("*.json"):
+            with open(f) as fh:
+                fixtures.append((f, json.load(fh)))
+        return fixtures
+
+    def test_valid_workflow_dsl_fixtures(self):
+        fixtures = self._load_fixtures("valid")
+        assert len(fixtures) > 0, "No valid workflow-dsl fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, errors = validate_against_schema("workflow-dsl.schema.json", data)
+            assert is_valid, f"{fixture_path.name}: {errors}"
+
+    def test_invalid_workflow_dsl_fixtures_rejected(self):
+        fixtures = self._load_fixtures("invalid")
+        assert len(fixtures) > 0, "No invalid workflow-dsl fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, _ = validate_against_schema("workflow-dsl.schema.json", data)
+            assert not is_valid, f"{fixture_path.name} should be rejected"
+
+
+class TestApprovalRequestFixtureConformance:
+    """Test that canonical approval-request fixtures conform to schema."""
+
+    def _load_fixtures(self, validity: str) -> list[tuple[Path, dict]]:
+        fixtures = []
+        base_dir = FIXTURES_DIR / validity / "approval-request"
+        if not base_dir.exists():
+            pytest.skip(f"Fixture directory not found: {base_dir}")
+        for f in base_dir.glob("*.json"):
+            with open(f) as fh:
+                fixtures.append((f, json.load(fh)))
+        return fixtures
+
+    def test_valid_approval_request_fixtures(self):
+        fixtures = self._load_fixtures("valid")
+        assert len(fixtures) > 0, "No valid approval-request fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, errors = validate_against_schema("approval-request.schema.json", data)
+            assert is_valid, f"{fixture_path.name}: {errors}"
+
+    def test_invalid_approval_request_fixtures_rejected(self):
+        fixtures = self._load_fixtures("invalid")
+        assert len(fixtures) > 0, "No invalid approval-request fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, _ = validate_against_schema("approval-request.schema.json", data)
+            assert not is_valid, f"{fixture_path.name} should be rejected"
+
+
+class TestApprovalDecisionFixtureConformance:
+    """Test that canonical approval-decision fixtures conform to schema."""
+
+    def _load_fixtures(self, validity: str) -> list[tuple[Path, dict]]:
+        fixtures = []
+        base_dir = FIXTURES_DIR / validity / "approval-decision"
+        if not base_dir.exists():
+            pytest.skip(f"Fixture directory not found: {base_dir}")
+        for f in base_dir.glob("*.json"):
+            with open(f) as fh:
+                fixtures.append((f, json.load(fh)))
+        return fixtures
+
+    def test_valid_approval_decision_fixtures(self):
+        fixtures = self._load_fixtures("valid")
+        assert len(fixtures) > 0, "No valid approval-decision fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, errors = validate_against_schema("approval-decision.schema.json", data)
+            assert is_valid, f"{fixture_path.name}: {errors}"
+
+    def test_invalid_approval_decision_fixtures_rejected(self):
+        fixtures = self._load_fixtures("invalid")
+        assert len(fixtures) > 0, "No invalid approval-decision fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, _ = validate_against_schema("approval-decision.schema.json", data)
+            assert not is_valid, f"{fixture_path.name} should be rejected"
+
+
+class TestAuditEntryFixtureConformance:
+    """Test that canonical audit-entry fixtures conform to schema."""
+
+    def _load_fixtures(self, validity: str) -> list[tuple[Path, dict]]:
+        fixtures = []
+        base_dir = FIXTURES_DIR / validity / "audit-entry"
+        if not base_dir.exists():
+            pytest.skip(f"Fixture directory not found: {base_dir}")
+        for f in base_dir.glob("*.json"):
+            with open(f) as fh:
+                fixtures.append((f, json.load(fh)))
+        return fixtures
+
+    def test_valid_audit_entry_fixtures(self):
+        fixtures = self._load_fixtures("valid")
+        assert len(fixtures) > 0, "No valid audit-entry fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, errors = validate_against_schema("audit-entry.schema.json", data)
+            assert is_valid, f"{fixture_path.name}: {errors}"
+
+    def test_invalid_audit_entry_fixtures_rejected(self):
+        fixtures = self._load_fixtures("invalid")
+        assert len(fixtures) > 0, "No invalid audit-entry fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, _ = validate_against_schema("audit-entry.schema.json", data)
+            assert not is_valid, f"{fixture_path.name} should be rejected"
+
+
+class TestErrorFixtureConformance:
+    """Test that canonical error fixtures conform to schema."""
+
+    def _load_fixtures(self, validity: str) -> list[tuple[Path, dict]]:
+        fixtures = []
+        base_dir = FIXTURES_DIR / validity / "error"
+        if not base_dir.exists():
+            pytest.skip(f"Fixture directory not found: {base_dir}")
+        for f in base_dir.glob("*.json"):
+            with open(f) as fh:
+                fixtures.append((f, json.load(fh)))
+        return fixtures
+
+    def test_valid_error_fixtures(self):
+        fixtures = self._load_fixtures("valid")
+        assert len(fixtures) > 0, "No valid error fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, errors = validate_against_schema("error.schema.json", data)
+            assert is_valid, f"{fixture_path.name}: {errors}"
+
+    def test_invalid_error_fixtures_rejected(self):
+        fixtures = self._load_fixtures("invalid")
+        assert len(fixtures) > 0, "No invalid error fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, _ = validate_against_schema("error.schema.json", data)
+            assert not is_valid, f"{fixture_path.name} should be rejected"
+
+
+class TestSessionFixtureConformance:
+    """Test that canonical session fixtures conform to the schema."""
+
+    def _load_fixtures(self, validity: str) -> list[tuple[Path, dict]]:
+        import json
+        fixtures = []
+        base_dir = FIXTURES_DIR / validity / "session"
+        if not base_dir.exists():
+            pytest.skip(f"Fixture directory not found: {base_dir}")
+        for f in base_dir.glob("*.json"):
+            with open(f) as fh:
+                fixtures.append((f, json.load(fh)))
+        return fixtures
+
+    def test_valid_session_fixtures(self):
+        fixtures = self._load_fixtures("valid")
+        assert len(fixtures) > 0, "No valid session fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, errors = validate_against_schema("session.schema.json", data)
+            assert is_valid, f"{fixture_path.name}: {errors}"
+
+    def test_invalid_session_fixtures_rejected(self):
+        fixtures = self._load_fixtures("invalid")
+        assert len(fixtures) > 0, "No invalid session fixtures found"
+        for fixture_path, data in fixtures:
+            is_valid, _ = validate_against_schema("session.schema.json", data)
+            assert not is_valid, f"{fixture_path.name} should be rejected"

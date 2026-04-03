@@ -10,6 +10,9 @@ from aicp.interfaces.workflow_runtime import StepResult
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field, field_validator
 
+from aicp_runtime.ai.intent_router import IntentRouter, RoutingDestination
+from aicp_runtime.ai.judge import AICJudge, JudgeError
+from aicp_runtime.ai.planner import AICPlanner, PlannerError, PlannerOutput, PlanStep
 from aicp_runtime.auth.models import SessionAuthRecipe, SessionState
 from aicp_runtime.interactions.models import AgentInteractionState
 from aicp_runtime.services.approvals import ApprovalService
@@ -412,6 +415,83 @@ class AgentSurfaceMapper:
         return None
 
 
+# ---------------------------------------------------------------------------
+# AI plane request / response models
+# ---------------------------------------------------------------------------
+
+
+class PlanRequest(BaseModel):
+    goal: str = Field(min_length=1)
+    available_capabilities: list[str] | None = Field(default=None)
+    context: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("goal", mode="before")
+    @classmethod
+    def _normalize_goal(cls, value: Any) -> str:
+        goal = str(value or "").strip()
+        if not goal:
+            raise ValueError("goal cannot be empty")
+        return goal
+
+
+class PlanStepView(BaseModel):
+    step_id: str
+    capability_name: str
+    depends_on: list[str] = Field(default_factory=list)
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    rationale: str | None = None
+
+
+class PlanResponse(BaseModel):
+    plan_id: str
+    goal: str
+    generated_at: str
+    steps: list[PlanStepView]
+
+
+class RouteRequest(BaseModel):
+    utterance: str = Field(min_length=0)
+    available_capabilities: list[dict[str, Any]] | None = Field(default=None)
+
+    @field_validator("utterance", mode="before")
+    @classmethod
+    def _normalize_utterance(cls, value: Any) -> str:
+        return str(value or "").strip()
+
+
+class RouteResponse(BaseModel):
+    destination: str
+    capability_name: str | None = None
+    confidence: float
+    clarification_prompt: str | None = None
+    rejection_reason: str | None = None
+
+
+class JudgeRequest(BaseModel):
+    plan: dict[str, Any]
+
+    @field_validator("plan", mode="before")
+    @classmethod
+    def _require_plan(cls, value: Any) -> dict[str, Any]:
+        if value is None:
+            raise ValueError("plan must not be None")
+        if not isinstance(value, dict):
+            raise ValueError("plan must be an object")
+        return value
+
+
+class JudgeResponse(BaseModel):
+    verdict: str
+    score: float
+    rationale: str
+    evaluated_at: str
+
+
+# ---------------------------------------------------------------------------
+# Router factory
+# ---------------------------------------------------------------------------
+
+
 def build_v1_router(
     discovery_service: DiscoveryService,
     execution_service: ExecutionService,
@@ -767,6 +847,118 @@ def build_v1_router(
                 workflow_id=workflow_id_text,
                 execution_id=optional_text(updated.get("execution_id")),
             ),
+        )
+
+    # -----------------------------------------------------------------------
+    # AI Plane endpoints
+    # -----------------------------------------------------------------------
+
+    async def _provider_capability_names() -> list[str]:
+        """Pull all capability names from the registered provider."""
+        doc = await discovery_service.discover()
+        return [cap.get("name", "") for cap in doc.get("capabilities", []) if cap.get("name")]
+
+    @router.post("/plan", response_model=PlanResponse)
+    async def plan_goal(request: PlanRequest) -> PlanResponse:
+        """Generate a multi-step plan from a natural language goal."""
+        if request.available_capabilities is not None:
+            caps = request.available_capabilities
+        else:
+            caps = await _provider_capability_names()
+
+        planner = AICPlanner()
+        try:
+            output = planner.plan(
+                goal=request.goal,
+                available_capabilities=caps,
+                context=request.context,
+            )
+        except PlannerError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+
+        return PlanResponse(
+            plan_id=output.plan_id,
+            goal=output.goal,
+            generated_at=output.generated_at,
+            steps=[
+                PlanStepView(
+                    step_id=s.step_id,
+                    capability_name=s.capability_name,
+                    depends_on=s.depends_on,
+                    arguments=s.arguments,
+                    rationale=s.rationale,
+                )
+                for s in output.steps
+            ],
+        )
+
+    @router.post("/route", response_model=RouteResponse)
+    async def route_utterance(request: RouteRequest) -> RouteResponse:
+        """Route a natural language utterance to the appropriate destination."""
+        if request.available_capabilities is not None:
+            caps = request.available_capabilities
+        else:
+            doc = await discovery_service.discover()
+            caps = [
+                {
+                    "name": cap.get("name", ""),
+                    "description": cap.get("description", ""),
+                    "kind": cap.get("kind", "action"),
+                }
+                for cap in doc.get("capabilities", [])
+                if cap.get("name")
+            ]
+
+        router_ai = IntentRouter(capabilities=caps)
+        decision = router_ai.route(request.utterance)
+
+        return RouteResponse(
+            destination=decision.destination.value,
+            capability_name=decision.capability_name,
+            confidence=decision.confidence,
+            clarification_prompt=decision.clarification_prompt,
+            rejection_reason=decision.rejection_reason,
+        )
+
+    @router.post("/judge", response_model=JudgeResponse)
+    async def judge_plan(request: JudgeRequest) -> JudgeResponse:
+        """Evaluate a plan dict and return a structured verdict."""
+        raw = request.plan
+        steps = [
+            PlanStep(
+                step_id=str(s.get("step_id", "")),
+                capability_name=str(s.get("capability_name", "")),
+                depends_on=list(s.get("depends_on") or []),
+                arguments=dict(s.get("arguments") or {}),
+                rationale=s.get("rationale"),
+            )
+            for s in (raw.get("steps") or [])
+            if isinstance(s, dict)
+        ]
+        plan_obj = PlannerOutput(
+            goal=str(raw.get("goal") or ""),
+            steps=steps,
+            plan_id=str(raw.get("plan_id") or f"plan_{id(raw)}"),
+            generated_at=str(raw.get("generated_at") or ""),
+        )
+
+        judge = AICJudge()
+        try:
+            result = judge.evaluate(plan_obj)
+        except JudgeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+
+        return JudgeResponse(
+            verdict=result.verdict.value,
+            score=result.score,
+            rationale=result.rationale,
+            evaluated_at=result.evaluated_at,
         )
 
     return router

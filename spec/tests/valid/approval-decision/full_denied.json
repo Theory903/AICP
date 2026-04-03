@@ -1,0 +1,16 @@
+{
+  "id": "dec_002",
+  "request_id": "req_002",
+  "decision": "denied",
+  "approver": "compliance_officer_jane",
+  "approver_context": {
+    "user_id": "u_jane_doe",
+    "email": "jane.doe@example.com",
+    "role": "compliance_officer"
+  },
+  "reason": "Transfer destination flagged for prior suspicious activity",
+  "approval_channel": "ui",
+  "ip_address": "10.0.1.15",
+  "decided_at": "2026-04-03T10:30:00Z",
+  "received_at": "2026-04-03T10:00:00Z"
+}

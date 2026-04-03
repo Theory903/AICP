@@ -32,12 +32,16 @@ class StepStatus(str, Enum):
 
 
 class WorkflowStatus(str, Enum):
-    """Overall workflow status."""
+    """Overall workflow status.
 
-    PENDING = "pending"
+    Values match the workflow.schema.json spec exactly.
+    """
+
+    CREATED = "created"
     RUNNING = "running"
+    WAITING_APPROVAL = "waiting_approval"
+    WAITING_EVENT = "waiting_event"
     PAUSED = "paused"
-    PAUSED_FOR_APPROVAL = "paused_for_approval"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
@@ -119,7 +123,7 @@ class WorkflowState(BaseModel):
     current_step_index: int = Field(default=0, ge=0)
     context: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
-    status: WorkflowStatus = WorkflowStatus.PENDING
+    status: WorkflowStatus = WorkflowStatus.CREATED
     created_at: str = Field(default_factory=utc_now_rfc3339)
     updated_at: str = Field(default_factory=utc_now_rfc3339)
 
@@ -172,7 +176,7 @@ class WorkflowState(BaseModel):
             return
 
         if not self.steps:
-            self.status = WorkflowStatus.PENDING
+            self.status = WorkflowStatus.CREATED
             self.touch()
             return
 
@@ -185,13 +189,13 @@ class WorkflowState(BaseModel):
             if current is None:
                 self.status = WorkflowStatus.COMPLETED
             elif current.status == StepStatus.AWAITING_APPROVAL:
-                self.status = WorkflowStatus.PAUSED_FOR_APPROVAL
+                self.status = WorkflowStatus.WAITING_APPROVAL
             elif current.status == StepStatus.AWAITING_CONFIRMATION:
                 self.status = WorkflowStatus.PAUSED
             elif current.status == StepStatus.RUNNING:
                 self.status = WorkflowStatus.RUNNING
             else:
-                self.status = WorkflowStatus.PENDING
+                self.status = WorkflowStatus.CREATED
 
         self.touch()
 

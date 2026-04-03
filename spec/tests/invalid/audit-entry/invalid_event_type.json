@@ -1,0 +1,6 @@
+{
+  "id": "audit_a1b2c3d4",
+  "timestamp": "2026-04-03T18:45:12.456Z",
+  "event_type": "not_a_real_event_type",
+  "actor": "agent_y5z6"
+}

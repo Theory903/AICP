@@ -196,6 +196,31 @@ class SessionService:
         await self._store.save_session_state(session)
         return deepcopy(session)
 
+    async def update_memory(self, session_id: str, snap: "MemorySnapshot") -> None:
+        """Persist a MemorySnapshot into the session's metadata."""
+        from aicp_runtime.memory.store import MemorySnapshot as _MemorySnapshot  # noqa: F401
+
+        normalized = self._require_text(session_id, "session_id")
+        session = await self._store.get_session_state(normalized)
+        if session is None:
+            raise ValueError(f"Session not found: {normalized}")
+        session.setdefault("metadata", {})["memory"] = snap.to_dict()
+        session["updated_at"] = utc_now_rfc3339()
+        await self._store.save_session_state(session)
+
+    async def get_memory(self, session_id: str) -> "MemorySnapshot | None":
+        """Retrieve the persisted MemorySnapshot for a session, or None if not set."""
+        from aicp_runtime.memory.store import MemorySnapshot
+
+        normalized = self._require_text(session_id, "session_id")
+        session = await self._store.get_session_state(normalized)
+        if session is None:
+            return None
+        raw = session.get("metadata", {}).get("memory")
+        if raw is None:
+            return None
+        return MemorySnapshot.from_dict(raw)
+
     async def _append_audit(self, event_type: str, actor: str, **fields: Any) -> None:
         if self._audit is None:
             return

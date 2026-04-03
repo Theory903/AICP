@@ -6,7 +6,8 @@ Demonstrates multi-step workflow with policy and continuation hints.
 import uuid
 from typing import Any
 
-from aicp import Capability, CapabilityKind, RenderSpec, ContinuationSpec
+from aicp import Capability, CapabilityKind
+from aicp.capability import ContinuationSpec, RenderSpec
 
 
 MENU = [
@@ -48,7 +49,7 @@ def create_menu_capabilities() -> list[Capability]:
             },
             render=RenderSpec(
                 format="table",
-                table_columns=["id", "name", "price"],
+                fields=["id", "name", "price"],
             ),
             continuation=ContinuationSpec(
                 can_continue=True,
@@ -104,7 +105,7 @@ def create_menu_capabilities() -> list[Capability]:
             },
             render=RenderSpec(
                 format="table",
-                table_columns=["item", "quantity", "price", "total"],
+                fields=["item", "quantity", "price", "total"],
             ),
             continuation=ContinuationSpec(
                 can_continue=True,

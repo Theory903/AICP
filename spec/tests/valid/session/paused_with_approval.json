@@ -1,0 +1,20 @@
+{
+  "id": "sess_paused_01",
+  "status": "paused",
+  "trust_tier": 2,
+  "agent_id": "agent_finance_01",
+  "created_at": "2026-04-03T09:00:00Z",
+  "updated_at": "2026-04-03T09:15:00Z",
+  "goal": "Process high-value wire transfer",
+  "pending_approval_ids": ["req_wire_approval_001"],
+  "execution_history": ["exec_aaa111", "exec_bbb222"],
+  "allowed_next_actions": [
+    {
+      "kind": "approval",
+      "name": "req_wire_approval_001",
+      "reason": "Awaiting human approval for wire transfer",
+      "requires_approval": true,
+      "confidence": 1.0
+    }
+  ]
+}

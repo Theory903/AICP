@@ -100,7 +100,7 @@ class TestWorkflowRuntime:
         )
         assert workflow.name == "transfer_funds"
         assert len(workflow.steps) == 2
-        assert workflow.status == "pending"
+        assert workflow.status == "created"
         assert datetime.fromisoformat(workflow.created_at.replace("Z", "+00:00"))
         assert datetime.fromisoformat(workflow.updated_at.replace("Z", "+00:00"))
 

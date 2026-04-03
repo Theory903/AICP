@@ -1,0 +1,6 @@
+{
+  "_comment": "Missing required 'decided_at' field",
+  "id": "dec_no_ts",
+  "request_id": "req_001",
+  "decision": "approved"
+}

@@ -173,7 +173,7 @@ async def test_workflow_service_persists_workflow_state(
 
     assert loaded is not None
     assert loaded.id == workflow.id
-    assert loaded.status == "pending"
+    assert loaded.status == "created"
 
 
 @pytest.mark.asyncio
@@ -1303,3 +1303,114 @@ async def test_sqlite_runtime_store_persists_all_runtime_records(tmp_path) -> No
     assert loaded_history[0]["event_type"] == "workflow_created"
     assert loaded_session is not None
     assert loaded_session["provider_name"] == "crm-http"
+
+
+# ---------------------------------------------------------------------------
+# Memory persistence via SessionService
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_session_service_saves_and_restores_memory_snapshot() -> None:
+    """update_memory persists a MemorySnapshot; get_memory restores it."""
+    from aicp_runtime.memory.store import MemorySnapshot
+
+    store = InMemoryRuntimeStore()
+    audit_service = AuditService(runtime_store=store)
+    session_service = SessionService(runtime_store=store, audit_service=audit_service)
+
+    session = await session_service.create_session(
+        provider_name="test-provider",
+        auth_mode="none",
+        cookies=[],
+        headers={},
+        tokens={},
+        csrf_tokens={},
+        metadata={},
+    )
+    session_id = session["id"]
+
+    snap = MemorySnapshot(
+        episodic=[{"event": "user clicked buy", "ts": "2026-04-01T10:00:00Z"}],
+        semantic={"product_id": "prod-123"},
+        working={"cart_total": 49.99},
+        procedural=[{"name": "checkout", "steps": ["address", "payment", "confirm"]}],
+        meta={"token_budget": 1000, "tokens_used": 0},
+    )
+
+    await session_service.update_memory(session_id, snap)
+    restored = await session_service.get_memory(session_id)
+
+    assert restored is not None
+    assert restored.episodic == snap.episodic
+    assert restored.semantic == snap.semantic
+    assert restored.working == snap.working
+    assert restored.procedural == snap.procedural
+    assert restored.meta == snap.meta
+
+
+@pytest.mark.asyncio
+async def test_session_service_get_memory_returns_none_when_not_set() -> None:
+    """get_memory returns None for a fresh session with no memory set."""
+    store = InMemoryRuntimeStore()
+    audit_service = AuditService(runtime_store=store)
+    session_service = SessionService(runtime_store=store, audit_service=audit_service)
+
+    session_id = await session_service.create_session(
+        provider_name="test-provider",
+        auth_mode="none",
+        cookies=[],
+        headers={},
+        tokens={},
+        csrf_tokens={},
+        metadata={},
+    )
+
+    result = await session_service.get_memory(session_id["id"])
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_session_service_update_memory_raises_for_missing_session() -> None:
+    """update_memory raises ValueError if session does not exist."""
+    from aicp_runtime.memory.store import MemorySnapshot
+
+    store = InMemoryRuntimeStore()
+    audit_service = AuditService(runtime_store=store)
+    session_service = SessionService(runtime_store=store, audit_service=audit_service)
+
+    snap = MemorySnapshot()
+
+    with pytest.raises(ValueError, match="not found"):
+        await session_service.update_memory("sess-nonexistent", snap)
+
+
+@pytest.mark.asyncio
+async def test_session_service_memory_overwrites_previous_snapshot() -> None:
+    """Calling update_memory twice keeps only the latest snapshot."""
+    from aicp_runtime.memory.store import MemorySnapshot
+
+    store = InMemoryRuntimeStore()
+    audit_service = AuditService(runtime_store=store)
+    session_service = SessionService(runtime_store=store, audit_service=audit_service)
+
+    session_id = await session_service.create_session(
+        provider_name="test-provider",
+        auth_mode="none",
+        cookies=[],
+        headers={},
+        tokens={},
+        csrf_tokens={},
+        metadata={},
+    )
+    sid = session_id["id"]
+
+    snap_v1 = MemorySnapshot(working={"step": "checkout"})
+    snap_v2 = MemorySnapshot(working={"step": "confirmation", "order_id": "ord-999"})
+
+    await session_service.update_memory(sid, snap_v1)
+    await session_service.update_memory(sid, snap_v2)
+    restored = await session_service.get_memory(sid)
+
+    assert restored is not None
+    assert restored.working == snap_v2.working
+    assert restored.working.get("order_id") == "ord-999"
