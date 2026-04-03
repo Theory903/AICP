@@ -1,114 +1,144 @@
-# AICP MVP Scope
+# Next Milestone: v0.2.0
 
-## Purpose
+> What must ship to advance from Compliance Level 2 (Resumable Workflows) toward Level 3 (Event-Driven Orchestration).
 
-The goal of the MVP is not to prove every future vision. It is to prove the core idea:
+---
 
-> that AICP can make AI systems understand and safely complete multi-step real-world tasks better than raw tool calling.
+## Current State: v0.1.1-alpha
 
-## MVP Success Criteria
+AICP v0.1.1 is a working reference implementation at Compliance Level 2. See [STATUS.md](../../STATUS.md) for the complete inventory of what exists.
 
-The MVP is successful if it proves all of the following:
+**Key metrics:**
+- 9 JSON schemas in `/spec/schemas/`
+- 8 runtime services (all complete)
+- 30+ API endpoints across 13 route groups
+- 172 passing tests
+- 6 working adapters
+- 28 CLI commands
 
-1. A capability can be represented meaningfully.
-2. A multi-step workflow can be modeled clearly.
-3. Policy metadata can influence execution.
-4. Execution results and failures can be normalized.
-5. Pagination and async states can be represented consistently.
-6. A real example app can use AICP end to end.
+---
 
-## Included in MVP
+## v0.2.0 Scope
 
-### Core Protocol
+v0.2.0 is the next real release target. It must prove that AICP can handle event-driven orchestration, richer workflow patterns, and the first AI reasoning layer.
 
-- capability schema,
-- input schema,
-- output schema,
-- policy schema,
-- workflow state schema,
-- result schema,
-- error schema,
-- pagination schema,
-- render hints.
+### Must Ship
 
-### Runtime
+| Feature | Module | Rationale |
+|---------|--------|-----------|
+| YAML Workflow DSL | Workflow Engine (5) | JSON workflows are too verbose for real use |
+| Parallel workflow steps | Workflow Engine (5) | Sequential-only is too limiting |
+| Loop support (for-each, while) | Workflow Engine (5) | Cannot model real workflows without iteration |
+| Wait-for-event primitive | Workflow Engine (5) | Cannot do async flows without event triggers |
+| Timeout branching | Workflow Engine (5) | Events must have deadlines |
+| AI Planner (basic) | AI Plane (8) | Core value prop -- agents that plan, not just execute |
+| AI Judge (basic) | AI Plane (8) | Validate planner output before execution |
+| Semantic capability discovery | Crawl/Map/Discovery (11) | Keyword scoring is not sufficient |
+| Session encryption | Identity and Trust (2) | Plaintext session storage is not acceptable |
+| LangChain adapter | Agent Adapters | Largest agent framework ecosystem |
 
-- basic registry,
-- planner stub or planner contract,
-- policy evaluator contract,
-- executor contract,
-- result normalization,
-- validation tooling.
+### Should Ship
 
-### Delivery
+| Feature | Module | Rationale |
+|---------|--------|-----------|
+| AI Memory Builder | Memory System (9) | Enable cross-session learning |
+| Dynamic workflow routing | Workflow Engine (5) | Conditional branching based on runtime data |
+| Subflow invocation | Workflow Engine (5) | Workflows calling other workflows |
+| Multi-dimensional risk scoring | Governance (12) | Currently policy is rule-based only |
+| HTTP adapter | Protocol Adapters | For non-framework direct integration |
+| Idempotency key enforcement | Execution Engine (13) | Retry safety |
 
-- documentation site,
-- example reference flows,
-- TypeScript reference implementation,
-- CLI for validation and inspection.
+### May Ship
 
-## Example Workflows for MVP
+| Feature | Module | Rationale |
+|---------|--------|-----------|
+| LangGraph adapter | Agent Adapters | Growing ecosystem |
+| Threshold auto-approval | Human Cognitive Protocols (7) | Reduce approval fatigue |
+| Live session view | Audit/Replay/Observability (18) | Developer experience |
+| Food ordering reference flow | Domain Packs (20) | End-to-end demo |
 
-1. **Food ordering**
-2. **Payments transfer**
-3. **Form filling**
-4. **Ticket booking**
+---
 
-These four are enough because together they demonstrate:
+## Exit Criteria
 
-- search and pagination,
-- stateful progression,
-- approvals and confirmations,
-- validation-heavy forms,
-- async and long-running steps,
-- and render-aware outputs.
+v0.2.0 is shippable when all of the following are true:
 
-## Excluded from MVP
+| Criterion | Verification |
+|-----------|-------------|
+| All "Must Ship" features implemented | Feature tests pass |
+| YAML workflow DSL can express parallel + loop + event patterns | DSL conformance tests |
+| AI Planner can decompose a 3-step goal into capability calls | Planner integration test |
+| AI Judge can reject an invalid plan | Judge integration test |
+| Semantic search returns relevant capabilities by description | Search relevance benchmark |
+| Session data encrypted at rest | Encryption unit test |
+| LangChain adapter exposes capabilities as LangChain tools | Adapter integration test |
+| All existing 172+ tests still pass | `pytest` green |
+| No regression in existing L2 compliance | Compliance level test suite |
 
-- portable identity,
-- universal login,
-- cross-client memory layer,
-- enterprise IAM integration,
-- wallet systems,
-- multi-org federation,
-- advanced UI framework,
-- fully autonomous planning engine,
-- all language adapters,
-- and distributed trust or signing.
+---
 
-## MVP Deliverables
+## What v0.2.0 Must Demonstrate
 
-- `VISION.md`
-- `PRD.md`
-- `MVP.md`
-- `USE_CASES.md`
-- `ARCHITECTURE.md`
-- `TECH_SPEC.md`
-- `SECURITY.md`
-- `ROADMAP.md`
-- initial schemas,
-- TypeScript runtime,
-- Express and NestJS examples,
-- and documentation site.
+### Demo 1: Event-Driven Food Ordering
 
-## What MVP Must Demonstrate Publicly
+Agent places order, waits for delivery event, auto-tracks. Demonstrates: wait-for-event, timeout branching, parallel steps (payment + notification).
 
-### Demo 1: Food Ordering
+### Demo 2: AI-Planned Payment Transfer
 
-AI understands the workflow, missing address, payment confirmation, and final order placement.
+User says "send money to Rahul." AI Planner decomposes into capability calls. AI Judge validates the plan. Agent executes with approval checkpoint. Demonstrates: planner, judge, HITL, risk scoring.
 
-### Demo 2: Payment Transfer
+### Demo 3: LangChain Integration
 
-AI sees that a payment requires confirmation and treats it as high-risk.
+LangChain agent discovers AICP capabilities via semantic search, builds a tool list, executes a multi-step workflow with governance. Demonstrates: adapter, discovery, policy.
 
-### Demo 3: Form Filling
+---
 
-AI recognizes required fields, invalid entries, and submit readiness.
+## What Is Explicitly Excluded from v0.2.0
 
-### Demo 4: Ticket Booking
+| Feature | Reason | Target |
+|---------|--------|--------|
+| Multi-agent hierarchy | Requires stable planner/judge first | v0.5.0 |
+| Federation (`/.well-known/aicp`) | Requires stable capability registry | v0.6.0 |
+| Perception layer (a11y tree, screenshots) | Requires browser integration | v0.7.0 |
+| Signal plane (sub-ms event ingestion) | Requires perception first | v0.7.0 |
+| Learning plane (skill mining, drift detection) | Requires multi-agent + memory | v0.8.0 |
+| Studio supervision console | Nice-to-have, not critical path | v0.4.0 |
+| WASM policy modules | JSON policies sufficient for now | v0.6.0 |
+| GraphQL/WebSocket adapters | HTTP + MCP sufficient for now | v0.5.0 |
+| Cross-organization federation | Single-org first | v0.7.0 |
 
-AI completes multi-step booking with state and validation awareness.
+---
 
-## Why This MVP Is Correct
+## Timeline Estimate
 
-It is narrow enough to ship, broad enough to matter, and strong enough to communicate the protocol's value clearly.
+| Phase | Duration | Focus |
+|-------|----------|-------|
+| Phase 1 (2 weeks) | Workflow DSL + parallel + loops | Core orchestration |
+| Phase 2 (2 weeks) | Wait-for-event + timeout + AI Planner stub | Event-driven + reasoning |
+| Phase 3 (2 weeks) | AI Judge + semantic discovery + session encryption | Safety + search |
+| Phase 4 (1 week) | LangChain adapter + demos + testing | Integration + polish |
+| Phase 5 (1 week) | Documentation + compliance verification | Ship prep |
+
+**Total: ~8 weeks from start of focused development.**
+
+---
+
+## Success Criteria
+
+v0.2.0 is successful if:
+
+1. A LangChain agent can discover, plan, and execute a 5-step governed workflow end-to-end.
+2. The AI Planner produces valid capability call sequences that the Judge accepts.
+3. Event-driven workflows can wait for external events with timeout fallback.
+4. Session data is encrypted at rest.
+5. All compliance level 2 tests continue to pass (no regression).
+6. At least one new reference application demonstrates the full v0.2.0 feature set.
+
+---
+
+## See Also
+
+- [/STATUS.md](../../STATUS.md) -- Current v0.1.1 implementation inventory
+- [/ROADMAP.md](../../ROADMAP.md) -- Full 10-phase roadmap to v1.0.0
+- [VISION.md](./VISION.md) -- Where this is all heading
+- [USE_CASES.md](./USE_CASES.md) -- Scenarios that v0.2.0 must support

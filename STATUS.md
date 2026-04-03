@@ -1,238 +1,207 @@
-# AICP — Current State & Roadmap
+# AICP -- Current State
 
-**Date:** 2026-04-01  
-**Version:** 0.1.0-alpha
+> **Version:** 0.1.1-alpha | **Date:** 2026-04-03 | **Compliance Level:** 2 (Resumable Workflows)
 
 ---
 
 ## Product Definition
 
-> **AICP is an AI-first application control plane that lets agents operate real apps through structured capabilities, stateful workflows, policy-gated execution, and human supervision.**
-
-Instead of humans clicking through apps, AICP turns applications into structured action spaces that AI agents can safely operate end-to-end.
-
-### Mental Model
-
-AICP sits between:
-1. **LLM / agent** — the "user" of the app
-2. **Application capabilities** — structured, AI-safe actions
-3. **Workflow engine** — multi-step orchestration
-4. **State/session store** — resumable execution context
-5. **Human approval layer** — governance, not friction
-6. **UX plane** — monitoring, intervention, replay, debugging
-
-The frontend is not "for humans to do the task." It is **"for humans to supervise the AI doing the task."**
+AICP is the Agentic Web Operating System -- the protocol, runtime, memory, governance, perception, execution, and federation layer that turns the human web into an agent-operable web. The current release is v0.1.1-alpha, a Python reference implementation covering Compliance Level 2 (Resumable Workflows) with full governance, 9 JSON schemas, 8 runtime services, and 172 passing tests. Everything described below as "built" is tested and working. Everything described as "planned" does not exist yet.
 
 ---
 
-## Architecture Planes
+## What is Built (v0.1.1-alpha)
 
-| Plane | Purpose | Key Components |
-|-------|---------|----------------|
-| **Control Plane** | Registry, policy, orchestration | Capability registry, workflow registry, policy engine, approval service, execution orchestrator, session manager |
-| **Data Plane** | Actual backend services | REST APIs, databases, external services |
-| **AI Plane** | Agent reasoning | Planner, executor, judge, memory/context builder, tool selection layer |
-| **UX Plane** | Human supervision | Operator dashboard, approval UI, replay debugger, workflow builder, audit logs |
+### Spec
 
----
+9 JSON schemas in `/spec/schemas/`:
 
-## What We've Built ✅
+| Schema | File | Purpose |
+|--------|------|---------|
+| Capability | `capability.schema.json` | 5 kinds (action, query, workflow, async_action, batch_action), input/output schemas, side-effect classification, auth requirements |
+| Workflow | `workflow.schema.json` | Sequential steps, approval checkpoints, compensation/rollback, state persistence |
+| Policy | `policy.schema.json` | Effects: allow/deny/ask/limit, condition matching, risk inference |
+| Execution Result | `execution-result.schema.json` | Canonical execution envelope with status, data, error, allowed_next_actions |
+| Approval Request | `approval-request.schema.json` | Risk assessment, impact summary, blast radius estimation |
+| Approval Decision | `approval-decision.schema.json` | Approve/deny with reason, decided_by, decided_at |
+| Audit Entry | `audit-entry.schema.json` | Append-only journal entry with correlation IDs |
+| Discovery | `discovery.schema.json` | `/.well-known/aicp` response contract |
+| Error | `error.schema.json` | Structured error with code, message, recovery hints |
 
-### Core Protocol (100% Complete)
+**Missing from spec (known gaps):**
+- No `session.schema.json`. Sessions are referenced throughout (`session_id` in execution envelope, resumability is Invariant 10) but have no formal schema. Needs: session_id, agent_id, tenant_id, trust_tier, created_at, expires_at, state, resumable flag.
+- No workflow-level `compensation_policy`. Compensation exists at step level but not workflow level. If a workflow fails before reaching a step with declared compensation, earlier steps have no compensation path.
+- No enforcement semantics for `often_follows`. The field exists on the capability contract but has no defined behavior -- does it affect ranking, pre-fetching, planner behavior? Needs a spec note.
 
-| Component | Status | Details |
-|-----------|--------|---------|
-| **JSON Schema Spec** | ✅ Complete | 9 schemas: capability, workflow, policy, execution-result, approval-request, approval-decision, audit-entry, discovery, error |
-| **Capability Model** | ✅ Complete | 5 kinds (action, query, workflow, async_action, batch_action), input/output schemas, side-effect classification, auth requirements |
-| **Policy Engine** | ✅ Complete | Effects: allow/deny/ask/limit, condition matching, risk inference |
-| **Executor** | ✅ Complete | Deterministic execution, result normalization, approval routing, continuation hints |
-| **Workflow Runtime** | ✅ Complete | Sequential steps, approval checkpoints, compensation/rollback, state persistence |
-| **Approval System** | ✅ Complete | CRUD, decisions, intent matching, review packets, blast radius estimation, compliance flags |
-| **Session Management** | ✅ Complete | Create/refresh/revoke, OAuth flow, health tracking, tenant isolation |
-| **Audit Trail** | ✅ Complete | Append-only journal, filtered listing, correlation IDs |
+### Runtime Services
 
-### Runtime Services (100% Complete)
+8 services, all complete:
 
-| Service | Status | Details |
-|---------|--------|---------|
-| **Execution Service** | ✅ Complete | HTTP execution, session attachment, interaction context, persistence, resume after approval |
-| **Approval Service** | ✅ Complete | 619 lines, intent matching, review packets with impact analysis |
-| **Workflow Service** | ✅ Complete | 697 lines, step execution, resume, timeline, compensation, audit integration |
-| **Session Service** | ✅ Complete | 247 lines, OAuth refresh, health status, mark_used |
-| **Discovery Service** | ✅ Complete | 571 lines, ranking with keyword scoring, semantic similarity (keyword co-occurrence), graph building |
-| **Audit Service** | ✅ Complete | 104 lines, append-only, filtered listing |
-| **Interaction Service** | ✅ Complete | 134 lines, CRUD, execution recording, session linking |
-| **Provider Health** | ✅ Complete | 350 lines, aggregated health, auth/network failure tracking, latency |
+| Service | Lines | Status | Details |
+|---------|-------|--------|---------|
+| Execution Service | -- | Complete | HTTP execution, session attachment, interaction context, persistence, resume after approval |
+| Approval Service | 619 | Complete | Intent matching, review packets with impact analysis, blast radius estimation, compliance flags |
+| Workflow Service | 697 | Complete | Step execution, resume, timeline, compensation, audit integration |
+| Session Service | 247 | Complete | OAuth refresh, health status, mark_used, tenant isolation |
+| Discovery Service | 571 | Complete | Ranking with keyword scoring, semantic similarity (keyword co-occurrence), graph building |
+| Audit Service | 104 | Complete | Append-only journal, filtered listing, correlation IDs |
+| Interaction Service | 134 | Complete | CRUD, execution recording, session linking |
+| Provider Health | 350 | Complete | Aggregated health, auth/network failure tracking, latency monitoring |
 
-### API Surface (100% Complete)
+### API Surface
 
-| Endpoint Group | Status | Endpoints |
-|----------------|--------|-----------|
-| **`/v1/execute`** | ✅ Complete | AI action endpoint with session redaction, continuation hints, fix hints |
-| **`/v1/capabilities/rank`** | ✅ Complete | Ranked discovery with keyword scoring |
-| **`/v1/sessions`** | ✅ Complete | Full lifecycle: create/list/get/refresh/revoke |
-| **`/v1/interactions`** | ✅ Complete | CRUD with session linking |
-| **`/v1/workflows`** | ✅ Complete | Create, execute, resume |
-| **`/v1/approvals`** | ✅ Complete | List, get, find-by-intent |
-| **`/v1/executions`** | ✅ Complete | History listing |
-| **`/discover`** | ✅ Complete | Capability discovery document |
-| **`/.well-known/aicp`** | ✅ Complete | Well-known discovery |
-| **`/approvals/*`** | ✅ Complete | CRUD, decide, review-packet, find-by-intent |
-| **`/workflows/*`** | ✅ Complete | CRUD, detail, timeline, execute, resume |
-| **`/history`** | ✅ Complete | Audit log |
-| **`/providers/health`** | ✅ Complete | Provider health aggregation |
-| **`/console`** | ✅ Complete | Agent dashboard UI (840 lines HTML) |
+30+ endpoints across 13 route groups:
 
-### CLI (100% Complete)
+| Endpoint Group | Endpoints | Purpose |
+|----------------|-----------|---------|
+| `/v1/execute` | POST | AI action endpoint with session redaction, continuation hints, fix hints |
+| `/v1/capabilities/rank` | POST | Ranked discovery with keyword scoring |
+| `/v1/sessions` | CRUD | Full lifecycle: create, list, get, refresh, revoke |
+| `/v1/interactions` | CRUD | Interaction management with session linking |
+| `/v1/workflows` | Create, execute, resume | Workflow lifecycle |
+| `/v1/approvals` | List, get, find-by-intent | Approval queue |
+| `/v1/executions` | List | Execution history |
+| `/discover` | GET | Capability discovery document |
+| `/.well-known/aicp` | GET | Well-known discovery endpoint |
+| `/approvals/*` | CRUD, decide, review-packet, find-by-intent | Full approval lifecycle |
+| `/workflows/*` | CRUD, detail, timeline, execute, resume | Full workflow lifecycle |
+| `/history` | GET | Audit log |
+| `/providers/health` | GET | Provider health aggregation |
+| `/console` | GET | Agent dashboard UI (840 lines HTML) |
 
-| Command | Status | Details |
-|---------|--------|---------|
-| **`aicp run`** | ✅ Complete | Execute with inline approval prompt, --yes, --no-input, --verbose flags |
-| **`aicp dev`** | ✅ Complete | Dev server with mounted app support, hot reload |
-| **`aicp scan`** | ✅ Complete | OpenAPI capability discovery |
-| **`aicp appr`** | ✅ Complete | Approval queue: ls, show, ok, no |
-| **`aicp test`** | ✅ Complete | Integration test suite |
-| **`aicp bootstrap`** | ✅ Complete | Scaffold AICP config for existing app |
-| **`aicp preview`** | ✅ Complete | Preview capability details |
-| **`aicp import`** | ✅ Complete | Import from curl, HAR, OpenAPI, Postman |
-| **`aicp policy`** | ✅ Complete | safe, ask, deny, approve, protect, limit shortcuts |
+### Persistence
 
-### Persistence (100% Complete)
+3 backends, all implementing the full `RuntimeStore` interface:
 
-| Backend | Status | Details |
-|---------|--------|---------|
-| **In-Memory** | ✅ Complete | 143 lines, full RuntimeStore interface |
-| **File (JSON)** | ✅ Complete | 245 lines, atomic writes, JSONL audit |
-| **SQLite** | ✅ Complete | 240 lines, WAL mode, 7 tables |
+| Backend | Lines | Details |
+|---------|-------|---------|
+| In-Memory | 143 | Full RuntimeStore interface, suitable for development and testing |
+| File (JSON/JSONL) | 245 | Atomic writes, JSONL audit trail, suitable for single-node deployment |
+| SQLite | 240 | WAL mode, 7 tables, suitable for production single-node |
 
-### Adapters (Partial)
+### CLI
 
-| Adapter | Status | Details |
-|---------|--------|---------|
-| **FastAPI** | ✅ Complete | mount_aicp, capability mapping, discovery endpoint |
-| **MCP** | ✅ Complete | Protocol adapter with tests |
-| **OpenAPI** | ✅ Complete | Protocol adapter with tests |
-| **cURL Import** | ✅ Complete | Importer with tests |
-| **HAR Import** | ✅ Complete | Importer with tests |
-| **Postman Import** | ✅ Complete | Importer with tests |
-| **HTTP** | ❌ Empty | Directory exists, no implementation |
-| **GraphQL** | ❌ Empty | Directory exists, no implementation |
-| **WebSocket** | ❌ Empty | Directory exists, no implementation |
-| **Express** | ❌ Empty | Directory exists, no implementation |
-| **NestJS** | ❌ Empty | Directory exists, no implementation |
-| **Next.js** | ❌ Empty | Directory exists, no implementation |
-| **Spring Boot** | ❌ Empty | Directory exists, no implementation |
-| **LangChain** | ❌ Empty | Directory exists, no implementation |
-| **LangGraph** | ❌ Empty | Directory exists, no implementation |
-| **CrewAI** | ❌ Empty | Directory exists, no implementation |
+28 commands:
 
-### SDKs (Partial)
+| Command | Subcommands | Purpose |
+|---------|-------------|---------|
+| `aicp run` | -- | Execute capability with inline approval prompt, `--yes`, `--no-input`, `--verbose` |
+| `aicp dev` | -- | Dev server with mounted app support, hot reload |
+| `aicp scan` | -- | OpenAPI capability discovery |
+| `aicp appr` | `ls`, `show`, `ok`, `no` | Approval queue management |
+| `aicp test` | -- | Integration test suite |
+| `aicp bootstrap` | -- | Scaffold AICP config for existing app |
+| `aicp preview` | -- | Preview capability details |
+| `aicp import` | `--curl`, `--har`, `--openapi`, `--postman` | Import capabilities from external formats |
+| `aicp policy` | `safe`, `ask`, `deny`, `approve`, `protect`, `limit` | Policy management shortcuts |
+
+### Adapters
+
+| Adapter | Type | Status | Details |
+|---------|------|--------|---------|
+| FastAPI | Framework | **Working** | `mount_aicp(app)` adds all AICP routes |
+| MCP Server (`mcp/`) | Protocol | **Working** | Exposes AICP capabilities outward to MCP clients |
+| MCP Adapter (`adapters/protocol/mcp/`) | Protocol | **Working** | Lets AICP consume MCP tools as capabilities |
+| OpenAPI | Protocol | **Working** | `aicp scan --openapi` imports capabilities |
+| cURL | Importer | **Working** | `aicp import --curl` converts cURL commands |
+| HAR | Importer | **Working** | `aicp import --har` converts HTTP archives |
+| Postman | Importer | **Working** | `aicp import --postman` converts Postman collections |
+| HTTP | Protocol | **Empty** | Directory exists, no implementation |
+| GraphQL | Protocol | **Empty** | Directory exists, no implementation |
+| WebSocket | Protocol | **Empty** | Directory exists, no implementation |
+| Express | Framework | **Empty** | Directory exists, no implementation |
+| NestJS | Framework | **Empty** | Directory exists, no implementation |
+| Next.js | Framework | **Empty** | Directory exists, no implementation |
+| Spring Boot | Framework | **Empty** | Directory exists, no implementation |
+| LangChain | Agent | **Empty** | Directory exists, no implementation |
+| LangGraph | Agent | **Empty** | Directory exists, no implementation |
+| CrewAI | Agent | **Empty** | Directory exists, no implementation |
+
+### SDKs
 
 | SDK | Status | Details |
 |-----|--------|---------|
-| **TypeScript Core** | ✅ Built | Has dist/, package.json, tsconfig |
-| **Python SDK** | ❌ Skeleton | Directory exists, no package definition |
-| **TypeScript Runtime** | ❌ Skeleton | src/ only |
-| **TypeScript Client** | ❌ Skeleton | src/ only |
+| TypeScript Core | Built (L0) | Has `dist/`, `package.json`, `tsconfig`. Capability Discovery only. |
+| TypeScript Runtime | Skeleton | `src/` only, no implementation |
+| TypeScript Client | Skeleton | `src/` only, no implementation |
+| Python SDK | Skeleton | Directory exists, no package definition |
 
-### Tests (100% Passing)
+**Gap:** TypeScript Core SDK is at L0 while Python runtime is at L2. See ARCHITECTURE.md Section 12 for implications on Phase 3 adapter planning.
 
-| Area | Tests | Status |
+### Tests
+
+| Area | Scope | Status |
 |------|-------|--------|
-| **Core** | Capability, approval, schemas, adapters, benchmarks | ✅ 172 passing |
-| **Runtime** | Services, server, persistence | ✅ All passing |
-| **CLI** | Commands, execute, dev, scan, import, registry | ✅ All passing |
+| Core | Capability, approval, schemas, adapters, benchmarks | 172 passing |
+| Runtime | Services, server, persistence | All passing |
+| CLI | Commands, execute, dev, scan, import, registry | All passing |
+
+### UI
+
+Agent console at `/console` -- 840 lines of self-contained HTML. Provides execution monitoring, approval management, and capability browsing. This is a development/debugging tool, not the v1.0.0 supervision dashboard.
 
 ---
 
-## What's Left to Build 🚧
+## 20-Module Status Matrix
 
-### High Priority
+This is the canonical module list. See ARCHITECTURE.md Section 3 for the same table. See README.md for the condensed version.
 
-| Feature | Plane | Why It Matters | Effort |
-|---------|-------|----------------|--------|
-| **AI Planner** | AI | Selects next valid action from policy-constrained options | Large |
-| **AI Judge** | AI | Evaluates if result is sufficient, failed, unsafe, or ambiguous | Large |
-| **AI Memory/Context Builder** | AI | Builds working memory from execution history | Large |
-| **YAML/JSON Workflow DSL** | Control | Clean way to define flows without code | Medium |
-| **Event-Driven Async Flows** | Control | Wait-for-event, resume-on-event, timeout branching | Large |
-| **LangChain/LangGraph Adapters** | Connect | Bridge to major AI agent frameworks | Medium |
-| **Food Ordering Reference Flow** | Examples | Prove end-to-end autonomous operation | Medium |
+| # | Module | Plane | v0.1.1 Status | What Exists | What v1.0.0 Needs |
+|---|--------|-------|---------------|-------------|-------------------|
+| 1 | Principal and Org Control | Governance | **Not started** | Nothing | Identity hierarchy, org boundaries, delegation chains, principal attribution |
+| 2 | Identity and Trust | Governance | **Partial** | Session tokens, basic auth | DID-based auth, trust tiers 0-4, credential verification, trust decay |
+| 3 | Capability Registry | Capability | **Complete (L2)** | In-memory, file, SQLite stores; 5 kinds; schema validation | Distributed CRDT registry, 50k+ capabilities via domain packs + federation |
+| 4 | Tool Runtime | Execution | **Complete (L2)** | Sync invocation, result normalization, persistence | Three execution classes, sandboxing, resource locks, idempotency engine |
+| 5 | Workflow Engine | Workflow | **Complete (L2)** | Sequential + compensation, approval checkpoints, state persistence | Parallel, fork/join, loops, sagas, event-driven, subflows, YAML DSL |
+| 6 | Perception and Signal Layer | Signal / Perception | **Not started** | Nothing | DOM observers, a11y tree, screenshots, behavioral signals, sub-ms event ingestion |
+| 7 | Human Cognitive Protocols | Supervision | **Partial** | Approval CLI + API, review packets | 5-view dashboard, risk visualization, replay debugger, policy editor |
+| 8 | AI Plane | AI | **Not started** | Nothing | Planner, judge, intent router, context budget, cognitive protocols (UX/SWE/Ops/Research/Finance) |
+| 9 | Memory System | AI | **Minimal** | Session state only | 5-layer memory (working, episodic, semantic, skill, environmental) |
+| 10 | Code Intelligence DB | AI | **Not started** | Nothing | AST indexing, symbol graph, call-chain analysis, code-aware context building |
+| 11 | Crawl / Map / Discovery Engine | Capability | **Partial** | Keyword scoring + co-occurrence similarity | Semantic retrieval with embeddings, web crawler, 800k+ service scanner |
+| 12 | Governance and Policy | Governance | **Complete (L2)** | JSON policy objects, allow/deny/ask/limit effects | Compiled WASM policies (OPA/Cedar), trust tiers, risk scoring, anomaly detection, compliance layers |
+| 13 | Execution Engine | Execution | **Complete (L2)** | Synchronous execution, result normalization | Three classes (realtime <5ms, transactional/saga, event-driven/wait), idempotency, resource locks |
+| 14 | Multi-Agent Hierarchy | Multi-Agent | **Not started** | Nothing | 4-tier hierarchy (orchestrator, specialist, worker, supervisor), 40 specialist types |
+| 15 | Agent Communication Bus | Multi-Agent | **Not started** | Nothing | Typed message passing, pub/sub channels, coordination protocols |
+| 16 | Federation and Agentic WWW | Federation | **Minimal** | `/.well-known/aicp` endpoint | CRDT sync, DID auth, push/pull discovery, regional mirrors, 800k scanner |
+| 17 | Human Web Compatibility | Perception | **Not started** | Nothing | Browser automation fallback, form filling, navigation, legacy app support |
+| 18 | Audit / Replay / Observability | Supervision | **Partial** | Append-only journal, filtered listing, correlation IDs | Replay debugger, distributed tracing, live feed, streaming |
+| 19 | Learning / Drift / Growth | Learning | **Not started** | Nothing | Skill mining, policy learning, drift detection, autonomy calibration |
+| 20 | Domain Packs and Benchmarks | Learning | **Not started** | Nothing | Pre-built capability sets (e-commerce, fintech, healthcare, devops, CRM, ERP), evaluation suites |
 
-### Medium Priority
-
-| Feature | Plane | Why It Matters | Effort |
-|---------|-------|----------------|--------|
-| **Parallel Step Execution** | Control | Simultaneous branches (prepare food + assign driver) | Medium |
-| **Loop/Iteration Support** | Control | Repeat until condition (add items to cart) | Medium |
-| **Dynamic Routing** | Control | Branch based on results (payment failed → retry) | Medium |
-| **Subflow Invocation** | Control | Composable workflows | Medium |
-| **Threshold-Based Auto-Approval** | Control | Auto-approve below amount, always ask above | Medium |
-| **HTTP Protocol Adapter** | Connect | Generic HTTP capability execution | Medium |
-| **Idempotency Key Support** | Core | Prevent double-charging on retries | Medium |
-| **Failure Recovery Recipes** | Core | Structured retry/fallback patterns | Medium |
-| **Risk Scoring Per Action** | Core | Financial, irreversible, privacy risk | Medium |
-| **Live Session View** | UX | Real-time execution monitoring | Medium |
-| **State Inspector** | UX | Current session/workflow/entity state | Medium |
-| **Multi-Tenant Isolation** | Control | Enforce tenant boundaries | Medium |
-
-### Low Priority
-
-| Feature | Plane | Why It Matters | Effort |
-|---------|-------|----------------|--------|
-| **Approval Memory/Learning** | Control | Auto-approve patterns over time | Small |
-| **Replay/Debug Mode** | UX | Step-by-step execution replay | Large |
-| **Flow Builder (Visual)** | UX | Drag-drop workflow editor | Large |
-| **GraphQL Adapter** | Connect | GraphQL capability mapping | Small |
-| **WebSocket Adapter** | Connect | Real-time streaming | Medium |
-| **Express/NestJS/Next.js/Spring Boot** | Connect | Framework adapters | Medium each |
-| **Capability Graph Visualization** | Core | Visual capability relationships | Medium |
-| **Simulation Mode** | Core | Test workflows with fake backends | Large |
-| **Natural Language → Workflow Compiler** | AI | "Order my usual dinner" → workflow | Large |
-| **Parent/Child Workflows** | Control | Multi-flow orchestration | Medium |
-| **Cross-Flow Event Passing** | Control | Event sharing between workflows | Medium |
+**Summary:** 5 modules complete at L2, 5 modules partial, 10 modules not started.
 
 ---
 
-## Build Order Recommendation
+## Compliance Level Status
 
-### Phase 1: AI Execution Core (Now)
-1. **Planner** — Next valid action selection from capability graph
-2. **Judge** — Result evaluation (success/failure/unsafe/ambiguous)
-3. **Memory Builder** — Session context from execution history
-
-### Phase 2: Workflow DSL & Events
-4. **YAML Workflow DSL** — Define flows declaratively
-5. **Event-Driven Flows** — Wait-for-event, timeout, resume
-6. **Parallel + Loop Support** — Complex flow patterns
-
-### Phase 3: Agent Integration
-7. **LangChain Adapter** — Bridge to LangChain tools
-8. **LangGraph Adapter** — Bridge to LangGraph state machines
-9. **Food Ordering Demo** — End-to-end reference flow
-
-### Phase 4: UX Plane
-10. **Live Session View** — Real-time monitoring
-11. **State Inspector** — Working memory visualization
-12. **Replay Debugger** — Step-by-step execution replay
-
-### Phase 5: Production Hardening
-13. **Idempotency Keys** — Safe retries
-14. **Risk Scoring** — Per-action risk assessment
-15. **Threshold Auto-Approval** — Smart governance
-16. **Multi-Tenant Enforcement** — Production isolation
+| Level | Name | Status | What's Implemented | What's Missing |
+|-------|------|--------|--------------------|----------------|
+| 0 | Capability Discovery | **Complete** | Registry, schema validation, basic execution | -- |
+| 1 | Governed Execution | **Complete** | Policy evaluation, approval checkpoints, audit trail, session management | -- |
+| 2 | Resumable Workflows | **Complete** | Sequential workflows, compensation, state persistence, resume after approval | -- |
+| 3 | Event-Driven Orchestration | **Not started** | -- | wait-for-event, timeout branching, parallel steps, loops |
+| 4 | AI Planning Support | **Not started** | -- | Planner, judge, context builder, allowed-next-actions schema |
+| 5 | Full Orchestration | **Not started** | -- | Multi-agent coordination, subflows, cross-flow events, federation, supervision console |
 
 ---
 
-## Non-Negotiable Engineering Rules
+## Phased Build Order
 
-1. Every capability must be deterministic at interface level
-2. Every side effect must be logged
-3. Every action must be replayable
-4. Every risky action must be policy-gated
-5. Every workflow must be resumable
-6. Every flow must be idempotent where possible
-7. Every execution must expose "allowed next actions"
+Each phase maps to a specific version. See ROADMAP.md for full details per phase.
+
+| Phase | Version | Focus | Key Deliverables | Target Compliance |
+|-------|---------|-------|------------------|-------------------|
+| 0 | 0.1.1-alpha | Foundation | Spec, runtime, CLI, persistence, adapters, console, tests | L2 (complete) |
+| 1 | 0.2.0 | AI Core | Planner, judge, memory/context builder, intent router, cognitive protocols | L4 |
+| 2 | 0.3.0 | Orchestration | YAML DSL, event-driven flows, parallel/loop, subflows | L3+L4 |
+| 3 | 0.4.0 | Agent Integration | LangChain, LangGraph, CrewAI adapters, food ordering reference flow | L4 |
+| 4 | 0.5.0 | Perception | a11y tree, DOM observation, screenshots, signal bus | L4 |
+| 5 | 0.6.0 | Multi-Agent | 4-tier hierarchy, communication bus, task delegation | L5 |
+| 6 | 0.7.0 | Federation | CRDT registries, DID auth, push/pull discovery | L5 |
+| 7 | 0.8.0 | Learning | Skill mining, policy learning, drift detection, domain packs | L5 |
+| 8 | 0.9.0 | Production | Encrypted sessions, WASM policies, risk scoring, multi-tenant | L5 |
+| 9 | 1.0.0 | Agentic Web OS | Complete 11-plane architecture, stable protocol | L5 |
 
 ---
 
@@ -240,24 +209,65 @@ The frontend is not "for humans to do the task." It is **"for humans to supervis
 
 | Metric | Value |
 |--------|-------|
-| **Tests Passing** | 172 |
-| **API Endpoints** | 30+ |
-| **Runtime Services** | 8 |
-| **Persistence Backends** | 3 |
-| **CLI Commands** | 28 |
-| **Working Adapters** | 6 |
-| **JSON Schemas** | 9 |
-| **Code Coverage** | >80% (core) |
-| **Lines of Code** | ~15,000+ |
+| Tests Passing | 172 |
+| API Endpoints | 30+ |
+| Runtime Services | 8 |
+| Persistence Backends | 3 |
+| CLI Commands | 28 |
+| Working Adapters | 6 (+ MCP server) |
+| Empty Adapter Dirs | 11 |
+| JSON Schemas | 9 |
+| Compliance Level | 2 (of 5) |
+| Modules Complete | 5 (of 20) |
+| Modules Partial | 5 (of 20) |
+| Modules Not Started | 10 (of 20) |
+| Lines of Code | ~15,000+ |
 
 ---
 
-## Recent Changes (2026-04-01)
+## Engineering Rules
 
-- ✅ Fixed `aicp dev` to properly mount AICP routes on user apps
-- ✅ Added inline approval prompt to `aicp run` with --yes, --no-input, --verbose flags
-- ✅ Fixed approval auto-resume flow (intent matching working)
-- ✅ Updated AGENTS.md with AI-first control plane definition
-- ✅ Updated ARCHITECTURE.md with 4-plane architecture
-- ✅ Updated README.md with new product definition
-- ✅ Created this status document
+Non-negotiable across all implementations:
+
+1. Every capability must be deterministic at interface level.
+2. Every side effect must be logged.
+3. Every action must be replayable.
+4. Every risky action must be policy-gated.
+5. Every workflow must be resumable.
+6. Every flow must be idempotent where possible.
+7. Every execution must expose `allowed_next_actions`.
+
+---
+
+## Known Spec Gaps
+
+These are structural gaps in the current v0.1.1-alpha spec that must be resolved before v0.2.0:
+
+### 1. Session Schema
+
+Sessions appear throughout the protocol (`session_id` in the execution envelope, session resumability is Invariant 10, session tokens in the Identity module) but have no formal JSON schema. A `session.schema.json` is needed covering at minimum: `session_id`, `agent_id`, `tenant_id`, `trust_tier`, `created_at`, `expires_at`, `state`, and `resumable` flag.
+
+### 2. Workflow-Level Compensation Policy
+
+The food order workflow example in ARCHITECTURE.md shows compensation on `orders.place` at the step level. But if a workflow fails mid-execution before reaching a step with declared compensation, earlier completed steps have no compensation path. The workflow schema needs a `compensation_policy` field at the workflow root: either `automatic` (reverse all completed steps in reverse order) or `explicit` (only steps with declared compensation are compensated).
+
+### 3. `often_follows` Enforcement Semantics
+
+The `often_follows` field on the capability contract is useful for discovery but has no defined enforcement semantics. Does a capability appearing in `often_follows` get pre-fetched? Does it rank higher in `allowed_next_actions`? Does it affect planner behavior? This needs a spec note defining the behavioral contract, or it will be interpreted differently by every implementation.
+
+### 4. Policy Schema Migration Path
+
+The current JSON policy schema is the v0.x format. The architecture doc describes OPA/Cedar compilation to WASM as the v1.0.0 target. The migration path from JSON policies to compiled WASM policies must be documented in an RFC before contributors build tooling against the JSON format that will need to be replaced.
+
+---
+
+## Recent Changes (2026-04-03)
+
+- Rewrote README.md for v1.0.0 Agentic Web OS framing (11 planes, 20 modules)
+- Rewrote ARCHITECTURE.md with full 10-plane architecture, execution contract, protocol invariants
+- Rewrote STATUS.md with 20-module status matrix and known spec gaps
+- Reconciled execution envelope (README now matches ARCHITECTURE canonical version)
+- Reconciled 20-module tables (README canonical, ARCHITECTURE references same table)
+- Added MCP server vs MCP adapter disambiguation
+- Added TypeScript SDK compliance lag note
+- Fixed phase-to-version mapping across all docs

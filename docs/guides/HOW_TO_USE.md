@@ -1,49 +1,96 @@
-# AICP Complete Usage Guide
+# How to Use AICP
 
-This guide covers all features of the AICP (AI Capability Protocol) platform.
+> Complete usage reference — from CLI bootstrapping to programmatic API usage, authentication, security, and production patterns.
 
 ---
 
 ## Table of Contents
 
-### Part 1: The CLI Workflow
-1. [The Fast Path: Bootstrapping](#the-fast-path-bootstrapping)
-2. [CLI Full Reference](CLI_REFERENCE.md)
-
-### Part 2: Advanced Programmatic Engine
-3. [Core Programmatic Usage](#core-programmatic-usage)
-4. [Authentication](#authentication)
-5. [Variable Substitution](#variable-substitution)
-6. [Capability Registry & Search](#capability-registry--search)
-7. [Execution & Streaming](#execution--streaming)
-8. [Plugin System](#plugin-system)
-9. [Security Features](#security-features)
-10. [Multi-Tenancy](#multi-tenancy)
-11. [Reliability Patterns](#reliability-patterns)
-12. [Observability](#observability)
-13. [Notifications](#notifications)
-14. [Secrets Management](#secrets-management)
-15. [Caching](#caching)
-16. [Production API Features](#production-api-features)
-17. [Transport Adapters](#transport-adapters)
+1. [The CLI Workflow](#the-cli-workflow)
+2. [Core Programmatic Usage](#core-programmatic-usage)
+3. [Authentication](#authentication)
+4. [Capability Registry and Search](#capability-registry-and-search)
+5. [Execution and Streaming](#execution-and-streaming)
+6. [Security Features](#security-features)
+7. [Multi-Tenancy](#multi-tenancy)
+8. [Reliability Patterns](#reliability-patterns)
+9. [Observability](#observability)
+10. [Production API Features](#production-api-features)
+11. [Transport Adapters](#transport-adapters)
 
 ---
 
-## The Fast Path: Bootstrapping
+## The CLI Workflow
 
-If you are trying to expose an existing FastAPI or Node application to AI agents safely, **you usually don't need to write any Python code.**
+Most applications follow a simple 4-step path:
 
-AICP acts as a configuration-first governance layer. Using the CLI, you simply scan your app, preview your actions, modify your risk profiles, and start the engine in front of it!
+```
+1. bootstrap    → Read existing routes, create configurations
+2. preview      → Understand how agents see each capability
+3. protect      → Add approval requirements to risky actions
+4. dev/start    → Run the engine in front of your application
+```
 
-> **→ Complete Guide:** Please refer to the [**CLI Reference Guide**](CLI_REFERENCE.md) to master `aicp bootstrap`, `aicp preview`, and `aicp protect`. 
+### Bootstrapping
+
+The fastest way to onboard an application:
+
+```bash
+# Bootstrap a FastAPI server
+aicp bootstrap fastapi src.main:app
+
+# Bootstrap an OpenAPI spec
+aicp bootstrap openapi ./api.json
+```
+
+### Previewing Capabilities
+
+See how agents see each capability and what policy applies:
+
+```bash
+aicp preview payments.transfer
+```
+
+Output shows:
+- Extracted input/output schemas
+- Applied tags (`[destructive]`, `[high-risk]`)
+- Effective policy (`allow`, `ask`, `require_approval`, `deny`)
+
+### Protecting Capabilities
+
+Add approval requirements to risky actions:
+
+```bash
+# Require approval for a specific capability
+aicp protect payments.transfer
+
+# Add rate limits
+aicp limit "users.read.*" --rpm 60
+```
+
+### Running the Runtime
+
+```bash
+# Start runtime with file-backed persistence
+aicp serve --host 127.0.0.1 --port 8000 --store-path ./.aicp-runtime
+
+# Start runtime with SQLite-backed persistence
+aicp serve --host 127.0.0.1 --port 8000 --store-backend sqlite --store-path ./.aicp-runtime/runtime.db
+```
+
+### Development Mode
+
+For local development with live reload:
+
+```bash
+aicp dev --port 8000
+```
 
 ---
 
 ## Core Programmatic Usage
 
-While the CLI manages standard execution, developers building complex, distributed AI systems or customized protocol adapters can interact with the raw Python `aicp-core` SDK.
-
-Below is the traditional way to programmatically assemble an Executor without using the CLI configurations.
+For developers building complex AI systems, interact directly with the Python SDK:
 
 ```python
 from aicp import (
@@ -53,32 +100,42 @@ from aicp import (
     InMemoryCapabilityRepository,
 )
 
-# 1. Provide capability mappings manually in memory without Yaml
+# 1. Register a capability
 capability = Capability(
     name="payments.transfer",
     description="Transfer money between accounts",
     kind=CapabilityKind.ACTION,
-    input_schema={"type": "object", "properties": {"amount": {"type": "number"}}},
+    input_schema={
+        "type": "object",
+        "properties": {
+            "amount": {"type": "number"},
+            "recipient": {"type": "string"}
+        },
+        "required": ["amount", "recipient"]
+    },
     output_schema={"type": "object"},
+    requires_approval=True,
+    risk_level="high",
 )
 
 # 2. Register it
 repo = InMemoryCapabilityRepository()
 repo.register(capability)
 
-# 3. Execute payload
+# 3. Execute
 executor = AicpExecutor(repo)
-result = await executor.execute("payments.transfer", {"amount": 100})
-print(result.status)  # "success"
+result = await executor.execute("payments.transfer", {"amount": 100, "recipient": "rahul"})
+print(result.status)  # "success" or "pending_approval"
+print(result.execution_id)  # "exec_..."
+print(result.allowed_next_actions)  # [...]
 ```
 
 ---
 
 ## Authentication
 
-AICP supports multiple authentication methods:
-
 ### API Key
+
 ```python
 from aicp import ApiKeyAuth
 
@@ -91,6 +148,7 @@ auth.apply(headers={}, params={})
 ```
 
 ### Basic Auth
+
 ```python
 from aicp import BasicAuth
 
@@ -99,6 +157,7 @@ auth.apply(headers={}, params={})
 ```
 
 ### Bearer Token
+
 ```python
 from aicp import BearerAuth
 
@@ -107,6 +166,7 @@ auth.apply(headers={}, params={})
 ```
 
 ### OAuth2 (Client Credentials)
+
 ```python
 from aicp import OAuth2Auth
 
@@ -123,40 +183,10 @@ token = await auth.fetch_token()
 
 ---
 
-## Variable Substitution
-
-### Load from .env file
-```python
-from aicp import load_dotenv, DotEnvLoader
-
-# Simple usage
-load_dotenv(".env")
-
-# With loader
-loader = DotEnvLoader(".env", override=False)
-vars = loader.load()
-```
-
-### Variable Substitution in Configs
-```python
-from aicp import VariableSubstitutor
-
-sub = VariableSubstitutor({"api_url": "https://api.example.com"})
-
-config = {
-    "endpoint": "${api_url}/v1",
-    "timeout": 30,
-}
-
-result = sub.substitute(config)
-# Result: {"endpoint": "https://api.example.com/v1", "timeout": 30}
-```
-
----
-
-## Capability Registry & Search
+## Capability Registry and Search
 
 ### Register Capabilities
+
 ```python
 from aicp import AicpRegistry, Capability, CapabilityKind
 
@@ -169,9 +199,9 @@ registry.register_capability(Capability(
 ))
 ```
 
-### Search by Tags
+### Search by Tags and Query
+
 ```python
-# Search with query and tags
 results = registry.search_capabilities(
     query="user management",
     tags=["admin"],
@@ -179,52 +209,57 @@ results = registry.search_capabilities(
 )
 ```
 
+### Semantic Search (v0.2.0)
+
+```python
+results = registry.semantic_search(
+    query="transfer money to another user",
+    limit=5,
+)
+```
+
 ---
 
-## Execution & Streaming
+## Execution and Streaming
 
 ### Basic Execution
+
 ```python
 from aicp import AicpExecutor
 
 executor = AicpExecutor(capability_provider, policy_engine)
 result = await executor.execute("tool.name", {"arg": "value"})
+print(result.status)
+print(result.data)
+print(result.allowed_next_actions)
 ```
 
 ### Streaming Execution
+
 ```python
 async for chunk in executor.execute_streaming("tool.name", {"arg": "value"}):
     print(chunk)
     # {"type": "start", "capability": "..."}
+    # {"type": "progress", "message": "Processing..."}
     # {"type": "result", "status": "success", "data": ...}
     # {"type": "end"}
 ```
 
----
+### Execution Envelope
 
-## Plugin System
+Every execution returns the canonical envelope:
 
-### Register Transport Plugin
-```python
-from aicp import register_transport, PluginMetadata
-
-@register_transport("custom")
-class CustomTransport(TransportPlugin):
-    @property
-    def metadata(self):
-        return PluginMetadata(name="custom", version="1.0.0")
-    
-    async def send(self, request):
-        # Your implementation
-        pass
-```
-
-### Use Plugin Registry
-```python
-from aicp import get_plugin_registry
-
-registry = get_plugin_registry()
-transports = registry.list_transports()
+```json
+{
+  "execution_id": "exec_a1b2c3d4",
+  "capability_name": "payments.transfer",
+  "status": "success",
+  "data": {"transaction_id": "txn_..."},
+  "policy_result": {"effect": "allow", "trust_tier": 2},
+  "allowed_next_actions": [{"name": "payment.confirm", "confidence": 0.95}],
+  "rendered": "Transfer of ₹1000 completed",
+  "execution_time_ms": 234
+}
 ```
 
 ---
@@ -232,6 +267,7 @@ transports = registry.list_transports()
 ## Security Features
 
 ### Rate Limiting
+
 ```python
 from aicp import RateLimiter, RateLimitExceeded
 
@@ -243,21 +279,8 @@ except RateLimitExceeded:
     print("Too many requests!")
 ```
 
-### API Key Rotation
-```python
-from aicp import ApiKeyRotator
-
-rotator = ApiKeyRotator()
-key_id = rotator.create_key("sk-xxx", expires_in_seconds=3600)
-
-# Verify
-tenant_id = rotator.verify_key("sk-xxx")
-
-# Rotate
-rotator.rotate_key()
-```
-
 ### Audit Signing
+
 ```python
 from aicp import SecureAuditLog
 
@@ -273,6 +296,7 @@ valid, invalid = log.verify()
 ## Multi-Tenancy
 
 ### Create Tenant
+
 ```python
 from aicp import TenantManager
 
@@ -287,15 +311,17 @@ api_key, key_id = manager.create_api_key(tenant.id)
 ```
 
 ### Tenant Context
+
 ```python
 from aicp import TenantContext
 
 with TenantContext(tenant_id="abc123"):
-    # All operations in this context are tenant-isolated
     result = await executor.execute("tool", {})
+    # All operations in this context are tenant-isolated
 ```
 
 ### Quotas
+
 ```python
 from aicp import TenantQuota
 
@@ -312,6 +338,7 @@ manager.update_quota("abc123", quota)
 ## Reliability Patterns
 
 ### Retry with Backoff
+
 ```python
 from aicp import retry_async, RetryConfig, BackoffStrategy
 
@@ -322,15 +349,13 @@ config = RetryConfig(
     jitter=True,
 )
 
-result = await retry_async(
-    my_function,
-    config=config,
-)
+result = await retry_async(my_function, config=config)
 ```
 
 ### Circuit Breaker
+
 ```python
-from aicp import CircuitBreaker, CircuitBreakerConfig
+from aicp import CircuitBreaker, CircuitBreakerConfig, CircuitBreakerOpen
 
 cb = CircuitBreaker("external-api", CircuitBreakerConfig(
     failure_threshold=5,
@@ -348,6 +373,7 @@ except CircuitBreakerOpen:
 ## Observability
 
 ### Structured Logging
+
 ```python
 from aicp import get_logger
 
@@ -357,6 +383,7 @@ logger.info("Processing request", request_id="123", user="john")
 ```
 
 ### Metrics
+
 ```python
 from aicp import get_metrics
 
@@ -367,6 +394,7 @@ print(metrics.to_prometheus())
 ```
 
 ### Tracing
+
 ```python
 from aicp import get_tracer
 
@@ -378,6 +406,7 @@ with tracer.start_span("execute-tool") as span:
 ```
 
 ### Health Checks
+
 ```python
 from aicp import HealthCheckRouter, DependencyHealthCheck
 
@@ -390,119 +419,10 @@ app.include_router(router.create_router())
 
 ---
 
-## Notifications
-
-### Webhook
-```python
-from aicp import WebhookChannel, NotificationService
-
-webhook = WebhookChannel(
-    url="https://example.com/webhook",
-    secret="my-secret",
-)
-
-service = NotificationService()
-service.add_channel("webhook", webhook)
-service.subscribe("approval_required", "webhook")
-
-# Send notification
-await service.notify(
-    event_type="approval_required",
-    title="Approval Needed",
-    message="Please approve this request",
-    data={"request_id": "123"},
-)
-```
-
-### Slack
-```python
-from aicp import SlackChannel
-
-slack = SlackChannel(
-    webhook_url="https://hooks.slack.com/...",
-    channel="#alerts",
-)
-
-service.add_channel("slack", slack)
-service.subscribe("approval_required", "slack")
-```
-
----
-
-## Secrets Management
-
-### Environment Variables
-```python
-from aicp import EnvSecretStore
-
-store = EnvSecretStore(prefix="MYAPP_")
-value = await store.get("API_KEY")
-```
-
-### HashiCorp Vault
-```python
-from aicp import HashiCorpVaultStore
-
-store = HashiCorpVaultStore(
-    url="https://vault.example.com",
-    token="vault-token",
-)
-value = await store.get("secret/data/mykey")
-```
-
-### AWS Secrets Manager
-```python
-from aicp import AWSSecretsManagerStore
-
-store = AWSSecretsManagerStore(region_name="us-east-1")
-value = await store.get("my-secret-name")
-```
-
-### With Caching
-```python
-from aicp import SecretManager, EnvSecretStore
-
-store = EnvSecretStore()
-manager = SecretManager(store, cache_ttl=300)  # 5 min TTL
-value = await manager.get("API_KEY")
-```
-
----
-
-## Caching
-
-### Redis Cache
-```python
-from aicp import RedisCache
-
-cache = RedisCache(host="localhost", prefix="myapp:")
-
-# Set
-await cache.set("key", {"data": "value"}, ttl=60)
-
-# Get
-value = await cache.get("key")
-
-# Check exists
-exists = await cache.exists("key")
-```
-
-### Distributed Rate Limiting
-```python
-from aicp import RedisCache, RateLimiterRedis
-
-cache = RedisCache(url="redis://localhost")
-limiter = RateLimiterRedis(cache, key="api", limit=100, window=60)
-
-allowed = await limiter.check()
-remaining = await limiter.get_remaining()
-```
-
----
-
 ## Production API Features
 
 ### API Versioning
+
 ```python
 from aicp import VersionManager, APIVersion
 
@@ -514,6 +434,7 @@ headers = manager.get_deprecation_headers(APIVersion.V1)
 ```
 
 ### Graceful Shutdown
+
 ```python
 from aicp import GracefulShutdown, lifespan_context
 from fastapi import FastAPI
@@ -525,54 +446,54 @@ shutdown.register_shutdown_task(cleanup_database)
 shutdown.register_shutdown_task(close_connections)
 ```
 
-### Health Checks Router
-```python
-from aicp import HealthCheckRouter, ReadinessHealthCheck
-
-router = HealthCheckRouter()
-app.include_router(router.create_router())
-# GET /health
-# GET /health/live
-# GET /health/ready
-```
-
 ---
 
 ## Transport Adapters
 
+### HTTP
+
+```python
+from aicp.adapters.protocol.http import HTTPTransport
+
+transport = HTTPTransport(url="https://api.example.com")
+result = await transport.send({"method": "execute", "capability": "...", "args": {...}})
+```
+
 ### WebSocket
+
 ```python
 from aicp.adapters.protocol.websocket import WebSocketTransport
 
 transport = WebSocketTransport(url="ws://localhost:8765/ws")
 await transport.connect()
-result = await transport.send({"method": "execute", "tool": "..."})
+result = await transport.send({"capability": "...", "args": {...}})
 
 # Streaming
 async for chunk in transport.send_stream(request):
     print(chunk)
 ```
 
-### SSE (Server-Sent Events)
+### MCP (Model Context Protocol)
+
 ```python
-from aicp.adapters.protocol.sse import SSETransport
+from aicp.adapters.protocol.mcp import MCPClient
 
-transport = SSETransport(url="http://localhost:8080")
-
-async for event in transport.stream_events(request):
-    print(event)
+client = MCPClient()
+tools = await client.list_tools()
+result = await client.call_tool("tool_name", {"arg": "value"})
 ```
 
-### GraphQL
-```python
-from aicp.adapters.protocol.graphql import GraphQLTransport
+### OpenAPI Import
 
-transport = GraphQLTransport(url="http://localhost:4000/graphql")
+```bash
+# Import OpenAPI spec as capabilities
+aicp map openapi ./api.json
 
-result = await transport.send({
-    "query": "mutation { executeTool(name: $name) { result } }",
-    "variables": {"name": "payments.transfer"},
-})
+# Or programmatically
+from aicp.adapters.importers.openapi import OpenAPIImporter
+
+importer = OpenAPIImporter()
+capabilities = importer.import_from_file("./api.json")
 ```
 
 ---
@@ -585,7 +506,6 @@ from aicp import (
     AicpExecutor,
     AicpRegistry,
     Capability,
-    OAuth2Auth,
     RateLimiter,
     SecureAuditLog,
     TenantManager,
@@ -625,22 +545,22 @@ health_router = HealthCheckRouter()
 app.include_router(health_router.create_router())
 
 # 7. API endpoint
-@app.post("/api/v1/execute/{tool_name}")
-async def execute_tool(tool_name: str, request: dict):
+@app.post("/api/v1/execute/{capability_name}")
+async def execute_capability(capability_name: str, request: dict):
     # Rate limit
     rate_limiter.check(tenant.id)
-    metrics.increment_counter("executions_total", labels={"tool": tool_name})
+    metrics.increment_counter("executions_total", labels={"capability": capability_name})
     
     # Audit
     entry = audit_log.append({
-        "tool": tool_name,
+        "capability": capability_name,
         "tenant": tenant.id,
         "args": request,
     })
     
     # Execute with retry
     result = await retry_async(
-        lambda: executor.execute(tool_name, request),
+        lambda: executor.execute(capability_name, request),
         max_attempts=3,
     )
     
@@ -649,8 +569,10 @@ async def execute_tool(tool_name: str, request: dict):
 
 ---
 
-## What's Next?
+## See Also
 
-- Check out [Architecture](ARCHITECTURE.md) for system design
-- See [API Reference](../reference/index.md) for full API docs
-- Review [Governance](../overview/GOVERNANCE.md) for policy management
+- [CLI_REFERENCE.md](./CLI_REFERENCE.md) — 28 CLI commands
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — System design for contributors
+- [RUN_RUNTIME_STUDIO.md](./RUN_RUNTIME_STUDIO.md) — Running runtime and Studio
+- [Governance](../overview/GOVERNANCE.md) — Policy management
+- [Action Surface](../overview/ACTION_SURFACE.md) — Capability model details

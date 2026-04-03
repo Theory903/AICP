@@ -1,229 +1,226 @@
 # Product Requirements Document
 
+> AICP -- the Agentic Web Operating System. Protocol, runtime, memory, governance, perception, execution, and federation layer that turns the human web into an agent-operable web.
+
+---
+
 ## Product Name
 
-**AICP — AI Capability Protocol**
+**AICP -- AI Capability Protocol (Agentic Web OS)**
 
 ## Product Summary
 
-AICP is a protocol and runtime model that allows AI systems to discover meaningful capabilities, understand execution constraints, track multi-step workflow state, evaluate policy, execute safely, normalize failures, and render outcomes intelligently.
+AICP is a protocol and runtime model that provides the complete operating system layer between AI agents and the applications they operate. It covers 11 architectural planes: signal ingestion, perception, AI reasoning, capability management, workflow orchestration, governance, execution, multi-agent coordination, federation, supervision, and learning.
 
-It is designed for developers, platform teams, and AI infrastructure builders who want to make their systems AI-operable without relying on brittle ad hoc tool calling.
+It is designed for developers, platform teams, agent framework authors, and AI infrastructure builders who need governed, stateful, auditable agent-to-application interaction.
+
+---
 
 ## Problem Statement
 
-Modern AI systems are increasingly expected to perform real-world actions, yet existing integration approaches are insufficient for reliable execution.
+Modern AI agents interact with software through ad-hoc tool calling. This approach fails at scale because:
 
-Current problems include:
+| Problem | Impact |
+|---------|--------|
+| No governance layer | Agents execute high-risk actions without policy evaluation |
+| No workflow state | Agents cannot resume multi-step processes after interruption |
+| No approval semantics | No structured way to pause for human judgment |
+| No audit trail | No immutable record of agent actions for compliance |
+| No side-effect classification | Planners cannot reason about action consequences |
+| No continuation guidance | Agents do not know what to do next after each action |
+| No determinism classification | Judges cannot verify if a plan is safe to retry |
+| No federation | Agents cannot discover capabilities across organizations |
+| No perception layer | Agents cannot observe the state of web applications |
+| No multi-agent coordination | No hierarchy, communication bus, or task delegation |
+| No learning loop | Agents do not improve from past executions |
 
-- raw endpoints exposed without semantic business meaning,
-- no standard workflow model for multi-step tasks,
-- inconsistent handling of pagination and long-running jobs,
-- poor policy awareness,
-- lack of confirmation and approval semantics,
-- inconsistent or opaque failure modes,
-- and no standard way to render outcomes or next steps.
+The result: agents can start tasks but cannot safely, reliably, or intelligently finish them.
 
-As a result, AI systems can often start tasks, but cannot safely or consistently finish them.
+---
 
 ## Target Users
 
-### Primary Users
+### Primary
 
-1. **AI infrastructure engineers** building agent platforms and orchestration systems.
-2. **Backend and platform engineers** exposing existing services to AI systems.
-3. **Framework and SDK maintainers** who want native integration for AI-safe actions.
-4. **Product teams** building assistants, copilots, and workflow agents.
+| User | Need |
+|------|------|
+| AI infrastructure engineers | Protocol and runtime for governed agent execution |
+| Backend/platform engineers | Expose existing APIs as governed capabilities |
+| Agent framework authors | Governance substrate for LangChain, CrewAI, etc. |
+| Product teams | Build assistants and copilots with safety guarantees |
 
-### Secondary Users
+### Secondary
 
-1. **Open-source contributors** adopting and extending AICP.
-2. **Enterprise architects** standardizing AI execution across teams.
-3. **Developer experience teams** building internal AI platforms.
+| User | Need |
+|------|------|
+| Enterprise architects | Standardize AI execution across teams |
+| Open-source contributors | Extend the protocol and runtime |
+| Compliance teams | Audit trails and policy enforcement for AI actions |
 
-## Core User Jobs
+---
 
-Users need to:
+## Product Stack
 
-- expose existing actions in a form AI can understand,
-- represent real workflows instead of isolated calls,
-- encode permissions, confirmation, and execution rules,
-- let AI reason about missing inputs and next steps,
-- normalize execution outcomes,
-- and integrate with existing backends quickly.
+| Layer | Purpose | Status |
+|-------|---------|--------|
+| **Protocol** | JSON schemas defining capability, workflow, policy, execution envelope | v0.1.1 (9 schemas) |
+| **Runtime** | Execution engine, services, persistence, policy evaluation | v0.1.1 (8 services) |
+| **Connect** | Adapters importing existing systems as governed capabilities | v0.1.1 (6 adapters) |
+| **Studio** | Supervision console: approvals, audit, workflow visualization | Minimal |
+
+---
 
 ## Product Goals
 
-### Goal 1: Make capabilities AI-readable
+### Goal 1: Make the web agent-operable
 
-Capabilities should be discoverable, typed, and semantically meaningful.
+Every application action should be discoverable, typed, policy-governed, and auditable by agents.
 
-### Goal 2: Make workflows AI-navigable
+### Goal 2: Governance as protocol, not middleware
 
-AI should know current step, completed steps, missing fields, and next transitions.
+Policy evaluation, trust tiers, risk scoring, and approval lifecycles are defined in the protocol schema, not bolted on by runtime configuration.
 
-### Goal 3: Make execution policy-aware
+### Goal 3: Stateful, resumable execution
 
-The protocol must support permissions, risk, confirmation, and approval semantics.
+Every workflow is stateful. Execution persists across process restarts. Approval checkpoints pause and resume cleanly.
 
-### Goal 4: Make results machine-reasonable and human-readable
+### Goal 4: Multi-agent coordination
 
-Execution outcomes should include normalized status and rendering hints.
+Orchestrators decompose goals. Specialists handle domains. Workers execute capabilities. Supervisors monitor and intervene.
 
-### Goal 5: Make adoption practical
+### Goal 5: Federation across organizations
 
-AICP should support existing backends through adapters, overlays, and generated mappings.
+Agents discover capabilities across organizational boundaries via `/.well-known/aicp` manifests.
 
-## Non-Goals
+### Goal 6: Perception and signal processing
 
-The initial version of AICP will **not** attempt to:
+Agents observe the state of web applications through a11y trees, DOM observation, screenshots, and behavioral signals.
 
-- define a global identity system,
-- replace OAuth or OIDC,
-- build a universal wallet or payment network,
-- define a complete UI standard,
-- or replace all transport protocols.
+### Goal 7: Learning and adaptation
 
-Those may become adjacent systems later, but they are not part of the initial protocol scope.
+The system mines execution patterns, detects capability drift, and calibrates agent autonomy over time.
 
-## Product Scope
+---
 
-### In Scope
+## Architecture: 11 Planes
 
-- capability schema,
-- input/output typing,
-- policy metadata,
-- workflow state model,
-- execution result model,
-- normalized errors,
-- pagination model,
-- async job model,
-- render hints,
-- introspection and discovery,
-- and reference runtime behavior.
+| # | Plane | Purpose | v0.1.1 |
+|---|-------|---------|--------|
+| 0 | Signal | Sub-ms event ingestion, dedup, classification, routing | Not started |
+| 1 | Perception | a11y tree, DOM observation, screenshots, behavioral signals | Not started |
+| 2 | AI | Planner, judge, intent router, memory, cognitive protocols | Not started |
+| 3 | Capability | Registry, schema validation, ranked discovery, semantic search | Complete (L2) |
+| 4 | Workflow | Sequential, parallel, fork/join, sagas, event-driven, subflows | Complete (L2) |
+| 5 | Governance | Compiled policy engine, trust tiers, risk scoring, approval lifecycle | Complete (L2) |
+| 6 | Execution | Realtime (<5ms), transactional (saga), event-driven (wait/resume) | Complete (L2) |
+| 7 | Multi-Agent | Orchestrator/specialist/worker/supervisor hierarchy, communication bus | Not started |
+| 8 | Federation | `/.well-known/aicp` discovery, CRDT registries, DID auth | Minimal |
+| 9 | Supervision | Live feed, approval queue, replay debugger, policy editor | Partial |
+| 10 | Learning | Skill mining, policy learning, drift detection, autonomy calibration | Not started |
 
-### Out of Scope for v1
-
-- portable identity and trust system,
-- memory portability,
-- financial custody or tokenization,
-- full-blown UI component framework,
-- advanced marketplace economics,
-- and protocol-level federation between organizations.
-
-## Key Features
-
-### 1. Capability Discovery
-
-Expose meaningful capabilities with machine-readable descriptions.
-
-### 2. Typed Inputs and Outputs
-
-Support structured schemas with required fields, constraints, defaults, and enums.
-
-### 3. Policy Metadata
-
-Embed risk, scopes, autonomy rules, confirmation requirements, and approval thresholds.
-
-### 4. Workflow Awareness
-
-Track current step, completed steps, missing fields, and next possible transitions.
-
-### 5. Standard Execution Model
-
-Define how to request execution and what normalized outcomes look like.
-
-### 6. Error Normalization
-
-Convert backend-specific errors into AI-reasonable states.
-
-### 7. Pagination Support
-
-Standardize pagination for searchable and list-returning capabilities.
-
-### 8. Async and Long-Running Jobs
-
-Support pending jobs, polling, and completion semantics.
-
-### 9. Render Hints
-
-Provide structured guidance for displaying outcomes.
-
-### 10. Adapter Model
-
-Allow adoption through native adapters and existing-spec overlays.
-
-## User Stories
-
-### Story 1: Food Ordering
-
-As an AI assistant platform, I want to expose restaurant search, cart creation, address selection, payment confirmation, and order placement as a workflow so that the AI can complete food ordering safely.
-
-### Story 2: Payment Transfer
-
-As a financial workflow provider, I want to encode transfer actions with risk and confirmation metadata so that the AI does not execute transfers blindly.
-
-### Story 3: Form Submission
-
-As a platform exposing forms, I want the AI to understand required fields, dependencies, validation, and submission state.
-
-### Story 4: Ticket Booking
-
-As a booking platform, I want multi-step booking flows to be represented clearly so that the AI can collect details, choose options, and confirm purchase correctly.
+---
 
 ## Functional Requirements
 
-1. The protocol must support capability discovery.
-2. The protocol must support typed input and output schemas.
-3. The protocol must support workflow state representation.
-4. The protocol must support policy evaluation metadata.
-5. The protocol must define a normalized execution result model.
-6. The protocol must standardize failure representation.
-7. The protocol must define pagination semantics.
-8. The protocol must support async job semantics.
-9. The protocol must support render hints.
-10. The protocol must support extension and versioning.
+| # | Requirement | Compliance Level |
+|---|------------|-----------------|
+| 1 | Capability discovery with typed I/O schemas | L0 |
+| 2 | Policy evaluation before every side-effecting execution | L1 |
+| 3 | Structured approval lifecycle (approve/reject/modify/delegate/escalate) | L1 |
+| 4 | Immutable audit trail for every execution | L1 |
+| 5 | Stateful, resumable workflows with compensation | L2 |
+| 6 | Session persistence across process restarts | L2 |
+| 7 | `allowed_next_actions` on every execution envelope | L0 |
+| 8 | Event-driven workflow primitives (wait-for-event, timeout) | L3 |
+| 9 | AI Planner and Judge integration | L4 |
+| 10 | Multi-agent hierarchy with communication bus | L5 |
+| 11 | Cross-organization federation | L5 |
+| 12 | Perception and signal processing | L5 |
+| 13 | Learning and autonomy calibration | L5 |
+
+---
 
 ## Non-Functional Requirements
 
-- Clear versioning model.
-- Backward-compatibility principles.
-- Framework-agnostic core.
-- Adapter-friendly design.
-- Human-readable and machine-readable specification.
-- Validation-friendly JSON schema definitions.
-- Low cognitive overhead for adoption.
+| Requirement | Target |
+|------------|--------|
+| Schema validation success rate | >99.9% |
+| Policy evaluation latency | <5ms (L2), <1ms (L5) |
+| Workflow state persistence durability | Zero data loss on process restart |
+| Audit trail immutability | Append-only, no edits, no deletes |
+| Adapter conformance | 100% schema compliance |
+| Test coverage (core packages) | >80% |
+| Backward compatibility | Schema changes maintain backward compatibility within major version |
+
+---
+
+## Compliance Levels
+
+| Level | Name | Requirements |
+|-------|------|-------------|
+| 0 | Capability Discovery | Capability registry, schema validation, basic execution |
+| 1 | Governed Execution | L0 + policy evaluation, approval checkpoints, audit trail, session management |
+| 2 | Resumable Workflows | L1 + sequential workflows, compensation, state persistence, resume after approval |
+| 3 | Event-Driven Orchestration | L2 + wait-for-event, timeout branching, parallel steps, loops |
+| 4 | AI Planning Support | L3 + planner, judge, context builder, allowed-next-actions schema |
+| 5 | Full Orchestration | L4 + multi-agent coordination, subflows, cross-flow events, federation, supervision |
+
+**Current implementation: Level 2.**
+
+---
+
+## Non-Goals (v0.1.1)
+
+These are explicitly excluded from the current scope:
+
+| Non-Goal | Reason | Target |
+|----------|--------|--------|
+| Global identity system | OAuth/OIDC integration sufficient for now | v0.6.0 |
+| Universal wallet/payments | Out of protocol scope | Never |
+| Complete UI framework | Studio is supervision console, not app framework | N/A |
+| All transport protocols | HTTP + MCP sufficient for now | Incremental |
+
+---
 
 ## Success Metrics
 
-### Adoption Metrics
+### Adoption
 
-- number of adapters built,
-- number of example integrations,
-- documentation completion and usage,
-- GitHub stars, forks, and contributors,
-- and number of external tools/platforms exposing AICP-compatible capabilities.
+| Metric | Target |
+|--------|--------|
+| Working adapters | 10+ (currently 6) |
+| Reference applications | 5+ (currently 2) |
+| Agent framework integrations | LangChain, LangGraph, CrewAI |
+| Community contributors | 10+ |
 
-### Product Quality Metrics
+### Quality
 
-- schema validation success rate,
-- clarity of error normalization,
-- adapter conformance,
-- time-to-first-adoption,
-- and successful completion rate for multi-step workflows in reference demos.
+| Metric | Target |
+|--------|--------|
+| Schema conformance test pass rate | 100% |
+| Runtime test coverage | >80% |
+| Multi-step workflow completion rate | >95% in reference demos |
+| Approval round-trip time | <2s for CLI, <5s for API |
 
-## Risks
+---
 
-- over-expanding v1 scope,
-- becoming too abstract to adopt,
-- confusing overlap with existing protocols,
-- inconsistent adapter behavior,
-- and poor first examples.
+## Risks and Mitigations
 
-## Mitigation Strategy
+| Risk | Mitigation |
+|------|-----------|
+| Scope creep beyond v0.2.0 | Strict exit criteria per phase |
+| Over-abstraction (too academic to adopt) | Concrete reference apps, not just schemas |
+| Confusion with MCP/OpenAPI/LangChain | Clear positioning docs, comparison table |
+| Inconsistent adapter behavior | Schema conformance test suite |
+| Poor first-use experience | `aicp dev` one-command demo |
+| AI Planner producing invalid plans | Judge validation gate before execution |
 
-- keep v1 small and crisp,
-- publish clear positioning,
-- make reference demos concrete,
-- enforce schema validation,
-- and use RFC-based governance.
+---
+
+## See Also
+
+- [VISION.md](./VISION.md) -- Why the Agentic Web OS exists
+- [MVP.md](./MVP.md) -- v0.2.0 milestone scope
+- [/STATUS.md](../../STATUS.md) -- Current implementation inventory
+- [/ROADMAP.md](../../ROADMAP.md) -- 10-phase roadmap to v1.0.0
+- [/ARCHITECTURE.md](../../ARCHITECTURE.md) -- 11-plane system architecture

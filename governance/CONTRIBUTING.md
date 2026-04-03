@@ -219,16 +219,18 @@ def test_capability_validation_rejects_invalid_input():
 
 ## Protocol Changes (RFCs)
 
-For changes to the AICP protocol, we use the **RFC process**:
+For changes to the AICP protocol (11-plane architecture, 20 modules), we use the **RFC process**:
 
 ### When to Submit an RFC
 
 Required for:
-- New capability kinds
-- Policy contract changes
-- Workflow model changes
+- New capability kinds or families
+- Policy contract changes (trust tiers, risk scoring)
+- Workflow model changes (parallel, compensation, event-driven)
 - Breaking schema changes
 - New transport protocols
+- Multi-agent hierarchy changes
+- Federation protocol changes
 
 ### RFC Process
 

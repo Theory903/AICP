@@ -6,7 +6,7 @@
 
 # AICP Protocol Specification
 
-**The canonical source of truth for the AI Capability Protocol**
+> The canonical source of truth for the Agentic Web Operating System — JSON schemas defining the 11-plane architecture and 20-module system.
 
 </div>
 

@@ -1,20 +1,19 @@
-# Run Runtime + Studio
+# Run Runtime and Studio
 
-This is the shortest path to running the current AICP stack locally:
+> The shortest path to running the current AICP stack locally — Runtime, CLI, and Studio.
 
-- `AICP Runtime` for governed execution and persistence
-- `AICP CLI` for discovery, mapping, approvals, and history
-- `AICP Studio` for approval and workflow visibility
+---
 
-This runbook reflects what actually exists in the repository now.
+## Prerequisites
 
-## What You Need
+| Requirement | Version |
+|-------------|---------|
+| Python | 3.10+ |
+| pip | Latest |
 
-- Python `3.10+`
-- the repo checked out locally
-- dependencies installed in editable mode for the packages you want to use
+---
 
-## 1. Install The Current Local Packages
+## 1. Install Packages
 
 From the repository root:
 
@@ -29,75 +28,68 @@ pip install -e ./adapters/importers/har
 pip install -e ./adapters/importers/curl
 ```
 
-If you want one-off test-style execution without editable installs, you can also use `PYTHONPATH`, but editable installs are the cleaner operator path.
+---
 
-## 2. Start The Runtime In Durable Mode
+## 2. Start the Runtime
 
-Use a file-backed store so workflows, approvals, and audit history survive restarts:
+### File-Backed Persistence
 
 ```bash
 aicp serve --host 127.0.0.1 --port 8000 --store-path ./.aicp-runtime
 ```
 
-Use SQLite-backed state when you want a single durable database file instead:
+### SQLite-Backed Persistence
 
 ```bash
 aicp serve --host 127.0.0.1 --port 8000 --store-backend sqlite --store-path ./.aicp-runtime/runtime.db
 ```
 
-What this does now:
+**What this does:**
+- Boots the runtime application
+- Enables file-backed or SQLite-backed persistence
+- Exposes discovery, workflow, approval, and history routes
+- Logs available endpoints
 
-- boots the runtime app
-- enables file-backed persistence via `FileRuntimeStore`, or sqlite-backed persistence via `SqliteRuntimeStore`
-- exposes discovery, workflow, approval, and history routes
+---
 
-## 3. Use The CLI Against Stored State
+## 3. Use CLI Against Stored State
 
-The CLI can already inspect and operate on persisted governance state using the same store path.
-
-### View approvals
+### List Approvals
 
 ```bash
+# File-backed
 aicp approvals list --store-path ./.aicp-runtime
-```
 
-SQLite-backed path:
-
-```bash
+# SQLite-backed
 aicp approvals list --store-backend sqlite --store-path ./.aicp-runtime/runtime.db
 ```
 
-### Decide an approval
+### Decide an Approval
 
 ```bash
 aicp approvals decide apr_123 \
-  --decision approved \
+  --decision approve \
   --approver ops@company.com \
-  --reason "Approved from local runbook" \
+  --reason "Approved from CLI" \
   --store-path ./.aicp-runtime
 ```
 
-### View audit history
+### View Audit History
 
 ```bash
+# All history
 aicp history --store-path ./.aicp-runtime
-```
 
-SQLite-backed path:
-
-```bash
-aicp history --store-backend sqlite --store-path ./.aicp-runtime/runtime.db
-```
-
-### Filter audit history by workflow
-
-```bash
+# Filter by workflow
 aicp history --workflow-id wf_123 --store-path ./.aicp-runtime
+
+# Filter by capability
+aicp history --capability payments.transfer --store-path ./.aicp-runtime
 ```
 
-## 4. Use Connect From The CLI
+---
 
-The current zero-code ingestion paths exposed from the CLI are:
+## 4. Use Connect (Import Capabilities)
 
 ### OpenAPI
 
@@ -123,62 +115,81 @@ aicp map har ./session.har
 aicp map curl "curl 'https://api.example.com/users?limit=10'"
 ```
 
-These commands emit discovered capabilities as JSON so you can inspect or redirect them into files.
+These commands emit discovered capabilities as JSON.
+
+---
 
 ## 5. Start Studio
 
-Studio is still a thin seed app, but it is already useful for:
+Studio provides a web interface for:
+- Approval inbox viewing
+- Approve/reject actions
+- Audit history viewing
+- Workflow timeline viewing
+- Workflow detail pages
 
-- approval inbox viewing
-- approve/reject actions
-- audit history viewing
-- workflow timeline viewing
-- workflow detail page
-
-Run it with the same runtime store:
+### Run with File-Backed Store
 
 ```bash
 python -c "from studio.app import create_file_backed_studio_app; import uvicorn; uvicorn.run(create_file_backed_studio_app('./.aicp-runtime'), host='127.0.0.1', port=3000)"
 ```
 
-This assumes `aicp-studio` is installed in the active environment.
+### Open Studio
 
-Today, the seed Studio app ships with the file-backed helper path. For the smoothest Studio walkthrough, use the file-backed runtime mode. SQLite is now supported in the runtime and CLI, but Studio does not yet ship a dedicated sqlite boot helper.
-
-Then open:
-
-```text
+```
 http://127.0.0.1:3000
 ```
 
-## 6. Current Operating Model
+---
 
-Today, the most realistic local loop is:
+## 6. Typical Local Development Loop
 
-1. start runtime with `--store-path`
-2. generate or inspect capabilities with `aicp map ...`
-3. use the runtime and examples to create workflow/approval state
-4. inspect approvals/history via CLI
-5. inspect and act on the same state via Studio
+```
+1. Start runtime: aicp serve --store-path ./.aicp-runtime
+2. Generate capabilities: aicp map openapi ./api.json
+3. Create workflow/approval state via examples or API
+4. Inspect approvals/history via CLI
+5. Inspect and act on same state via Studio
+```
 
-## What Is Real Today
+---
 
-- protocol-aligned capability and workflow models
-- governed runtime with approval and audit services
-- durable file-backed and sqlite-backed runtime stores
-- Connect packages for OpenAPI, FastAPI, MCP, Postman, HAR, and cURL
-- CLI commands for mapping, approvals, history, and runtime serving
-- thin Studio control plane
+## What Exists Now
+
+| Component | Status |
+|-----------|--------|
+| Capability and workflow models | Protocol-aligned |
+| Governed runtime | Approval + audit services |
+| Durable persistence | File-backed + SQLite |
+| Connect adapters | OpenAPI, FastAPI, MCP, Postman, HAR, cURL |
+| CLI commands | Mapping, approvals, history, runtime |
+| Studio seed app | Server-rendered HTML |
+
+---
 
 ## What Is Still Early
 
-- runtime persistence is early-stage file/sqlite backed, not production database backed
-- Studio is server-rendered HTML, not a full control-plane app yet
-- importer fidelity is improving, but still needs richer auth and request semantics over time
-- some runtime flows are still reference-grade rather than production-hardened
+| Component | Notes |
+|-----------|-------|
+| Runtime persistence | File/SQLite-backed, not production database |
+| Studio | Seed app, not full control-plane |
+| Importer fidelity | Improving, needs richer auth semantics |
+| Some flows | Reference-grade, not production-hardened |
 
-## Recommended Local Paths
+---
 
-- For protocol/runtime work: start with `aicp serve --store-path ...`
-- For adoption wedge demos: use `aicp map openapi`, `aicp map postman`, `aicp map har`, and `aicp map curl`
-- For governance demos: use `aicp approvals ...`, `aicp history ...`, and Studio together
+## Recommended Paths
+
+| Task | Recommended Command |
+|------|---------------------|
+| Protocol/runtime work | `aicp serve --store-path ...` |
+| Adoption demos | `aicp map openapi`, `aicp map postman`, `aicp map har` |
+| Governance demos | `aicp approvals ...`, `aicp history ...`, Studio |
+
+---
+
+## See Also
+
+- [CLI_REFERENCE.md](./CLI_REFERENCE.md) — 28 CLI commands
+- [HOW_TO_USE.md](./HOW_TO_USE.md) — Complete usage guide
+- [/docs/overview/GOVERNANCE.md](../overview/GOVERNANCE.md) — Policy and approval details

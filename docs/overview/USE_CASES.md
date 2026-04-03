@@ -1,152 +1,217 @@
-# AICP Use Cases
+# Use Cases
 
-## Introduction
+> Where AICP stops being theory and becomes operational -- real-world scenarios across domain packs, multi-agent orchestration, and cognitive protocols.
 
-Use cases are where AICP stops being theory and becomes operational.
+---
 
-AICP is meant for tasks where AI must not only call something, but proceed through a sequence of meaningful actions while maintaining awareness of state, permission, failure, and user confirmation.
+## Overview
 
-## Use Case 1: Food Ordering
+AICP is designed for tasks where AI must not only call an API but proceed through a sequence of governed actions while maintaining awareness of state, policy, failure, and human confirmation. Each use case demonstrates different planes of the architecture working together.
 
-### Narrative
+---
 
-A user tells an AI assistant: "Order a paneer roll from my usual place and deliver it home."
+## Domain Packs
 
-A raw tool-calling system may know how to call a restaurant search function and maybe place an order. But a robust system must understand that ordering food is a workflow.
+Domain packs are pre-built capability families with workflows, policies, and schemas tailored to specific industries. At v1.0.0, AICP targets four domain packs.
 
-It must:
+### Commerce Domain Pack
 
-1. identify the restaurant,
-2. search menu items,
-3. select the requested item,
-4. create or update a cart,
-5. choose the correct delivery address,
-6. determine payment method,
-7. request confirmation if required,
-8. place the order,
-9. and optionally track its status.
+**Capabilities:** `restaurant.search`, `menu.browse`, `cart.create`, `cart.add`, `cart.update`, `cart.checkout`, `orders.place`, `orders.track`, `orders.cancel`, `delivery.estimate`, `payment.process`, `payment.confirm`
 
-### AICP Value
+**Reference workflow: Food ordering**
 
-AICP provides:
+```
+User: "Order a paneer roll from my usual place and deliver it home."
 
-- workflow structure,
-- capability names with meaning,
-- current step tracking,
-- missing input detection,
-- payment confirmation semantics,
-- and render-aware results.
+Step 1: restaurant.search       -> Find "usual place" (query, deterministic lookup)
+Step 2: menu.browse             -> Find paneer roll (query, bounded_nondeterministic)
+Step 3: cart.create             -> Create cart (action, deterministic)
+Step 4: cart.add                -> Add paneer roll (action, deterministic)
+Step 5: delivery.estimate       -> Check delivery time (query, nondeterministic)
+Step 6: payment.process         -> Process payment (action, high-risk, requires_approval)
+   └── HITL checkpoint: Human confirms ₹180 payment
+Step 7: orders.place            -> Place order (action, irreversible)
+Step 8: orders.track            -> Track delivery (query, streaming)
+```
 
-## Use Case 2: Payment Transfer
+**AICP value:** Workflow structure with approval at payment, compensation if payment fails after cart creation, `allowed_next_actions` guiding the agent through each step.
 
-### Narrative
+### Fintech Domain Pack
 
-A user says: "Send ₹1000 to Rahul."
+**Capabilities:** `account.balance`, `account.history`, `payment.transfer`, `payment.confirm`, `payment.refund`, `recipient.resolve`, `recipient.add`, `fx.rate`, `fx.convert`, `compliance.check`, `limit.check`
 
-A payment transfer is not a simple action. It involves:
+**Reference workflow: Payment transfer**
 
-- recipient resolution,
-- amount validation,
-- currency handling,
-- threshold checks,
-- policy enforcement,
-- confirmation,
-- and a final result state.
+```
+User: "Send ₹1000 to Rahul."
 
-### AICP Value
+Step 1: recipient.resolve       -> Find Rahul (query, bounded_nondeterministic)
+Step 2: account.balance         -> Check sufficient funds (query, deterministic)
+Step 3: limit.check             -> Verify within transfer limits (query, deterministic)
+Step 4: compliance.check        -> AML/KYC verification (query, deterministic)
+Step 5: payment.transfer        -> Execute transfer (action, high-risk, requires_approval)
+   └── HITL checkpoint: Human confirms ₹1000 to Rahul
+   └── Risk score: {financial: 0.7, irreversibility: 0.9, privacy: 0.1}
+Step 6: payment.confirm         -> Confirm completion (confirm, deterministic)
+```
 
-AICP ensures that the AI:
+**AICP value:** Multi-dimensional risk scoring, mandatory approval for high-value transfers, compensation (reversal) if step 6 fails, full audit trail for compliance.
 
-- knows the action is high-risk,
-- knows confirmation is required,
-- can request missing recipient details,
-- and returns a structured receipt-like result.
+### Enterprise Domain Pack
 
-## Use Case 3: Form Filling
+**Capabilities:** `approval.route`, `approval.decide`, `invoice.lookup`, `invoice.process`, `report.generate`, `ticket.create`, `ticket.resolve`, `ticket.escalate`, `role.check`, `escalation.trigger`
 
-### Narrative
+**Reference workflow: Invoice approval**
 
-A user asks the AI to fill and submit a complex application form.
+```
+Step 1: invoice.lookup          -> Retrieve invoice details (query)
+Step 2: role.check              -> Verify approver authority (query)
+Step 3: compliance.check        -> Policy evaluation against spend limits (query)
+Step 4: approval.route          -> Route to correct approver (action)
+   └── HITL checkpoint: Manager reviews invoice
+Step 5: invoice.process         -> Process approved invoice (action)
+Step 6: notification.send       -> Notify requester (notify)
+```
 
-The AI must navigate:
+**Reference workflow: Support ticket resolution**
 
-- required and optional fields,
-- validation rules,
-- interdependent fields,
-- file uploads,
-- review stage,
-- submission readiness,
-- and final success or rejection.
+```
+Step 1: ticket.lookup           -> Retrieve ticket and customer context (query)
+Step 2: account.history         -> Check recent orders and interactions (query)
+Step 3: ticket.resolve          -> Apply resolution (action, may require_approval)
+   └── If refund involved: HITL checkpoint
+Step 4: notification.send       -> Notify customer (notify)
+```
 
-### AICP Value
+### Healthcare Domain Pack (v1.0.0 Target)
 
-AICP makes forms process-aware rather than field-dump-driven. It lets the AI reason over what remains incomplete and what is invalid.
+**Capabilities:** `patient.lookup`, `record.access`, `prescription.create`, `appointment.schedule`, `lab.order`, `consent.verify`, `audit.compliance`
 
-## Use Case 4: Ticket Booking
+**AICP value:** Mandatory consent verification before PII access, HIPAA-compliant audit trail, trust tier enforcement for record access.
 
-### Narrative
+---
 
-A user says: "Book a flight to Bangalore next Friday."
+## Multi-Agent Scenarios
 
-The workflow includes:
+AICP's Multi-Agent Plane (Plane 7) enables hierarchical agent coordination.
 
-- search,
-- pagination over results,
-- user preference filters,
-- selection,
-- passenger details,
-- seat preferences,
-- payment,
-- confirmation,
-- and booking result.
+### Agent Hierarchy
 
-### AICP Value
+| Role | Responsibility | Trust Tier |
+|------|---------------|------------|
+| Orchestrator | Decomposes goals into sub-tasks | 3-4 |
+| Specialist | Handles domain-specific workflows | 2-3 |
+| Worker | Executes individual capabilities | 1-2 |
+| Supervisor | Monitors and intervenes | 4 |
 
-AICP lets the AI move through this process step by step with awareness of what is still needed and whether each transition is valid.
+### Scenario: Complex Travel Booking
 
-## Use Case 5: Enterprise Approval Workflows
+```
+Orchestrator receives: "Book a trip to Bangalore next Friday, hotel near office, 
+                        return Sunday, budget under ₹15000"
 
-### Narrative
+Orchestrator decomposes:
+  ├── Specialist (Flight): flight.search -> flight.select -> flight.book
+  ├── Specialist (Hotel): hotel.search -> hotel.select -> hotel.reserve
+  └── Specialist (Budget): budget.check -> budget.allocate
 
-An internal AI agent is asked to approve or route an invoice.
+Communication Bus:
+  - Flight Specialist -> Orchestrator: "Found flights ₹4500-₹8000"
+  - Hotel Specialist -> Orchestrator: "Found hotels ₹2000-₹5000/night"
+  - Budget Specialist -> Orchestrator: "₹15000 budget allows flight ₹5500 + hotel ₹3500/night"
+  - Orchestrator -> Flight Specialist: "Book ₹5500 flight"
+  - Orchestrator -> Hotel Specialist: "Book ₹3500/night hotel"
 
-This requires:
+HITL checkpoint: Human confirms total ₹12500 booking
+```
 
-- document lookup,
-- policy evaluation,
-- role awareness,
-- possible escalation,
-- stateful transition,
-- and audit output.
+### Scenario: Automated Data Pipeline
 
-### AICP Value
+```
+Supervisor monitors pipeline execution:
+  ├── Worker 1: data.extract (source A)
+  ├── Worker 2: data.extract (source B)
+  ├── Worker 3: data.transform (merge + clean)
+  └── Worker 4: data.load (target warehouse)
 
-AICP provides explicit approval states, policy-driven decisions, and machine-readable outcomes.
+Supervisor detects Worker 2 failure:
+  -> Triggers compensation for Worker 3 (partial data)
+  -> Retries Worker 2 with backoff
+  -> Resumes pipeline on Worker 2 success
+```
 
-## Use Case 6: Support and Issue Resolution
+---
 
-### Narrative
+## Cognitive Protocols
 
-A support AI is asked to investigate and resolve a customer problem.
+Cognitive protocols define how AICP adapts its behavior to different operational domains. Each protocol configures trust thresholds, approval sensitivity, risk weighting, and rendering style.
 
-The process may include:
+| Protocol | Default Trust | Approval Sensitivity | Risk Weight Priority | Render Style |
+|----------|--------------|---------------------|---------------------|-------------|
+| UX | Tier 2 | Medium | `privacy > reputation > financial` | Rich (markdown, cards) |
+| SWE | Tier 3 | Low | `availability > irreversibility > compliance` | Technical (JSON, logs) |
+| Ops | Tier 2 | High | `availability > financial > irreversibility` | Dashboard (metrics, alerts) |
+| Research | Tier 3 | Low | `privacy > compliance > financial` | Data (tables, charts) |
+| Finance | Tier 1 | Very High | `financial > compliance > irreversibility` | Formal (receipts, confirmations) |
 
-- searching account status,
-- viewing recent orders,
-- checking payment state,
-- issuing refund if allowed,
-- and notifying the user.
+### Example: Finance Protocol
 
-### AICP Value
+```json
+{
+  "protocol": "finance",
+  "trust_tier_default": 1,
+  "approval_threshold": 0.2,
+  "risk_weights": {
+    "financial": 1.0,
+    "compliance": 0.9,
+    "irreversibility": 0.8,
+    "privacy": 0.5,
+    "availability": 0.3,
+    "reputation": 0.4
+  },
+  "auto_approve_enabled": false,
+  "render_format": "formal",
+  "audit_level": "verbose"
+}
+```
 
-AICP allows the AI to coordinate multiple capabilities under a coherent workflow.
+---
 
-## Shared Patterns Across All Use Cases
+## Cross-Cutting Patterns
 
-Across all of these cases, AICP is valuable because it lets AI understand:
+Every use case demonstrates these AICP patterns:
 
-- the available actions,
-- the order in which they belong,
-- what data is missing,
-- what policy applies,
-- and how to continue responsibly.
+| Pattern | Description |
+|---------|-------------|
+| Workflow state tracking | Agent knows current step, completed steps, and remaining steps |
+| Missing input detection | Agent knows what data is still needed before proceeding |
+| Policy-gated execution | Risky actions require explicit policy evaluation |
+| Structured approval | Not "confirm Y/N" but typed decisions with modification support |
+| Compensation on failure | Completed steps can be rolled back when later steps fail |
+| Continuation guidance | `allowed_next_actions` tells the agent what to do next |
+| Render-aware output | Results include human-readable summaries with format hints |
+| Determinism awareness | Planners know which actions are repeatable vs. side-effecting |
+| Audit trail | Every action, decision, and state change is immutably recorded |
+
+---
+
+## v0.1.1 Implementation Status
+
+| Use Case | Status | Notes |
+|----------|--------|-------|
+| Food ordering workflow | Example exists | `examples/fastapi-notes/` demonstrates the pattern |
+| Payment transfer workflow | Example exists | `examples/payment-transfer/` |
+| Enterprise approval | Partial | Approval lifecycle works, routing not implemented |
+| Multi-agent scenarios | Not started | Planned for v0.5.0 |
+| Cognitive protocols | Not started | Planned for v0.4.0 |
+| Healthcare domain pack | Not started | Planned for v0.8.0 |
+
+---
+
+## See Also
+
+- [ACTION_SURFACE.md](./ACTION_SURFACE.md) -- Capability model underlying all use cases
+- [GOVERNANCE.md](./GOVERNANCE.md) -- Policy and risk scoring in action
+- [HITL.md](./HITL.md) -- How approval checkpoints work in these flows
+- [/MODULE_MAP.md](../../MODULE_MAP.md) -- Module 20: Domain Packs and Benchmarks
+- [/ARCHITECTURE.md](../../ARCHITECTURE.md) -- Multi-Agent Plane (Plane 7)

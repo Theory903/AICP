@@ -1,185 +1,173 @@
 # AICP Documentation
 
-<p align="center">
-  <img src="https://docs.aicp.ai/img/aicp-logo.svg" width="200" alt="AICP Logo">
-</p>
-
----
-
-Welcome to the **AICP (AI Capability Protocol)** documentation. AICP is the governed action runtime for AI agents — transforming APIs, applications, and workflows into discoverable, policy-enforced, stateful capabilities.
+> The Agentic Web Operating System -- protocol, runtime, memory, governance, perception, execution, and federation layer that turns the human web into an agent-operable web.
 
 ---
 
 ## Getting Started
 
-### New to AICP?
-
-Start here to understand the core concepts:
-
-<div class="getting-started-grid">
-
 | Guide | Description |
 |-------|-------------|
-| [What is AICP?](./overview/index.md) | Product overview and core concepts |
+| [Vision](./overview/VISION.md) | Why the Agentic Web OS exists |
+| [Action Surface](./overview/ACTION_SURFACE.md) | The agent-facing surface of software |
+| [Architecture](../ARCHITECTURE.md) | 11-plane system architecture |
 | [Quick Start](./guides/index.md) | Installation and first steps |
 | [How-To Guide](./guides/HOW_TO_USE.md) | Complete usage reference |
 | [Platform Demo](./examples/PLATFORM_DEMO.md) | End-to-end walkthrough |
 
-</div>
+---
+
+## Architecture: 11 Planes
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Plane 10: Learning    │ Skill mining, drift, calibration   │
+│  Plane 9:  Supervision │ Live feed, approval queue, replay  │
+│  Plane 8:  Federation  │ /.well-known/aicp, CRDT, DID auth  │
+│  Plane 7:  Multi-Agent │ Orchestrator, specialist, worker   │
+│  Plane 6:  Execution   │ Realtime, transactional, event     │
+│  Plane 5:  Governance  │ Policy, trust tiers, risk scoring  │
+│  Plane 4:  Workflow    │ Sequential, parallel, sagas        │
+│  Plane 3:  Capability  │ Registry, discovery, search        │
+│  Plane 2:  AI          │ Planner, judge, memory             │
+│  Plane 1:  Perception  │ a11y tree, DOM, screenshots        │
+│  Plane 0:  Signal      │ Event ingestion, dedup, routing    │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## The AICP Stack
+## Product Stack
 
-AICP consists of four interconnected layers:
+| Layer | Purpose | Documentation |
+|-------|---------|--------------|
+| **Protocol** | JSON schemas defining the agent-application contract | [Spec](./spec/index.md) |
+| **Runtime** | Execution engine, services, persistence | [Architecture Guide](./guides/ARCHITECTURE.md) |
+| **Connect** | Adapters importing existing systems as governed capabilities | [How-To Guide](./guides/HOW_TO_USE.md) |
+| **Studio** | Supervision console: approvals, audit, workflows | [Runtime/Studio Guide](./guides/RUN_RUNTIME_STUDIO.md) |
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    AICP Protocol                        │
-│            (JSON Schemas, Capability Kinds)              │
-├─────────────────────────────────────────────────────────┤
-│                     AICP Runtime                        │
-│         (Execution, Workflows, Governance)              │
-├─────────────────────────────────────────────────────────┤
-│                    AICP Connect                         │
-│       (Adapters: HTTP, MCP, OpenAPI, GraphQL)           │
-├─────────────────────────────────────────────────────────┤
-│                     AICP Studio                        │
-│        (Control Plane: Approvals, Audit, UI)            │
-└─────────────────────────────────────────────────────────┘
-```
+---
 
-### Protocol
-- [Action Surface](./overview/ACTION_SURFACE.md) — Agent-facing capability definitions
-- [Governance](./overview/GOVERNANCE.md) — Policy, approvals, and audit
-- [Spec](./spec/index.md) — Protocol schemas
+## Overview Documents
 
-### Runtime
-- Execution engine with policy evaluation
-- Workflow orchestration
-- Approval workflows
+| Document | Description |
+|----------|-------------|
+| [Vision](./overview/VISION.md) | The Agentic Web OS vision and design principles |
+| [Action Surface](./overview/ACTION_SURFACE.md) | Capability model, execution envelope, capability families |
+| [Governance](./overview/GOVERNANCE.md) | Policy, trust tiers, risk scoring, approval lifecycle |
+| [HITL](./overview/HITL.md) | Human-in-the-loop approval model |
+| [Comparison](./overview/COMPARISON.md) | AICP vs OpenAPI, MCP, LangChain, CrewAI |
+| [Use Cases](./overview/USE_CASES.md) | Domain packs, multi-agent scenarios, cognitive protocols |
+| [PRD](./overview/PRD.md) | Full product requirements document |
+| [Next Milestone](./overview/MVP.md) | v0.2.0 scope and exit criteria |
 
-### Connect
-- HTTP, WebSocket, SSE, GraphQL transports
-- MCP server and client
-- OpenAPI, Postman, HAR importers
+---
 
-### Studio
-- Approval dashboard
-- Audit timeline
-- Workflow replay
+## Guides
+
+| Guide | Description |
+|-------|-------------|
+| [Architecture](./guides/ARCHITECTURE.md) | Technical architecture for contributors |
+| [How to Use AICP](./guides/HOW_TO_USE.md) | Complete usage reference |
+| [CLI Reference](./guides/CLI_REFERENCE.md) | 28 CLI commands |
+| [Runtime and Studio](./guides/RUN_RUNTIME_STUDIO.md) | Running the runtime and Studio |
+| [Technical Specification](./guides/TECH_SPEC.md) | Protocol technical specification |
+
+---
+
+## Handbook
+
+| Document | Description |
+|----------|-------------|
+| [Agentic Experience](./handbook/AGENTIC_EXPERIENCE.md) | Cognitive protocols, perception model, 11-plane awareness |
+
+---
+
+## Protocol Specification
+
+| Document | Description |
+|----------|-------------|
+| [Protocol Schemas](./spec/index.md) | All 9 JSON schemas with examples |
+| [AICP TOON](./spec/AICP_TOON.md) | Protocol specification prose |
+
+---
+
+## Reference
+
+| Document | Description |
+|----------|-------------|
+| [API Reference](./reference/index.md) | 30+ endpoints across 13 route groups |
+| [Examples](./examples/index.md) | Reference applications |
+| [Platform Demo](./examples/PLATFORM_DEMO.md) | End-to-end demo walkthrough |
+
+---
+
+## Project State
+
+| Document | Description |
+|----------|-------------|
+| [Status](../STATUS.md) | Current v0.1.1-alpha implementation inventory |
+| [Roadmap](../ROADMAP.md) | 10-phase roadmap to v1.0.0 |
+| [Module Map](../MODULE_MAP.md) | Feature-to-module mapping for all 20 modules |
+| [Contributing](../governance/CONTRIBUTING.md) | How to contribute |
 
 ---
 
 ## Core Concepts
 
-<div class="concepts-grid">
-
 ### Capabilities
 
-The fundamental unit — a meaningful action with typed inputs/outputs.
+The atomic unit of the Action Surface. A governed action with typed I/O, side-effect classification, risk metadata, and error codes.
 
 ```python
 Capability(
     name="payments.transfer",
     kind=CapabilityKind.ACTION,
+    input_schema={"type": "object", "properties": {"amount": {"type": "number"}}},
+    requires_approval=True,
+    risk_level="high",
 )
 ```
 
-[Learn more](./overview/ACTION_SURFACE.md) →
+### Policies
 
-### Policy
-
-Govern what actions are allowed, denied, or require approval.
+Rules defining what is allowed, denied, or requires approval. Evaluated before every side-effecting execution.
 
 ```python
 Policy(
-    effect=PolicyEffect.ASK,
-    condition=amount > 10000,
+    name="high_value_transfers",
+    effect=PolicyEffect.REQUIRE_APPROVAL,
+    conditions={"amount_gt": 10000},
 )
 ```
-
-[Learn more](./overview/GOVERNANCE.md) →
 
 ### Workflows
 
-Multi-step processes with state tracking.
+Multi-step stateful processes with branching, retries, approval checkpoints, and compensation.
 
 ```python
 Workflow(
-    steps=[step1, step2, step3],
-    on_approval="resume",
+    name="payment_flow",
+    steps=[resolve_recipient, check_balance, transfer, confirm],
+    on_failure="compensate",
 )
 ```
 
-[Learn more](./overview/GOVERNANCE.md) →
+### Execution Envelope
 
-</div>
+The canonical response from every capability execution. All planes consume it.
 
----
-
-## How-To Guides
-
-### Basics
-- [Installation](./guides/index.md)
-- [Your first capability](./guides/HOW_TO_USE.md#quick-start)
-- [Execution and streaming](./guides/HOW_TO_USE.md#execution--streaming)
-
-### Authentication & Security
-- [API Key, OAuth2, Basic Auth](./guides/HOW_TO_USE.md#authentication)
-- [Rate limiting](./guides/HOW_TO_USE.md#security-features)
-- [Multi-tenancy](./guides/HOW_TO_USE.md#multi-tenancy)
-
-### Production
-- [Observability](./guides/HOW_TO_USE.md#observability)
-- [Health checks](./guides/HOW_TO_USE.md#production-api-features)
-- [Secrets management](./guides/HOW_TO_USE.md#secrets-management)
-
-### Adapters
-- [FastAPI integration](./guides/HOW_TO_USE.md#transport-adapters)
-- [MCP server](./guides/HOW_TO_USE.md#transport-adapters)
-- [WebSocket & GraphQL](./guides/HOW_TO_USE.md#transport-adapters)
+```json
+{
+  "execution_id": "exec_a1b2c3d4",
+  "capability_name": "orders.place",
+  "status": "success",
+  "policy_result": { "effect": "allow", "trust_tier": 2 },
+  "allowed_next_actions": [{ "name": "order.track", "confidence": 0.95 }],
+  "rendered": "Order placed. Delivery at 7:30 PM."
+}
+```
 
 ---
 
-## API Reference
-
-Complete API documentation:
-
-- [Core Modules](./reference/index.md)
-- [Protocol Schemas](./spec/index.md)
-- [CLI Commands](./reference/index.md)
-
----
-
-## Examples
-
-| Example | Description |
-|---------|-------------|
-| [Platform Demo](./examples/PLATFORM_DEMO.md) | Full Runtime + Studio |
-| [Payment Transfer](https://github.com/aicp-ai/aicp/tree/main/examples/payment-transfer) | Capability example |
-
----
-
-## Additional Resources
-
-- [Vision](./overview/VISION.md) — Product positioning
-- [Roadmap](./overview/ROADMAP.md) — Future plans
-- [Comparison](./overview/COMPARISON.md) — AICP vs MCP, OpenAI, LangChain
-- [Status](./overview/STATUS.md) — Current implementation state
-
----
-
-## Support
-
-<p align="center">
-  <a href="https://discord.gg/aicp"><img src="https://img.shields.io/discord/123456789?label=Discord&style=for-the-badge" alt="Discord"></a>
-  <a href="https://github.com/aicp-ai/aicp/issues"><img src="https://img.shields.io/github/issues/aicp-ai/aicp?label=Issues&style=for-the-badge" alt="GitHub Issues"></a>
-  <a href="https://twitter.com/aicp_ai"><img src="https://img.shields.io/twitter/follow/aicp_ai?label=Twitter&style=for-the-badge" alt="Twitter"></a>
-</p>
-
----
-
-<p align="center">
-  <em>Built for agents. Governed by design.</em>
-</p>
+*Built for agents. Governed by design. v0.1.1-alpha.*
