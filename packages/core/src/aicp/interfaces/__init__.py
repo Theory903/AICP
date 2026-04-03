@@ -18,7 +18,7 @@ from .policy_engine import (
     PolicyEngine,
     PolicySubject,
 )
-from .renderer import RenderHints, Renderer
+from .renderer import Renderer, RenderHints
 from .workflow_runtime import (
     Step,
     StepResult,

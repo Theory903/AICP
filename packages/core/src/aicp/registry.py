@@ -17,7 +17,7 @@ class TagSearchStrategy:
     Ranks capabilities by tag match score and keyword relevance.
     """
 
-    def __init__(self, registry: "AicpRegistry"):
+    def __init__(self, registry: AicpRegistry):
         self._registry = registry
 
     def search(

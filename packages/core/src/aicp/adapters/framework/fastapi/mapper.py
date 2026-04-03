@@ -11,12 +11,12 @@ try:
         create_discovery_response,
         map_routes_to_capabilities,
     )
-except ImportError as exc:  # pragma: no cover
+except ImportError:  # pragma: no cover
     def _missing_adapter(*args, **kwargs):
         raise RuntimeError(
             "FastAPI mapping helpers are not available. "
             "Install the FastAPI adapter package to use these helpers."
-        ) from exc
+        )
 
     map_routes_to_capabilities = _missing_adapter
     create_discovery_response = _missing_adapter

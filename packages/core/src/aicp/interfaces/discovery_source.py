@@ -131,7 +131,7 @@ class DiscoverySource(ABC):
 
         return None
 
-    async def discover_with_metadata(self) -> list["DiscoveredCapability"]:
+    async def discover_with_metadata(self) -> list[DiscoveredCapability]:
         """Discover capabilities wrapped with source metadata."""
         discovered_at = time.time()
         capabilities = await self.discover()

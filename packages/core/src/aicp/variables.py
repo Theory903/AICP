@@ -12,7 +12,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 _VARIABLE_PATTERN = re.compile(
     r"""
     \$\{(?P<braced>[A-Za-z_][A-Za-z0-9_]*)(?::-(?P<default>[^}]*))?\}

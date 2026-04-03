@@ -35,7 +35,6 @@ from aicp.interfaces.workflow_runtime import (
     WorkflowRuntime,
     WorkflowState,
     WorkflowStatus,
-    utc_now_rfc3339,
 )
 
 if TYPE_CHECKING:
@@ -97,7 +96,7 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         self,
         capability_provider: CapabilityProvider,
         policy_engine: PolicyEngine | None = None,
-        approval_service: "ApprovalService | None" = None,
+        approval_service: ApprovalService | None = None,
     ) -> None:
         self._provider = capability_provider
         self._policy_engine = policy_engine
@@ -450,7 +449,7 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         )
 
         try:
-            ParallelStepExecutor = _get_parallel_executor_class()
+            ParallelStepExecutor = _get_parallel_executor_class()  # noqa: N806
             executor = ParallelStepExecutor(self._provider)
             par_result = await executor.execute(
                 sub_steps,
@@ -536,7 +535,7 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
     def _get_or_create_event_waiter(self, workflow_id: str) -> Any:
         """Return the EventWaiter for this workflow, creating it if needed."""
         if workflow_id not in self._event_waiters:
-            EventWaiter = _get_event_waiter_class()
+            EventWaiter = _get_event_waiter_class()  # noqa: N806
             self._event_waiters[workflow_id] = EventWaiter(workflow_id=workflow_id)
         return self._event_waiters[workflow_id]
 
@@ -554,7 +553,7 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         }
 
         try:
-            LoopStepExecutor = _get_loop_executor_class()
+            LoopStepExecutor = _get_loop_executor_class()  # noqa: N806
             executor = LoopStepExecutor(self._provider)
             loop_result = await executor.execute(step_dict, context=workflow.context)
         except Exception as exc:
@@ -600,7 +599,7 @@ class DefaultWorkflowRuntime(WorkflowRuntime):
         }
 
         try:
-            SubflowExecutor = _get_subflow_executor_class()
+            SubflowExecutor = _get_subflow_executor_class()  # noqa: N806
             executor = SubflowExecutor(self)
             subflow_result = await executor.execute(step_dict, context=workflow.context)
         except Exception as exc:

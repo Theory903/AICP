@@ -12,12 +12,12 @@ try:
         load_overlay,
         merge_overlay,
     )
-except ImportError as exc:  # pragma: no cover
+except ImportError:  # pragma: no cover
     def _missing_adapter(*args, **kwargs):
         raise RuntimeError(
             "FastAPI overlay helpers are not available. "
             "Install the FastAPI adapter package to use these helpers."
-        ) from exc
+        )
 
     find_overlay_file = _missing_adapter
     load_overlay = _missing_adapter

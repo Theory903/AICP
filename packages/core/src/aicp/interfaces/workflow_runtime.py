@@ -222,7 +222,7 @@ class StepResult(BaseModel):
         next: dict[str, Any] | None = None,
         step_id: str | None = None,
         workflow_status: WorkflowStatus | None = None,
-    ) -> "StepResult":
+    ) -> StepResult:
         """Build a successful step result."""
         return cls(
             success=True,
@@ -242,7 +242,7 @@ class StepResult(BaseModel):
         requires_approval: bool = False,
         step_id: str | None = None,
         workflow_status: WorkflowStatus | None = None,
-    ) -> "StepResult":
+    ) -> StepResult:
         """Build a failed or blocked step result."""
         return cls(
             success=False,

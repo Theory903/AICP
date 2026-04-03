@@ -23,7 +23,7 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable
 from enum import Enum
-from typing import Any, get_args, get_origin, get_type_hints
+from typing import Any, Literal, get_args, get_origin, get_type_hints
 
 from aicp.capability import Capability, CapabilityKind, InputSchema, OutputSchema
 
@@ -56,7 +56,7 @@ def _is_optional_type(py_type: Any) -> tuple[bool, Any]:
     if origin is None:
         return False, py_type
 
-    if origin in (getattr(__import__("typing"), "Union"),):
+    if origin in (__import__("typing").Union,):
         non_none = [arg for arg in args if arg is not type(None)]
         if len(non_none) == 1 and len(non_none) != len(args):
             return True, non_none[0]

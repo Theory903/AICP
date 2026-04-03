@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import fnmatch
-import json
-import re
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from aicp_cli.tool.spec import ToolSpec
 
 
 class AicpTool(ABC):
@@ -150,7 +151,7 @@ class AicpTool(ABC):
             f"Tool: {exp['name']}",
             f"Category: {exp['category']}",
             f"Description: {exp['description']}",
-            f"",
+            "",
             f"Kind: {exp['kind']}",
             f"Side Effect: {exp['side_effect']}",
             f"Risk: {exp['risk']}",

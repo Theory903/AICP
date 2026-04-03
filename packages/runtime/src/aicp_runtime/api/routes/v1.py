@@ -10,7 +10,7 @@ from aicp.interfaces.workflow_runtime import StepResult
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field, field_validator
 
-from aicp_runtime.ai.intent_router import IntentRouter, RoutingDestination
+from aicp_runtime.ai.intent_router import IntentRouter
 from aicp_runtime.ai.judge import AICJudge, JudgeError
 from aicp_runtime.ai.planner import AICPlanner, PlannerError, PlannerOutput, PlanStep
 from aicp_runtime.auth.models import SessionAuthRecipe, SessionState

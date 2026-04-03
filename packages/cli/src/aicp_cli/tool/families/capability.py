@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from aicp_cli.tool import AicpTool, ToolSpec, ToolKind, SideEffectClass, RiskLevel
+from aicp_cli.tool import AicpTool, ToolSpec
 
 
 class ListCapabilitiesTool(AicpTool):

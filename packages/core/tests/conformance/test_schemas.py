@@ -1106,19 +1106,23 @@ class TestComplianceLevel4:
         assert AICJudge is not None
 
     def test_intent_router_importable(self):
-        from aicp_runtime.ai.intent_router import IntentRouter, RouteDecision, RoutingDestination  # noqa: F401
+        from aicp_runtime.ai.intent_router import (  # noqa: F401
+            IntentRouter,
+            RouteDecision,
+            RoutingDestination,
+        )
         assert IntentRouter is not None
 
     def test_memory_store_importable(self):
-        from aicp_runtime.memory.store import MemoryStore, MemorySnapshot  # noqa: F401
+        from aicp_runtime.memory.store import MemorySnapshot, MemoryStore  # noqa: F401
         assert MemoryStore is not None
 
     def test_ux_protocol_importable(self):
-        from aicp_runtime.protocols.ux import UXProtocol, PromptBlock  # noqa: F401
+        from aicp_runtime.protocols.ux import PromptBlock, UXProtocol  # noqa: F401
         assert UXProtocol is not None
 
     def test_swe_protocol_importable(self):
-        from aicp_runtime.protocols.swe import SWEProtocol, CodeAction  # noqa: F401
+        from aicp_runtime.protocols.swe import CodeAction, SWEProtocol  # noqa: F401
         assert SWEProtocol is not None
 
     # ------------------------------------------------------------------

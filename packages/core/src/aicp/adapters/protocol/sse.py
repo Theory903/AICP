@@ -6,6 +6,7 @@ Provides streaming capability execution via Server-Sent Events.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import Any
@@ -303,14 +304,10 @@ class SSEServerTransport(TransportPlugin):
                 )
                 await response.write(error_event.encode("utf-8"))
             finally:
-                try:
+                with contextlib.suppress(Exception):
                     await response.write(b"data: [DONE]\n\n")
-                except Exception:
-                    pass
-                try:
+                with contextlib.suppress(Exception):
                     await response.write_eof()
-                except Exception:
-                    pass
 
             return response
 
@@ -326,10 +323,7 @@ class SSEServerTransport(TransportPlugin):
     @staticmethod
     def _serialize_event(event: Any, event_name: str | None = None) -> str:
         """Serialize an event into SSE wire format."""
-        if isinstance(event, dict):
-            payload = json.dumps(event)
-        else:
-            payload = str(event)
+        payload = json.dumps(event) if isinstance(event, dict) else str(event)
 
         lines: list[str] = []
         if event_name:

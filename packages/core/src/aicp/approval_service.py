@@ -21,7 +21,6 @@ from typing import Any
 
 from aicp.approval import ApprovalContext, ApprovalRequest, calculate_risk
 
-
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------

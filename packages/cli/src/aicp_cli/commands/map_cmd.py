@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import click
 
@@ -57,7 +56,7 @@ def capabilities(path: str, family: str | None, risk: str | None):
         click.echo(f"   {cap.get('description', '')}")
         click.echo(f"   family={cap.get('family')} kind={cap.get('kind')} side_effect={cap.get('side_effect')}")
         if cap.get("approval_required"):
-            click.echo(f"   ⚠️  requires approval")
+            click.echo("   ⚠️  requires approval")
         click.echo()
 
 
@@ -135,7 +134,7 @@ def risks(path: str):
 
 def _print_scan_summary(result) -> None:
     """Print human-readable scan summary."""
-    click.echo(f"# Map Scan Results")
+    click.echo("# Map Scan Results")
     click.echo()
     click.echo(f"Framework: {result.backend_framework or 'unknown'} (confidence: {result.backend_confidence})")
     click.echo(f"Scan time: {result.scan_time_ms}ms")

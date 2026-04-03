@@ -336,7 +336,7 @@ class RateLimiterRedis:
         try:
             return int(value)
         except (TypeError, ValueError):
-            raise CacheError(f"Rate limiter counter for '{window_key}' is not numeric")
+            raise CacheError(f"Rate limiter counter for '{window_key}' is not numeric") from None
 
     async def get_remaining(self) -> int:
         """Get remaining allowed requests in the current window."""

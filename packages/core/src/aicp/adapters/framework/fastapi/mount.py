@@ -12,12 +12,12 @@ try:
         get_aicp_config,
         mount_aicp,
     )
-except ImportError as exc:  # pragma: no cover
+except ImportError:  # pragma: no cover
     def _missing_adapter(*args, **kwargs):
         raise RuntimeError(
             "FastAPI mount helpers are not available. "
             "Install the FastAPI adapter package to use these helpers."
-        ) from exc
+        )
 
     mount_aicp = _missing_adapter
     get_aicp_config = _missing_adapter

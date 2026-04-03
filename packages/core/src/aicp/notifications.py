@@ -108,13 +108,12 @@ class WebhookChannel(NotificationChannel):
                 ) as response:
                     return 200 <= response.status < 300
 
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    self.url,
-                    json=payload,
-                    headers=headers,
-                ) as response:
-                    return 200 <= response.status < 300
+            async with aiohttp.ClientSession(timeout=timeout) as session, session.post(
+                self.url,
+                json=payload,
+                headers=headers,
+            ) as response:
+                return 200 <= response.status < 300
         except Exception:
             return False
 
@@ -193,12 +192,11 @@ class SlackChannel(NotificationChannel):
                 ) as response:
                     return 200 <= response.status < 300
 
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    self.webhook_url,
-                    json=payload,
-                ) as response:
-                    return 200 <= response.status < 300
+            async with aiohttp.ClientSession(timeout=timeout) as session, session.post(
+                self.webhook_url,
+                json=payload,
+            ) as response:
+                return 200 <= response.status < 300
         except Exception:
             return False
 

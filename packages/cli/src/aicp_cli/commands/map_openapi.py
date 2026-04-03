@@ -17,7 +17,6 @@ import json
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin
 
 from aicp.capability import (
     Capability,

@@ -11,7 +11,14 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from aicp.capability import Capability, CapabilityKind, InputSchema, OutputSchema, ProviderInfo, RenderSpec
+from aicp.capability import (
+    Capability,
+    CapabilityKind,
+    InputSchema,
+    OutputSchema,
+    ProviderInfo,
+    RenderSpec,
+)
 from aicp.interfaces.discovery_source import DiscoverySource
 from aicp.interfaces.executor import ExecutionResult, ExecutionStatus, Executor
 from aicp.plugins import PluginMetadata, TransportPlugin, register_transport
@@ -692,7 +699,7 @@ class GraphQLSchemaGenerator:
             return ""
 
         arg_parts: list[str] = []
-        for name in input_fields.keys():
+        for name in input_fields:
             safe_name = str(name).replace("-", "_")
             arg_parts.append(f"{safe_name}: JSONString")
 
@@ -711,7 +718,7 @@ def graphql_operation_for_field(
 
     variable_defs: list[str] = []
     field_args: list[str] = []
-    for key in arguments.keys():
+    for key in arguments:
         safe_key = _sanitize_graphql_identifier(str(key))
         variable_defs.append(f"${safe_key}: JSONString")
         field_args.append(f"{safe_key}: ${safe_key}")

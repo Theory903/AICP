@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from urllib.parse import quote, urlencode
+from urllib.parse import quote
 
 try:
     import aiohttp
@@ -19,7 +19,6 @@ except ImportError:  # pragma: no cover
 
 from aicp.capability import Capability
 from aicp.interfaces.capability_provider import CapabilityNotFoundError, CapabilityProvider
-
 
 _PATH_PARAM_RE = re.compile(r"\{([^}]+)\}")
 
@@ -106,7 +105,7 @@ class HttpExecutionAdapter(CapabilityProvider):
             await self._session.close()
         self._session = None
 
-    async def _get_session(self, timeout: "aiohttp.ClientTimeout") -> "aiohttp.ClientSession":
+    async def _get_session(self, timeout: aiohttp.ClientTimeout) -> aiohttp.ClientSession:
         """Get or create a shared aiohttp session."""
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(timeout=timeout)
@@ -192,7 +191,7 @@ class HttpExecutionAdapter(CapabilityProvider):
 
         return params
 
-    async def _parse_response(self, response: "aiohttp.ClientResponse") -> Any:
+    async def _parse_response(self, response: aiohttp.ClientResponse) -> Any:
         """Parse an HTTP response safely."""
         content_type = response.headers.get("Content-Type", "").lower()
 

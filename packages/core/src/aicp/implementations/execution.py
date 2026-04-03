@@ -736,10 +736,7 @@ class HttpCapabilityHandler:
                 ) from exc
         elif "content" in value:
             inline_content = value["content"]
-            if isinstance(inline_content, bytes):
-                content = inline_content
-            else:
-                content = str(inline_content).encode("utf-8")
+            content = inline_content if isinstance(inline_content, bytes) else str(inline_content).encode("utf-8")
         else:
             raise ExecutionError(
                 f"File descriptor for '{field_name}' must include 'path', "

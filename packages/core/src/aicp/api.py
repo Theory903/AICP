@@ -252,9 +252,8 @@ class HealthCheckRouter:
             if check.category in {"liveness", "readiness"}:
                 if status == "down" or result.get("alive") is False or result.get("ready") is False:
                     has_core_failure = True
-            elif check.category == "dependency":
-                if status == "down" or "error" in result:
-                    has_dependency_failure = True
+            elif check.category == "dependency" and (status == "down" or "error" in result):
+                has_dependency_failure = True
 
         if has_core_failure:
             overall: HealthState = "unhealthy"

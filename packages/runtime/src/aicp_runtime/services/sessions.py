@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import uuid
 from copy import deepcopy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -14,6 +14,9 @@ from aicp.interfaces.workflow_runtime import utc_now_rfc3339
 from aicp_runtime.auth.models import SessionAuthRecipe, SessionState
 from aicp_runtime.persistence.base import RuntimeStore
 from aicp_runtime.services.audit import AuditService
+
+if TYPE_CHECKING:
+    from aicp_runtime.memory.store import MemorySnapshot
 
 
 class SessionService:

@@ -12,8 +12,7 @@ from aicp_cli.map.entity_mapper import EntityMapper, ExtractedEntity
 from aicp_cli.map.service_mapper import ServiceMapper, ExtractedService
 from aicp_cli.map.capability_inferrer import CapabilityInferrer, CapabilityCandidate
 from aicp_cli.map.frontend_extractor import FrontendExtractor
-from aicp_cli.map.linker import CrossLayerLinker, LinkResult
-from aicp_cli.map.graph import CodebaseGraph
+from aicp_cli.map.linker import CrossLayerLinker
 
 
 @dataclass

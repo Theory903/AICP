@@ -220,7 +220,7 @@ class TestMaxIterations:
                 "loop_condition": {"items_variable": "items"},
             },
         }
-        result = await executor.execute(step, context={"items": big_list})
+        await executor.execute(step, context={"items": big_list})
 
         assert provider.call_count <= executor.default_max_iterations
 

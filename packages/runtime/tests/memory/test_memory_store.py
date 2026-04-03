@@ -11,8 +11,6 @@ from aicp_runtime.memory.store import (
     ProceduralMemory,
     MetaMemory,
     MemoryStore,
-    EpisodicEvent,
-    ProceduralPattern,
     MemorySnapshot,
 )
 

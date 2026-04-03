@@ -12,12 +12,12 @@ try:
         infer_capability_name,
         inspect_routes,
     )
-except ImportError as exc:  # pragma: no cover
+except ImportError:  # pragma: no cover
     def _missing_adapter(*args, **kwargs):
         raise RuntimeError(
             "FastAPI inspect helpers are not available. "
             "Install the FastAPI adapter package to use these helpers."
-        ) from exc
+        )
 
     inspect_routes = _missing_adapter
     infer_capability_name = _missing_adapter

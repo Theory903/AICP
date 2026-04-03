@@ -7,15 +7,13 @@ and per-tenant request context.
 from __future__ import annotations
 
 import hashlib
-import hmac
 import secrets
 import time
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
-
-_current_tenant_context: ContextVar["TenantContext | None"] = ContextVar(
+_current_tenant_context: ContextVar[TenantContext | None] = ContextVar(
     "aicp_current_tenant_context",
     default=None,
 )
@@ -81,12 +79,12 @@ class TenantContext:
         return self._start_time
 
     @classmethod
-    def get_current(cls) -> "TenantContext | None":
+    def get_current(cls) -> TenantContext | None:
         """Get current tenant context."""
         return _current_tenant_context.get()
 
     @classmethod
-    def set_current(cls, context: "TenantContext | None") -> None:
+    def set_current(cls, context: TenantContext | None) -> None:
         """Set current tenant context."""
         _current_tenant_context.set(context)
 
@@ -95,7 +93,7 @@ class TenantContext:
         """Clear current tenant context."""
         _current_tenant_context.set(None)
 
-    def __enter__(self) -> "TenantContext":
+    def __enter__(self) -> TenantContext:
         self._token = _current_tenant_context.set(self)
         return self
 

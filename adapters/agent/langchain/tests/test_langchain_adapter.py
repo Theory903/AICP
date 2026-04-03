@@ -25,10 +25,8 @@ AdapterConfigError(Exception)
 
 from __future__ import annotations
 
-import asyncio
 import json
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -237,7 +235,7 @@ class TestToolExecution:
         tools = await adapter.build_tools()
         tool = tools[0]
         # run() is synchronous in LangChain
-        result = tool.run({"item": "wrap"})
+        tool.run({"item": "wrap"})
         assert len(provider.execute_calls) == 1
 
     @pytest.mark.asyncio

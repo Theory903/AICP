@@ -267,7 +267,7 @@ class Tracer:
         name: str,
         trace_id: str | None = None,
         parent_id: str | None = None,
-    ) -> "Span":
+    ) -> Span:
         """Start a new span."""
         return Span(
             name=name,
@@ -361,7 +361,7 @@ class Span:
 
         return span_data
 
-    def __enter__(self) -> "Span":
+    def __enter__(self) -> Span:
         self._trace_token = trace_id_var.set(self.trace_id)
         self._span_token = span_id_var.set(self.span_id)
         return self

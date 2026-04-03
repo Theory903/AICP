@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from aicp_cli.tool import AicpTool, ToolSpec
+from aicp_cli.tool import AicpTool
 
 
 class ListSessionsTool(AicpTool):

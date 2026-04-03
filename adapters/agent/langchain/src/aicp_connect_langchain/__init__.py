@@ -33,10 +33,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Optional, Type
+from typing import Any
 
 from langchain.tools import BaseTool
-from pydantic import BaseModel
 
 from aicp.capability import Capability
 from aicp.interfaces.capability_provider import CapabilityProvider

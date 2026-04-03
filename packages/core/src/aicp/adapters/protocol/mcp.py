@@ -8,7 +8,7 @@ from __future__ import annotations
 
 try:
     from aicp_connect_mcp import McpAdapter
-except ImportError as exc:  # pragma: no cover
+except ImportError:  # pragma: no cover
     class McpAdapter:  # type: ignore[no-redef]
         """Fallback shim when the MCP adapter package is not installed."""
 
@@ -16,7 +16,7 @@ except ImportError as exc:  # pragma: no cover
             raise RuntimeError(
                 "MCP adapter support is not available. "
                 "Install the MCP adapter package to use McpAdapter."
-            ) from exc
+            )
 
 
 __all__ = ["McpAdapter"]

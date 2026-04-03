@@ -522,11 +522,11 @@ class CurlImporter:
         """Infer schema from -F / --form fields."""
         properties: dict[str, Any] = {}
 
-        for field in fields:
-            if "=" not in field:
+        for field_def in fields:
+            if "=" not in field_def:
                 continue
 
-            key, value = field.split("=", 1)
+            key, value = field_def.split("=", 1)
             key = key.strip()
             value = value.strip()
 

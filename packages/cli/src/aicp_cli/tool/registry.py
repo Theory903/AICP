@@ -5,7 +5,11 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from aicp_cli.tool.base import AicpTool
+    from aicp_cli.tool.spec import ToolSpec
 
 
 @dataclass
@@ -119,7 +123,6 @@ def register_tool(spec: "ToolSpec", category: str | None = None):
     """Decorator to register a tool class."""
     def decorator(tool_class: type["AicpTool"]) -> type["AicpTool"]:
         registry = ToolRegistry()
-        cat = category or spec.category
         registry.register(tool_class, spec)
         return tool_class
     return decorator

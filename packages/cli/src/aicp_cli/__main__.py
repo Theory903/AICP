@@ -40,7 +40,7 @@ def create_parser() -> argparse.ArgumentParser:
     # approvals subcommand with nested subcommands
     approvals_parser = subparsers.add_parser("approvals", help="Manage approvals")
     approvals_subparsers = approvals_parser.add_subparsers(dest="approvals_command")
-    approvals_list = approvals_subparsers.add_parser("list", help="List pending approvals")
+    approvals_subparsers.add_parser("list", help="List pending approvals")
     approvals_decide = approvals_subparsers.add_parser("decide", help="Decide on an approval")
     approvals_decide.add_argument("approval_id", help="Approval request ID")
     approvals_decide.add_argument("--decision", required=True, choices=["approved", "denied"])
