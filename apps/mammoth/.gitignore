@@ -1,0 +1,6 @@
+target/
+.omx/
+.clawd-agents/
+# Mammoth Code local artifacts
+.mammoth/settings.local.json
+.mammoth/sessions/

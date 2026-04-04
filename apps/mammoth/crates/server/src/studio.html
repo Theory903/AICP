@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mammoth Studio</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0d0d0d;
+      color: #e8e8e8;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 12px 20px;
+      border-bottom: 1px solid #222;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #111;
+    }
+    header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.02em; }
+    header .badge {
+      font-size: 11px;
+      background: #1a3a1a;
+      color: #4caf50;
+      border: 1px solid #2a5a2a;
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    #sidebar {
+      width: 220px;
+      border-right: 1px solid #222;
+      padding: 16px 12px;
+      background: #0f0f0f;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    #sidebar .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
+      margin-bottom: 6px;
+      margin-top: 12px;
+    }
+    #sidebar .section-title:first-child { margin-top: 0; }
+    #sidebar a {
+      display: block;
+      padding: 6px 10px;
+      border-radius: 6px;
+      color: #aaa;
+      text-decoration: none;
+      font-size: 13px;
+      transition: background 0.15s;
+    }
+    #sidebar a:hover { background: #1a1a1a; color: #e8e8e8; }
+    #sidebar a.active { background: #1e1e2e; color: #fff; }
+    #chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .message {
+      max-width: 720px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .message.user { background: #1a1a2e; align-self: flex-end; color: #c5c8ff; }
+    .message.assistant { background: #141414; border: 1px solid #222; align-self: flex-start; }
+    .message.system { background: #1a2a1a; border: 1px solid #2a4a2a; color: #888; font-size: 12px; align-self: center; }
+    #input-area {
+      padding: 16px 20px;
+      border-top: 1px solid #222;
+      display: flex;
+      gap: 10px;
+      background: #111;
+    }
+    #message-input {
+      flex: 1;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #e8e8e8;
+      font-size: 14px;
+      padding: 10px 14px;
+      resize: none;
+      outline: none;
+      font-family: inherit;
+      min-height: 42px;
+      max-height: 160px;
+    }
+    #message-input:focus { border-color: #555; }
+    #send-btn {
+      background: #2a2a4a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #c5c8ff;
+      font-size: 13px;
+      padding: 10px 18px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    #send-btn:hover { background: #3a3a6a; }
+    #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #session-id {
+      font-size: 11px;
+      color: #444;
+      padding: 0 20px 8px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Mammoth Studio</h1>
+    <span class="badge">Web Channel</span>
+  </header>
+  <main>
+    <nav id="sidebar">
+      <span class="section-title">Navigation</span>
+      <a href="#" class="active">Chat</a>
+      <a href="/sessions">Sessions API</a>
+      <a href="/health">Health</a>
+      <span class="section-title">Channels</span>
+      <a href="#">Terminal</a>
+      <a href="#">Extension Bridge</a>
+    </nav>
+    <section id="chat-area">
+      <div id="messages">
+        <div class="message system">Mammoth Web channel ready. Start a session to begin.</div>
+      </div>
+      <div id="session-id">No active session</div>
+      <div id="input-area">
+        <textarea
+          id="message-input"
+          placeholder="Send a message…"
+          rows="1"
+          autofocus
+        ></textarea>
+        <button id="send-btn">Send</button>
+      </div>
+    </section>
+  </main>
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const sessionIdEl = document.getElementById('session-id');
+
+    let sessionId = null;
+    let eventSource = null;
+
+    async function createSession() {
+      const res = await fetch('/sessions', { method: 'POST' });
+      const data = await res.json();
+      sessionId = data.session_id;
+      sessionIdEl.textContent = `Session: ${sessionId}`;
+      connectSSE();
+    }
+
+    function connectSSE() {
+      if (eventSource) eventSource.close();
+      eventSource = new EventSource(`/sessions/${sessionId}/events`);
+      eventSource.addEventListener('message', (e) => {
+        const data = JSON.parse(e.data);
+        if (data.message && data.message.role !== 'user') {
+          appendMessage('assistant', data.message.content ?? '');
+        }
+      });
+      eventSource.addEventListener('snapshot', () => {});
+      eventSource.onerror = () => {
+        appendMessage('system', 'Connection lost. Reconnecting…');
+      };
+    }
+
+    function appendMessage(role, content) {
+      const el = document.createElement('div');
+      el.className = `message ${role}`;
+      const text = Array.isArray(content)
+        ? content.filter(b => b.type === 'text').map(b => b.text).join('')
+        : String(content);
+      el.textContent = text;
+      messagesEl.appendChild(el);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text || !sessionId) return;
+      inputEl.value = '';
+      sendBtn.disabled = true;
+      appendMessage('user', text);
+      await fetch(`/sessions/${sessionId}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = `${Math.min(inputEl.scrollHeight, 160)}px`;
+    });
+
+    createSession();
+  </script>
+</body>
+</html>
