@@ -4631,6 +4631,7 @@ mod tests {
     use std::time::Duration;
     use tools::GlobalToolRegistry;
 
+    #[allow(dead_code)]
     fn env_lock() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
         LOCK.get_or_init(|| Mutex::new(()))
