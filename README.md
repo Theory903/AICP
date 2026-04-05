@@ -10,7 +10,7 @@
 [![Version](https://img.shields.io/github/v/tag/Theory903/AICP?label=version&sort=semver)](https://github.com/Theory903/AICP/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-3776AB)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-737%20passing-brightgreen)](https://github.com/Theory903/AICP/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-740%20passing-brightgreen)](https://github.com/Theory903/AICP/actions/workflows/ci.yml)
 [![Compliance](https://img.shields.io/badge/compliance-Level%205-green)](STATUS.md)
 [![Spec](https://img.shields.io/badge/spec-16%20schemas-purple)](spec/schemas/)
 
@@ -85,7 +85,7 @@ cargo run -q -p mammoth-cli --bin mammoth -- --model kimi-k2.5:cloud
 
 From Mammoth, the operator or agent interacts with the governed AICP runtime. AICP remains the enforcement and orchestration layer behind that shell.
 
-AICP's v1.0.0 feature set delivers complete **L5 orchestration**, backed by **737 passing core/runtime/cli tests**.
+AICP's v1.0.0 feature set delivers complete **L5 orchestration**, backed by **740 passing core/runtime/cli tests**.
 
 ### Install
 
@@ -175,7 +175,7 @@ mount_aicp(app)
 | **Persistence** | 3 backends | In-memory, file (JSON/JSONL), SQLite (WAL mode, 7 tables) |
 | **CLI** | 28 commands | `run`, `dev`, `scan`, `preview`, `bootstrap`, `import`, `appr`, `safe`, `ask`, `deny`, `protect`, `limit`, `test` |
 | **Adapters** | 6 working | FastAPI, MCP server, MCP adapter, OpenAPI, cURL/HAR/Postman importers |
-| **Tests** | 648+ passing | Core, runtime, CLI, adapters, conformance (L5) |
+| **Tests** | 740 passing | Core, runtime, CLI, adapters, conformance (L5) |
 | **SDKs** | 1 built | TypeScript Core (built and distributable) |
 | **UI** | Mammoth-first shell + console | Mammoth is the primary shell; `/console` remains a development/debugging supervision surface |
 | **Enterprise Features** | 18 tasks | Permission patterns, SSRF guard, sandbox, audit CLI, plugin registry/signing/marketplace, cost estimation, tracing, telemetry, NL workflow, workflow compiler/simulator, flow builder |

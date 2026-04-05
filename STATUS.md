@@ -8,7 +8,7 @@
 
 AICP is the **control plane** for secure agentic and organizational automation. In the current product framing, Mammoth is the only primary interaction shell for now, while AICP supplies the governed backend: capabilities, workflows, approvals, policy, sessions, audit, discovery, and execution contracts.
 
-The repository docs currently track the v1.0.0 feature set: complete L5 protocol with 16 JSON schemas, 8 runtime services, and 737 passing package tests.
+The repository docs currently track the v1.0.0 feature set: complete L5 protocol with 16 JSON schemas, 8 runtime services, and 740 passing package tests.
 
 Product posture for this status document:
 
@@ -146,9 +146,10 @@ Product posture for this status document:
 
 | Area | Scope | Status |
 |------|-------|--------|
-| Core | Capability, approval, schemas, adapters, benchmarks | 163 passing |
-| Runtime | Services, server, persistence, workflow orchestration | 506 passing |
-| CLI | Commands, execute, dev, scan, import, registry | 29 passing |
+| Core | Capability, approval, schemas, adapters, benchmarks | 190 passing |
+| Runtime | Services, server, persistence, workflow orchestration | 512 passing |
+| CLI | Commands, execute, dev, scan, import, registry | 31 passing |
+| Adapters | FastAPI, MCP, LangChain, LangGraph, agent adapters | 65 passing |
 
 ### UI
 
@@ -291,7 +292,7 @@ New schemas added:
 - `learning.schema.json` - Skills, mined patterns, drift detection, autonomy calibration
 - `domains.schema.json` - Domain packs, benchmarks, benchmark suites
 
-Total tests: 737 (was 692)
+Total tests: 740 (was 737)
 Total schemas: 16 (was 11)
 
 ### Phase 3 Complete — LangChain/LangGraph Adapters (2026-04-03)
