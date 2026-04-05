@@ -1,32 +1,33 @@
 use std::ffi::OsString;
 use std::sync::{Mutex, OnceLock};
 
-use api::{read_xai_base_url, ApiError, AuthSource, ProviderClient, ProviderKind};
+use api::{ApiError, AuthSource, ProviderClient, ProviderKind};
 
 #[test]
-fn provider_client_routes_grok_aliases_through_xai() {
+fn provider_client_routes_anthropic_aliases_through_anthropic() {
     let _lock = env_lock();
-    let _xai_api_key = EnvVarGuard::set("XAI_API_KEY", Some("xai-test-key"));
+    let _api_key = EnvVarGuard::set("ANTHROPIC_API_KEY", Some("anthropic-test-key"));
 
-    let client = ProviderClient::from_model("grok-mini").expect("grok alias should resolve");
+    let client = ProviderClient::from_model("sonnet").expect("anthropic alias should resolve");
 
-    assert_eq!(client.provider_kind(), ProviderKind::Xai);
+    assert_eq!(client.provider_kind(), ProviderKind::Anthropic);
 }
 
 #[test]
-fn provider_client_reports_missing_xai_credentials_for_grok_models() {
+fn provider_client_reports_missing_anthropic_credentials_for_supported_models() {
     let _lock = env_lock();
-    let _xai_api_key = EnvVarGuard::set("XAI_API_KEY", None);
+    let _api_key = EnvVarGuard::set("ANTHROPIC_API_KEY", None);
+    let _auth_token = EnvVarGuard::set("ANTHROPIC_AUTH_TOKEN", None);
 
-    let error = ProviderClient::from_model("grok-3")
-        .expect_err("grok requests without XAI_API_KEY should fail fast");
+    let error = ProviderClient::from_model("claude-sonnet-4-6")
+        .expect_err("anthropic requests without credentials should fail fast");
 
     match error {
         ApiError::MissingCredentials { provider, env_vars } => {
-            assert_eq!(provider, "xAI");
-            assert_eq!(env_vars, &["XAI_API_KEY"]);
+            assert_eq!(provider, "Mammoth");
+            assert_eq!(env_vars, &["ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"]);
         }
-        other => panic!("expected missing xAI credentials, got {other:?}"),
+        other => panic!("expected missing Anthropic credentials, got {other:?}"),
     }
 }
 
@@ -42,15 +43,7 @@ fn provider_client_uses_explicit_auth_without_env_lookup() {
     )
     .expect("explicit auth should avoid env lookup");
 
-    assert_eq!(client.provider_kind(), ProviderKind::MammothApi);
-}
-
-#[test]
-fn read_xai_base_url_prefers_env_override() {
-    let _lock = env_lock();
-    let _xai_base_url = EnvVarGuard::set("XAI_BASE_URL", Some("https://example.xai.test/v1"));
-
-    assert_eq!(read_xai_base_url(), "https://example.xai.test/v1");
+    assert_eq!(client.provider_kind(), ProviderKind::Anthropic);
 }
 
 fn env_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -69,8 +62,8 @@ impl EnvVarGuard {
     fn set(key: &'static str, value: Option<&str>) -> Self {
         let original = std::env::var_os(key);
         match value {
-            Some(value) => std::env::set_var(key, value),
-            None => std::env::remove_var(key),
+            Some(value) => unsafe { std::env::set_var(key, value) },
+            None => unsafe { std::env::remove_var(key) },
         }
         Self { key, original }
     }
@@ -79,8 +72,8 @@ impl EnvVarGuard {
 impl Drop for EnvVarGuard {
     fn drop(&mut self) {
         match &self.original {
-            Some(value) => std::env::set_var(self.key, value),
-            None => std::env::remove_var(self.key),
+            Some(value) => unsafe { std::env::set_var(self.key, value) },
+            None => unsafe { std::env::remove_var(self.key) },
         }
     }
 }

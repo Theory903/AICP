@@ -1,0 +1,14 @@
+{
+  "agentId": "agent-1775329477215740000",
+  "name": "verify-the-branch",
+  "description": "Verify the branch",
+  "subagentType": "Explore",
+  "model": "claude-opus-4-6",
+  "status": "failed",
+  "outputFile": "/Users/abhishekjha/CODE/AICP/apps/mammoth/.mammoth-agents/agent-1775329477215740000.md",
+  "manifestFile": "/Users/abhishekjha/CODE/AICP/apps/mammoth/.mammoth-agents/agent-1775329477215740000.json",
+  "createdAt": "1775329477",
+  "startedAt": "1775329477",
+  "completedAt": "1775329477",
+  "error": "missing Mammoth credentials; export ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY before calling the Mammoth API"
+}

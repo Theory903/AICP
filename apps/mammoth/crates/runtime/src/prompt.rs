@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::config::{ConfigError, ConfigLoader, RuntimeConfig};
+use crate::memory::MemoryStore;
+use crate::skills::SkillRegistry;
 use lsp::LspContextEnrichment;
 
 #[derive(Debug)]
@@ -137,6 +139,42 @@ impl SystemPromptBuilder {
             self.append_sections
                 .push(enrichment.render_prompt_section());
         }
+        self
+    }
+
+    #[must_use]
+    pub fn with_skills_context(
+        &mut self,
+        registry: &SkillRegistry,
+        active: &[String],
+    ) -> &mut Self {
+        let manifests = active
+            .iter()
+            .filter_map(|name| registry.get(name))
+            .collect::<Vec<_>>();
+        if manifests.is_empty() {
+            return self;
+        }
+        let mut lines = vec!["# Skills context".to_string()];
+        for manifest in manifests {
+            lines.push(format!(
+                " - {} (v{}): {}",
+                manifest.name, manifest.version, manifest.description
+            ));
+        }
+        let fragments = registry.system_prompt_fragments(active);
+        if !fragments.is_empty() {
+            lines.push(String::new());
+            lines.push(fragments);
+        }
+        self.append_sections.push(lines.join("\n"));
+        self
+    }
+
+    #[must_use]
+    pub fn with_memory_context(&mut self, store: &MemoryStore, max_episodes: usize) -> &mut Self {
+        self.append_sections
+            .push(store.summarize_for_prompt(max_episodes));
         self
     }
 
@@ -507,6 +545,9 @@ mod tests {
         ContextFile, ProjectContext, SystemPromptBuilder, SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
     };
     use crate::config::ConfigLoader;
+    use crate::memory::MemoryStore;
+    use crate::skills::{SkillManifest, SkillRegistry};
+    use std::collections::HashMap;
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -788,5 +829,37 @@ mod tests {
         assert!(rendered.contains("# Mammoth instructions"));
         assert!(rendered.contains("scope: /tmp/project"));
         assert!(rendered.contains("Project rules"));
+    }
+
+    #[test]
+    fn appends_skills_and_memory_context() {
+        let mut registry = SkillRegistry::new();
+        registry.insert_for_tests(SkillManifest {
+            name: "review".to_string(),
+            version: "1.0.0".to_string(),
+            description: "Review code changes".to_string(),
+            author: Some("tests".to_string()),
+            tags: vec!["quality".to_string()],
+            system_prompt_fragment: Some("Review aggressively".to_string()),
+            tool_names: vec!["grep".to_string()],
+            config: HashMap::new(),
+        });
+
+        let mut memory = MemoryStore::new(8);
+        memory.push_episode(
+            "Investigated prompt builder behavior",
+            vec!["prompt".to_string()],
+        );
+
+        let mut builder = SystemPromptBuilder::new();
+        let _ = builder
+            .with_skills_context(&registry, &["review".to_string()])
+            .with_memory_context(&memory, 4);
+        let rendered = builder.render();
+
+        assert!(rendered.contains("# Skills context"));
+        assert!(rendered.contains("Review code changes"));
+        assert!(rendered.contains("# Memory context"));
+        assert!(rendered.contains("Investigated prompt builder behavior"));
     }
 }

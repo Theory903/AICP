@@ -260,7 +260,15 @@ def get_server_client(server_url: str | None = None) -> RuntimeClient | None:
 
 def require_runtime_context(project_root: str | Path | None = None) -> RuntimeContext:
     """Load runtime context or raise a user-facing CLI error."""
+    from aicp.config import find_config_file
+
     root = Path(project_root or os.getcwd()).resolve()
+
+    if find_config_file(root) is None:
+        raise click.ClickException(
+            f"No AICP project found in {root}. Expected {root / 'aicp.yaml'}. "
+            "Run 'aicp init' or change into a directory that already contains an AICP project."
+        )
 
     try:
         return get_runtime_context(root)

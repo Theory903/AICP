@@ -1,77 +1,40 @@
-/// AICP feature-parity commands for the Mammoth CLI.
-///
-/// These commands delegate to:
-/// - The AICP runtime HTTP API (for live-runtime queries: caps, run, appr, logs)
-/// - The `aicp` Python CLI (for workspace operations: scan, dev, policy, map, test)
-///
-/// The AICP server URL is resolved from:
-///   1. `AICP_URL` environment variable
-///   2. Default: `http://localhost:8000`
+use aicp::{AicpClient, ExecutionEnvelope};
+use mammoth_runtime::AicpConfig;
 use std::io::{self, Write};
 use std::process::Command;
 
-/// Default AICP runtime base URL.
-pub const DEFAULT_AICP_URL: &str = "http://localhost:8000";
-
-/// Resolve the AICP runtime URL from environment or default.
-pub fn aicp_url() -> String {
-    std::env::var("AICP_URL").unwrap_or_else(|_| DEFAULT_AICP_URL.to_string())
+fn build_client() -> AicpClient {
+    AicpClient::new(&AicpConfig::default())
 }
 
-// ---------------------------------------------------------------------------
-// HTTP helpers (curl-based, no extra deps)
-// ---------------------------------------------------------------------------
+fn runtime_url() -> String {
+    AicpConfig::default().resolve_url()
+}
 
-/// Run a curl GET and return the body as a String.
-fn curl_get(path: &str) -> Result<String, String> {
-    let url = format!("{}{path}", aicp_url());
-    let out = Command::new("curl")
-        .args(["-sf", "--max-time", "10", &url])
-        .output()
-        .map_err(|e| format!("curl not found: {e}"))?;
-    if !out.status.success() {
-        return Err(format!(
-            "GET {url} failed ({}): {}",
-            out.status,
-            String::from_utf8_lossy(&out.stderr)
-        ));
+fn build_runtime() -> Result<tokio::runtime::Runtime, String> {
+    tokio::runtime::Runtime::new().map_err(|error| error.to_string())
+}
+
+fn render_json(value: &serde_json::Value) -> String {
+    serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string())
+}
+
+fn print_execution(envelope: &ExecutionEnvelope) {
+    let status = envelope.status.as_deref().unwrap_or("unknown");
+    let exec_id = envelope.execution_id.as_deref().unwrap_or("-");
+    println!("Execution  {exec_id}");
+    println!("Status     {status}");
+    if let Some(data) = &envelope.data {
+        println!("Data       {}", render_json(data));
     }
-    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
-}
-
-/// Run a curl POST with a JSON body and return the response body.
-fn curl_post(path: &str, body: &str) -> Result<String, String> {
-    let url = format!("{}{path}", aicp_url());
-    let out = Command::new("curl")
-        .args([
-            "-sf",
-            "--max-time",
-            "30",
-            "-X",
-            "POST",
-            "-H",
-            "Content-Type: application/json",
-            "-d",
-            body,
-            &url,
-        ])
-        .output()
-        .map_err(|e| format!("curl not found: {e}"))?;
-    if !out.status.success() {
-        return Err(format!(
-            "POST {url} failed ({}): {}",
-            out.status,
-            String::from_utf8_lossy(&out.stderr)
-        ));
+    if let Some(rendered) = &envelope.rendered {
+        println!("Rendered   {rendered}");
     }
-    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    if let Some(error) = &envelope.error {
+        println!("Error      {error}");
+    }
 }
 
-// ---------------------------------------------------------------------------
-// aicp delegation helper
-// ---------------------------------------------------------------------------
-
-/// Delegate to the `aicp` Python CLI. Streams stdout/stderr directly.
 fn delegate_aicp(args: &[&str]) -> Result<(), String> {
     let status = Command::new("aicp")
         .args(args)
@@ -83,144 +46,102 @@ fn delegate_aicp(args: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// caps / ls — list registered capabilities
-// ---------------------------------------------------------------------------
-
-/// `mammoth caps [--json]` — list capabilities registered on the AICP runtime.
 pub fn run_caps(json: bool) -> Result<(), String> {
-    let body = curl_get("/discover")?;
+    let rt = build_runtime()?;
+    let client = build_client();
+    let caps = rt
+        .block_on(client.list_capabilities())
+        .map_err(|e| e.to_string())?;
+
     if json {
-        println!("{body}");
+        let body = serde_json::Value::Array(caps.clone());
+        println!("{}", render_json(&body));
         return Ok(());
     }
-    // Pretty-print the capabilities array.
-    match serde_json::from_str::<serde_json::Value>(&body) {
-        Ok(val) => {
-            let caps = val
-                .get("capabilities")
-                .or_else(|| val.as_array().map(|_| &val))
-                .and_then(|v| v.as_array())
-                .cloned()
-                .unwrap_or_default();
-            if caps.is_empty() {
-                println!(
-                    "No capabilities registered (is the AICP runtime running at {}?)",
-                    aicp_url()
-                );
-                return Ok(());
-            }
-            println!("Capabilities ({} total)  [{}]", caps.len(), aicp_url());
-            println!("{:<40} {:<10} Description", "Name", "Kind");
-            println!("{}", "-".repeat(80));
-            for cap in &caps {
-                let name = cap.get("name").and_then(|v| v.as_str()).unwrap_or("-");
-                let kind = cap.get("kind").and_then(|v| v.as_str()).unwrap_or("-");
-                let desc = cap
-                    .get("description")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("-");
-                println!("{name:<40} {kind:<10} {desc}");
-            }
-        }
-        Err(_) => {
-            // Fallback: dump raw body
-            println!("{body}");
-        }
+
+    if caps.is_empty() {
+        println!(
+            "No capabilities registered (is the AICP runtime running at {}?)",
+            runtime_url()
+        );
+        return Ok(());
     }
+
+    println!("Capabilities ({} total)  [{}]", caps.len(), runtime_url());
+    println!("{:<40} {:<10} Description", "Name", "Kind");
+    println!("{}", "-".repeat(80));
+    for cap in &caps {
+        let name = cap.get("name").and_then(|v| v.as_str()).unwrap_or("-");
+        let kind = cap.get("kind").and_then(|v| v.as_str()).unwrap_or("-");
+        let desc = cap
+            .get("description")
+            .and_then(|v| v.as_str())
+            .unwrap_or("-");
+        println!("{name:<40} {kind:<10} {desc}");
+    }
+
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// run — execute a capability
-// ---------------------------------------------------------------------------
-
-/// `mammoth run <capability_name> [--input '{"key":"value"}'] [--json]`
-///
-/// Executes the named capability via POST /execute/<name>.
 pub fn run_capability(
     capability: &str,
     input_json: Option<&str>,
     json: bool,
 ) -> Result<(), String> {
+    let rt = build_runtime()?;
+    let client = build_client();
     let body = input_json.unwrap_or("{}");
-    let path = format!("/execute/{capability}");
-    let response = curl_post(&path, body)?;
+    let response = rt
+        .block_on(client.execute(capability, body))
+        .map_err(|e| e.to_string())?;
+
     if json {
-        println!("{response}");
+        let value = serde_json::to_value(&response).map_err(|e| e.to_string())?;
+        println!("{}", render_json(&value));
         return Ok(());
     }
-    match serde_json::from_str::<serde_json::Value>(&response) {
-        Ok(val) => {
-            let status = val
-                .get("status")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown");
-            let exec_id = val
-                .get("execution_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("-");
-            let rendered = val.get("rendered").and_then(|v| v.as_str());
-            println!("Execution  {exec_id}");
-            println!("Status     {status}");
-            if let Some(data) = val.get("data") {
-                println!(
-                    "Data       {}",
-                    serde_json::to_string_pretty(data).unwrap_or_default()
-                );
-            }
-            if let Some(r) = rendered {
-                println!("Rendered   {r}");
-            }
-            if let Some(err) = val.get("error").and_then(|v| v.as_str()) {
-                println!("Error      {err}");
-            }
-        }
-        Err(_) => println!("{response}"),
-    }
+
+    print_execution(&response);
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// appr — approval management
-// ---------------------------------------------------------------------------
-
-/// `mammoth appr ls [--json]` — list pending approvals.
 pub fn run_appr_ls(json: bool) -> Result<(), String> {
-    let body = curl_get("/approvals")?;
+    let rt = build_runtime()?;
+    let client = build_client();
+    let items = rt
+        .block_on(client.list_approvals())
+        .map_err(|e| e.to_string())?;
+
     if json {
-        println!("{body}");
+        let body = serde_json::Value::Array(items.clone());
+        println!("{}", render_json(&body));
         return Ok(());
     }
-    match serde_json::from_str::<serde_json::Value>(&body) {
-        Ok(val) => {
-            let items = val.as_array().cloned().unwrap_or_default();
-            if items.is_empty() {
-                println!("No pending approvals.");
-                return Ok(());
-            }
-            println!("Pending approvals ({})", items.len());
-            println!("{:<36} {:<30} Status", "ID", "Capability");
-            println!("{}", "-".repeat(80));
-            for item in &items {
-                let id = item
-                    .get("approval_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("-");
-                let cap = item
-                    .get("capability_name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("-");
-                let status = item.get("status").and_then(|v| v.as_str()).unwrap_or("-");
-                println!("{id:<36} {cap:<30} {status}");
-            }
-        }
-        Err(_) => println!("{body}"),
+
+    if items.is_empty() {
+        println!("No pending approvals.");
+        return Ok(());
     }
+
+    println!("Pending approvals ({})", items.len());
+    println!("{:<36} {:<30} Status", "ID", "Capability");
+    println!("{}", "-".repeat(80));
+    for item in &items {
+        let id = item
+            .get("approval_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("-");
+        let cap = item
+            .get("capability_name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("-");
+        let status = item.get("status").and_then(|v| v.as_str()).unwrap_or("-");
+        println!("{id:<36} {cap:<30} {status}");
+    }
+
     Ok(())
 }
 
-/// `mammoth appr decide <id> <approve|deny> [--reason TEXT]`
 pub fn run_appr_decide(
     approval_id: &str,
     decision: &str,
@@ -231,77 +152,64 @@ pub fn run_appr_decide(
         "deny" | "reject" | "no" => "deny",
         other => return Err(format!("unknown decision '{other}' — use approve or deny")),
     };
-    let body = serde_json::json!({
-        "decision": effect,
-        "reason": reason.unwrap_or("")
-    })
-    .to_string();
-    let path = format!("/approvals/{approval_id}/decide");
-    let response = curl_post(&path, &body)?;
-    match serde_json::from_str::<serde_json::Value>(&response) {
-        Ok(val) => {
-            let status = val
-                .get("status")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown");
-            println!("Approval {approval_id} → {status}");
-        }
-        Err(_) => println!("{response}"),
-    }
+
+    let rt = build_runtime()?;
+    let client = build_client();
+    let response = rt
+        .block_on(client.decide_approval(approval_id, effect, reason.unwrap_or("")))
+        .map_err(|e| e.to_string())?;
+    let status = response
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+    println!("Approval {approval_id} → {status}");
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// logs — execution history
-// ---------------------------------------------------------------------------
-
-/// `mammoth logs [--limit N] [--json]` — show recent execution history.
 pub fn run_logs(limit: usize, json: bool) -> Result<(), String> {
-    let body = curl_get("/history")?;
+    let rt = build_runtime()?;
+    let client = build_client();
+    let limit = u32::try_from(limit).unwrap_or(u32::MAX);
+    let items = rt
+        .block_on(client.list_history(Some(limit)))
+        .map_err(|e| e.to_string())?;
+
     if json {
-        println!("{body}");
+        let body = serde_json::Value::Array(items.clone());
+        println!("{}", render_json(&body));
         return Ok(());
     }
-    match serde_json::from_str::<serde_json::Value>(&body) {
-        Ok(val) => {
-            let mut items = val.as_array().cloned().unwrap_or_default();
-            items.truncate(limit);
-            if items.is_empty() {
-                println!("No executions recorded.");
-                return Ok(());
-            }
-            println!(
-                "{:<36} {:<30} {:<10} Time",
-                "Execution ID", "Capability", "Status"
-            );
-            println!("{}", "-".repeat(90));
-            for item in &items {
-                let id = item
-                    .get("execution_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("-");
-                let cap = item
-                    .get("capability_name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("-");
-                let status = item.get("status").and_then(|v| v.as_str()).unwrap_or("-");
-                let ts = item
-                    .get("timestamp")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("-");
-                println!("{id:<36} {cap:<30} {status:<10} {ts}");
-            }
-        }
-        Err(_) => println!("{body}"),
+
+    if items.is_empty() {
+        println!("No executions recorded.");
+        return Ok(());
     }
+
+    println!(
+        "{:<36} {:<30} {:<10} Time",
+        "Execution ID", "Capability", "Status"
+    );
+    println!("{}", "-".repeat(90));
+    for item in &items {
+        let id = item
+            .get("execution_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("-");
+        let cap = item
+            .get("capability_name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("-");
+        let status = item.get("status").and_then(|v| v.as_str()).unwrap_or("-");
+        let ts = item
+            .get("timestamp")
+            .and_then(|v| v.as_str())
+            .unwrap_or("-");
+        println!("{id:<36} {cap:<30} {status:<10} {ts}");
+    }
+
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// scan — delegate to `aicp scan`
-// ---------------------------------------------------------------------------
-
-/// `mammoth scan [PATH] [--framework FRAMEWORK]`
 pub fn run_scan(path: Option<&str>, framework: Option<&str>) -> Result<(), String> {
     let mut args: Vec<&str> = vec!["scan"];
     if let Some(p) = path {
@@ -313,11 +221,6 @@ pub fn run_scan(path: Option<&str>, framework: Option<&str>) -> Result<(), Strin
     delegate_aicp(&args)
 }
 
-// ---------------------------------------------------------------------------
-// dev — delegate to `aicp dev`
-// ---------------------------------------------------------------------------
-
-/// `mammoth dev [PATH] [--port PORT]`
 pub fn run_dev(path: Option<&str>, port: Option<&str>) -> Result<(), String> {
     let mut args: Vec<&str> = vec!["dev"];
     if let Some(p) = path {
@@ -329,11 +232,6 @@ pub fn run_dev(path: Option<&str>, port: Option<&str>) -> Result<(), String> {
     delegate_aicp(&args)
 }
 
-// ---------------------------------------------------------------------------
-// policy — delegate to `aicp policy <subcommand>`
-// ---------------------------------------------------------------------------
-
-/// `mammoth policy <safe|ask|deny|approve|protect|limit> [CAPABILITY] [ARGS...]`
 pub fn run_policy(subcmd: &str, rest: &[String]) -> Result<(), String> {
     let mut args: Vec<&str> = vec!["policy", subcmd];
     for r in rest {
@@ -342,11 +240,6 @@ pub fn run_policy(subcmd: &str, rest: &[String]) -> Result<(), String> {
     delegate_aicp(&args)
 }
 
-// ---------------------------------------------------------------------------
-// map — delegate to `aicp map <format>`
-// ---------------------------------------------------------------------------
-
-/// `mammoth map <openapi|curl|har|postman> [FILE]`
 pub fn run_map(format: &str, file: Option<&str>) -> Result<(), String> {
     let mut args = vec!["map", format];
     if let Some(f) = file {
@@ -355,11 +248,6 @@ pub fn run_map(format: &str, file: Option<&str>) -> Result<(), String> {
     delegate_aicp(&args)
 }
 
-// ---------------------------------------------------------------------------
-// test — delegate to `aicp test`
-// ---------------------------------------------------------------------------
-
-/// `mammoth test [CAPABILITY] [--verbose]`
 pub fn run_test(capability: Option<&str>, verbose: bool) -> Result<(), String> {
     let mut args: Vec<&str> = vec!["test"];
     if let Some(c) = capability {
@@ -371,27 +259,22 @@ pub fn run_test(capability: Option<&str>, verbose: bool) -> Result<(), String> {
     delegate_aicp(&args)
 }
 
-// ---------------------------------------------------------------------------
-// status — quick health check
-// ---------------------------------------------------------------------------
-
-/// `mammoth status` — show AICP runtime health.
 pub fn run_status_check() -> Result<(), String> {
-    let url = format!("{}/providers/health", aicp_url());
-    let out = Command::new("curl")
-        .args(["-sf", "--max-time", "5", &url])
-        .output()
-        .map_err(|e| format!("curl not found: {e}"))?;
-    if out.status.success() {
-        let body = String::from_utf8_lossy(&out.stdout);
-        let stdout = io::stdout();
-        let mut lock = stdout.lock();
-        writeln!(lock, "AICP runtime is reachable at {}", aicp_url()).ok();
-        writeln!(lock, "{body}").ok();
-    } else {
-        let stderr = String::from_utf8_lossy(&out.stderr);
-        eprintln!("AICP runtime not reachable at {} — {stderr}", aicp_url());
-        eprintln!("Start it with: aicp dev  OR  aicp serve");
+    let rt = build_runtime()?;
+    let client = build_client();
+    let stdout = io::stdout();
+    let mut lock = stdout.lock();
+
+    match rt.block_on(client.health_check()) {
+        Ok(body) => {
+            writeln!(lock, "AICP runtime reachable at {}", runtime_url()).ok();
+            writeln!(lock, "{}", render_json(&body)).ok();
+        }
+        Err(error) => {
+            eprintln!("AICP runtime not reachable at {} — {error}", runtime_url());
+            eprintln!("Start it with: aicp dev  OR  aicp serve");
+        }
     }
+
     Ok(())
 }

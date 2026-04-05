@@ -1,115 +1,74 @@
-# API Reference
+# Reference
 
-> Complete API reference for AICP — Python SDK, JSON schemas, and CLI commands.
-
----
-
-## Python SDK
-
-### Core Models
-
-| Class | Description |
-|-------|-------------|
-| `Capability` | Main capability model with typed I/O, side effects, risk metadata |
-| `CapabilityKind` | Enum: `query`, `action`, `confirm`, `notify`, `batch` |
-| `Workflow` | Multi-step stateful process with branching and compensation |
-| `Policy` | Access control rules with effects and conditions |
-| `PolicyEffect` | Enum: `allow`, `deny`, `ask`, `require_approval`, `limit` |
-| `ExecutionEnvelope` | Canonical response from every capability execution |
-
-### Registry & Executor
-
-| Class | Description |
-|-------|-------------|
-| `CapabilityRegistry` | Store, validate, discover capabilities |
-| `AicpExecutor` | Execute capabilities with policy enforcement |
-| `PolicyEngine` | Evaluate policies before execution |
-| `WorkflowRuntime` | Execute workflows with state management |
-| `ApprovalService` | Manage approval lifecycle |
-| `AuditService` | Immutable audit trail |
-
-### Adapters
-
-| Class | Description |
-|-------|-------------|
-| `HTTPAdapter` | Execute capabilities over HTTP |
-| `MCPAdapter` | Consume external MCP tools as AICP capabilities |
-| `FastAPIAdapter` | Auto-discover routes from FastAPI apps |
-| `OpenAPIImporter` | Import OpenAPI specs as capabilities |
+> Protocol, API, and shell reference for the Mammoth-first AICP stack.
 
 ---
 
-## JSON Schemas
+## Product Boundary
 
-All protocol objects are defined in `/spec/schemas/`:
+- **Mammoth** is the operator and agent shell.
+- **AICP** is the control plane.
+- **Studio-style supervision** should be treated as embedded Mammoth UX.
 
-| Schema | Description |
-|--------|-------------|
-| `capability.schema.json` | Capability definition |
-| `workflow.schema.json` | Workflow definition |
-| `policy.schema.json` | Policy rules |
-| `execution-result.schema.json` | Execution envelope |
-| `approval-request.schema.json` | Approval request |
-| `approval-decision.schema.json` | Approval decision |
-| `audit-entry.schema.json` | Audit record |
-| `discovery.schema.json` | Discovery manifest |
-| `error.schema.json` | Error definitions |
+This reference section focuses on the contracts and surfaces that connect those layers.
 
 ---
 
-## CLI Commands
+## Protocol Schemas
 
-```bash
-# Bootstrap an application
-aicp bootstrap fastapi src.main:app
+The protocol source of truth lives in `/spec/schemas/`.
 
-# Preview capability
-aicp preview payments.transfer
+| Schema | Purpose |
+|--------|---------|
+| `capability.schema.json` | Capability contract and side-effect metadata |
+| `workflow.schema.json` | Workflow object model |
+| `workflow-dsl.schema.json` | YAML-friendly workflow authoring DSL |
+| `policy.schema.json` | Policy effects and conditions |
+| `execution-result.schema.json` | Canonical execution envelope |
+| `approval-request.schema.json` | Approval packet contract |
+| `approval-decision.schema.json` | Approval resolution contract |
+| `audit-entry.schema.json` | Append-only audit entry |
+| `session.schema.json` | Session identity and resumable state |
+| `discovery.schema.json` | Discovery document for `/.well-known/aicp` |
+| `error.schema.json` | Structured errors and recovery hints |
 
-# Protect a capability
-aicp protect payments.transfer
+Current capability kinds: `query`, `action`, `workflow`, `async_action`, `batch_action`.
 
-# Run runtime
-aicp serve --store-path ./.aicp-runtime
-
-# Execute capability
-aicp execute payments.transfer --args '{"amount": 100}'
-
-# List capabilities
-aicp discover
-
-# List approvals
-aicp approvals list
-
-# Decide approval
-aicp approvals decide apr_123 --decision approve
-```
-
-See [CLI_REFERENCE.md](../guides/CLI_REFERENCE.md) for full command documentation.
+Current policy effects: `allow`, `deny`, `ask`, `limit`.
 
 ---
 
-## Execution Envelope
+## Runtime / API Surface
 
-Every capability execution returns this structure:
+Key runtime surfaces:
 
-```json
-{
-  "execution_id": "exec_...",
-  "capability_name": "...",
-  "status": "success|failure|pending_approval",
-  "data": { ... },
-  "policy_result": { "effect": "allow", "trust_tier": 2 },
-  "allowed_next_actions": [...],
-  "rendered": "...",
-  "execution_time_ms": 234
-}
-```
+| Surface | Purpose |
+|---------|---------|
+| `/v1/execute` | AI-facing governed execution endpoint |
+| `/v1/workflows/*` | Workflow create, execute, resume, publish-event |
+| `/v1/approvals/*` | Approval queue and decisions |
+| `/history` | Audit log and replay-oriented history |
+| `/.well-known/aicp` | Discovery document |
+| `/console` | Transitional debug/supervision surface |
+
+---
+
+## Shell / Operator Surfaces
+
+Mammoth is the primary shell for now.
+
+| Surface | Purpose |
+|---------|---------|
+| `apps/mammoth` | Mammoth Rust TUI/CLI shell |
+| `apps/mammoth/crates/commands` | Slash-command registry and command metadata |
+| `apps/mammoth/crates/tools` | Mammoth tool registry and execution layer |
+| `apps/mammoth/crates/server` | Supporting bridge/server surfaces used by Mammoth |
 
 ---
 
 ## See Also
 
-- [CLI_REFERENCE.md](../guides/CLI_REFERENCE.md) — 28 CLI commands
-- [TECH_SPEC.md](../guides/TECH_SPEC.md) — Protocol technical specification
-- [/spec/schemas/](../../spec/schemas/) — JSON schema source of truth
+- [Overview](../overview/index.md)
+- [Guides](../guides/index.md)
+- [Spec schemas](../../spec/schemas/)
+- [Status](../../STATUS.md)

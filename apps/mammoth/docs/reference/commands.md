@@ -1,6 +1,12 @@
 # Commands Reference
 
-> Complete catalog of all slash commands in Claude Code.
+> Reference study for command-system patterns Mammoth can absorb.
+
+Current Mammoth command surface lives in:
+- `apps/mammoth/crates/commands/src/lib.rs`
+- `apps/mammoth/crates/mammoth-cli/src/main.rs`
+
+Use this file as a study map, not as the canonical Mammoth command contract.
 
 ---
 

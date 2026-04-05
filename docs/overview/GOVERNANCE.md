@@ -141,7 +141,7 @@ When policy evaluation produces `ask` or `require_approval`, the runtime creates
 
 ### Approval Channels (v1.0.0 Target)
 
-| Channel | Latency | v0.1.1 Status |
+| Channel | Latency | v0.1.1 Baseline |
 |---------|---------|---------------|
 | CLI inline prompt | <1s | Implemented |
 | REST API | <1s | Implemented |
@@ -192,7 +192,7 @@ Every significant event produces an immutable audit entry. The audit trail is ap
 
 ## Policy Engine Evolution
 
-| Phase | Engine | Capability | v0.1.1 |
+| Phase | Engine | Capability | v0.1.1 Baseline |
 |-------|--------|-----------|--------|
 | Phase 0-1 | JSON rule matching | Pattern-based allow/deny/ask | Implemented |
 | Phase 2 | Compiled policy engine | Complex conditions, variables, functions | Planned |
@@ -205,7 +205,7 @@ There is no defined migration path from JSON rule policies to WASM policy module
 
 ---
 
-## v0.1.1 Implementation Status
+## Historical v0.1.1 Baseline
 
 | Feature | Status |
 |---------|--------|

@@ -7,8 +7,10 @@ publish.workspace = true
 
 [dependencies]
 api = { path = "../api" }
+lsp = { path = "../lsp" }
+lsp-types = { workspace = true }
 plugins = { path = "../plugins" }
-runtime = { path = "../runtime" }
+mammoth-runtime = { path = "../runtime" }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json.workspace = true

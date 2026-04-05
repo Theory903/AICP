@@ -16,9 +16,10 @@ commands = { path = "../commands" }
 compat-harness = { path = "../compat-harness" }
 crossterm = "0.28"
 pulldown-cmark = "0.13"
+ratatui = "0.29"
 rustyline = "15"
-runtime = { path = "../runtime" }
-server = { path = "../server" }
+mammoth-runtime = { path = "../runtime" }
+server = { package = "mammoth-server", path = "../server" }
 plugins = { path = "../plugins" }
 serde_json.workspace = true
 syntect = "5"

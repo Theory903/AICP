@@ -282,6 +282,61 @@ fn command_exists(command: &str) -> bool {
         .is_some_and(|paths| env::split_paths(&paths).any(|path| path.join(command).exists()))
 }
 
+#[derive(Debug, Clone)]
+pub struct SandboxExecutionResult {
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+pub struct SandboxExecutor {
+    pub status: SandboxStatus,
+    pub cwd: PathBuf,
+}
+
+impl SandboxExecutor {
+    #[must_use]
+    pub fn new(config: &SandboxConfig, cwd: PathBuf) -> Self {
+        let request = config.resolve_request(None, None, None, None, None);
+        let status = resolve_sandbox_status_for_request(&request, &cwd);
+        Self { status, cwd }
+    }
+
+    #[must_use]
+    pub fn execute(&self, command: &str) -> SandboxExecutionResult {
+        #[cfg(unix)]
+        return self.run_process("/bin/sh", &["-c", command], &[]);
+        #[cfg(not(unix))]
+        return self.run_process("cmd", &["/C", command], &[]);
+    }
+
+    #[must_use]
+    pub fn run_process(
+        &self,
+        program: &str,
+        args: &[&str],
+        env_pairs: &[(&str, &str)],
+    ) -> SandboxExecutionResult {
+        let mut cmd = std::process::Command::new(program);
+        cmd.args(args).current_dir(&self.cwd);
+        for (k, v) in env_pairs {
+            cmd.env(k, v);
+        }
+        match cmd.output() {
+            Ok(out) => SandboxExecutionResult {
+                exit_code: out.status.code().unwrap_or(-1),
+                stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+                stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+            },
+            Err(e) => SandboxExecutionResult {
+                exit_code: -1,
+                stdout: String::new(),
+                stderr: e.to_string(),
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{

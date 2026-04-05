@@ -208,7 +208,7 @@ class AicpProjectConfig(BaseModel):
     # Provider metadata
     provider_name: str = "aicp"
     provider_url: str | None = None
-    version: str = "0.1.1"
+    version: str = "0.3.0"
     auth: AuthConfig | None = None
     request_timeout_seconds: float = 30.0
     execution_timeout_seconds: float = 35.0

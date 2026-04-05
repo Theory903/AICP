@@ -6,7 +6,15 @@
 
 ## Overview
 
-AICP uses RFCs (Request for Comments) for protocol changes. This ensures that changes to the 11-plane architecture, 20 modules, and capability families are properly reviewed, documented, and versioned.
+AICP uses RFCs (Request for Comments) for control-plane changes that affect how secure agentic work is defined, governed, executed, or supervised.
+
+The current product framing for RFC review is:
+
+- **AICP** is the control plane
+- **Mammoth** is the primary interaction shell
+- **Studio** is embedded UX inside Mammoth, not a separate primary product
+
+That means RFCs should be evaluated not only for protocol correctness, but also for their impact on security, approvals, auditability, org automation, and Mammoth-first operator interaction.
 
 ---
 
@@ -90,6 +98,16 @@ After RFC approval:
 
 ---
 
+## Draft RFCs
+
+| Number | Title | Status |
+|--------|-------|--------|
+| 2026 | [often_follows Semantics](./2026-often-follows-semantics.md) | Draft |
+| 2026 | [JSON Policy to WASM Migration](./2026-policy-wasm-migration.md) | Draft |
+| 2026 | [Mammoth-First Shell, AICP Control Plane](./2026-mammoth-first-shell.md) | Draft |
+
+---
+
 ## Protocol Invariants
 
 Remember: `/spec` is the authoritative source. If runtime behavior and spec disagree, spec wins. RFCs must maintain backward compatibility within major versions.
@@ -99,5 +117,5 @@ Remember: `/spec` is the authoritative source. If runtime behavior and spec disa
 ## See Also
 
 - [/spec/schemas/](../spec/schemas/) — JSON schema source of truth
-- [/ARCHITECTURE.md](../ARCHITECTURE.md] — 11-plane system architecture
-- [/MODULE_MAP.md](../MODULE_MAP.md] — Feature-to-module mapping
+- [/ARCHITECTURE.md](../ARCHITECTURE.md) — 11-plane system architecture
+- [/MODULE_MAP.md](../MODULE_MAP.md) — Feature-to-module mapping

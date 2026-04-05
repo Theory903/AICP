@@ -30,6 +30,12 @@
       "default": 0,
       "description": "Higher priority policies are evaluated first"
     },
+    "execution_mode": {
+      "$ref": "#/$defs/policyExecutionMode"
+    },
+    "bundle_manifest": {
+      "$ref": "#/$defs/policyBundleManifest"
+    },
     "metadata": {
       "type": "object",
       "description": "Additional metadata for the policy"
@@ -90,6 +96,57 @@
           "description": "Whether this capability can be executed without human intervention"
         }
       }
+    },
+    "policyExecutionMode": {
+      "type": "string",
+      "enum": ["interpretive", "dual_run", "compiled_strict"],
+      "description": "Policy engine execution mode. 'interpretive' evaluates rules at runtime. 'dual_run' evaluates both interpreted and compiled and compares results. 'compiled_strict' uses only the compiled WASM bundle and fails closed if bundle is absent."
+    },
+    "policyBundleManifest": {
+      "type": "object",
+      "description": "Manifest for a compiled WASM policy bundle (RFC 2026-policy-wasm-migration)",
+      "required": ["bundle_id", "engine", "source_policy_names", "wasm_sha256", "generated_at"],
+      "properties": {
+        "bundle_id": {
+          "type": "string",
+          "description": "Unique identifier for this compiled bundle"
+        },
+        "engine": {
+          "type": "string",
+          "enum": ["cedar-wasm", "opa-wasm", "aicp-native"],
+          "description": "WASM policy engine that produced and must evaluate this bundle"
+        },
+        "source_policy_names": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of source policies compiled into this bundle"
+        },
+        "wasm_sha256": {
+          "type": "string",
+          "description": "SHA-256 hex digest of the compiled WASM binary for integrity verification"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 timestamp when this bundle was compiled"
+        },
+        "compatibility": {
+          "type": "object",
+          "description": "Version compatibility constraints for this bundle",
+          "properties": {
+            "schema_version": {
+              "type": "string",
+              "description": "Minimum AICP schema version required"
+            },
+            "runtime_min_version": {
+              "type": "string",
+              "description": "Minimum AICP runtime version required to evaluate this bundle"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

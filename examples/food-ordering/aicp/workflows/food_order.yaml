@@ -1,7 +1,7 @@
 name: food_order
 description: >
   End-to-end food ordering workflow.
-  Steps: list menu → add item to cart → view cart → checkout.
+  Steps: list menu → add item to cart → view cart → checkout → await confirmation.
 
 steps:
   - id: list_menu
@@ -29,3 +29,9 @@ steps:
     arguments:
       delivery_address: "123 Main St"
       payment_method: card
+
+  - id: await_confirmation
+    type: wait_event
+    description: Wait for the restaurant to confirm the order
+    wait_for_event: order.confirmed
+    timeout_ms: 30000

@@ -15,7 +15,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 from .capability import Capability
-from .config import AicpProjectConfig, load_project_config
+from .config import AicpProjectConfig, find_config_file, load_project_config
 from .executor import AicpExecutor
 from .implementations import InMemoryCapabilityRepository
 from .implementations.execution import DefaultMockExecutionHandler, HttpCapabilityHandler
@@ -109,8 +109,8 @@ def load_project(project_root: str | Path | None = None) -> LoadedProject:
     - Duplicate capability names are ignored after the first load.
     """
     root = Path(project_root or os.getcwd()).resolve()
-    config_path = root / "aicp.yaml"
-    config = load_project_config(config_path)
+    config_path = find_config_file(root)
+    config = load_project_config(config_path) if config_path is not None else load_project_config()
 
     repo = InMemoryCapabilityRepository(name=config.provider_name)
     policy_engine = ConfigPolicyEngine(config)

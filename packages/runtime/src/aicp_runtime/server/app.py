@@ -14,10 +14,12 @@ from aicp.interfaces.policy_engine import PolicyEngine
 from fastapi import FastAPI
 
 from aicp_runtime.api.routes.approvals import build_approvals_router
+from aicp_runtime.api.routes.code_intelligence import build_code_intelligence_router
 from aicp_runtime.api.routes.console import build_console_router
 from aicp_runtime.api.routes.discover import build_discovery_router
 from aicp_runtime.api.routes.execute import build_execution_router
 from aicp_runtime.api.routes.history import build_history_router
+from aicp_runtime.api.routes.learning import build_learning_router
 from aicp_runtime.api.routes.providers import build_provider_health_router
 from aicp_runtime.api.routes.v1 import build_v1_router
 from aicp_runtime.api.routes.workflows import build_workflows_router
@@ -27,9 +29,11 @@ from aicp_runtime.persistence.memory import InMemoryRuntimeStore
 from aicp_runtime.persistence.sqlite import SqliteRuntimeStore
 from aicp_runtime.services.approvals import ApprovalService
 from aicp_runtime.services.audit import AuditService
+from aicp_runtime.services.code_intelligence import CodeIntelligenceService
 from aicp_runtime.services.discovery import DiscoveryService
 from aicp_runtime.services.execution import ExecutionService
 from aicp_runtime.services.interactions import InteractionStateService
+from aicp_runtime.services.learning import LearningService
 from aicp_runtime.services.provider_health import ProviderHealthService
 from aicp_runtime.services.sessions import SessionService
 from aicp_runtime.services.workflows import WorkflowService
@@ -47,6 +51,8 @@ class RuntimeServices:
     provider_health_service: ProviderHealthService
     session_service: SessionService
     workflow_service: WorkflowService
+    code_intelligence_service: CodeIntelligenceService
+    learning_service: LearningService
 
 
 def create_app(
@@ -76,7 +82,7 @@ def create_app(
 
     app = FastAPI(
         title="AICP Runtime",
-        version="0.1.1",
+        version="0.3.0",
         description="HTTP runtime for discovery, execution, approvals, workflows, and audit history.",
         lifespan=lifespan,
     )
@@ -159,6 +165,10 @@ def _build_services(
         audit_service,
     )
 
+    from aicp.code_intelligence.models import CodeIntelligenceConfig
+    code_intelligence_service = CodeIntelligenceService(CodeIntelligenceConfig(workspace_root="."))
+    learning_service = LearningService()
+    
     return RuntimeServices(
         audit_service=audit_service,
         approval_service=approval_service,
@@ -168,6 +178,8 @@ def _build_services(
         provider_health_service=provider_health_service,
         session_service=session_service,
         workflow_service=workflow_service,
+        code_intelligence_service=code_intelligence_service,
+        learning_service=learning_service,
     )
 
 
@@ -196,6 +208,8 @@ def _attach_state(
     app.state.provider_health_service = services.provider_health_service
     app.state.session_service = services.session_service
     app.state.workflow_service = services.workflow_service
+    app.state.code_intelligence_service = services.code_intelligence_service
+    app.state.learning_service = services.learning_service
 
 
 def _register_routes(app: FastAPI, services: RuntimeServices) -> None:
@@ -205,6 +219,8 @@ def _register_routes(app: FastAPI, services: RuntimeServices) -> None:
     app.include_router(build_execution_router(services.execution_service))
     app.include_router(build_workflows_router(services.workflow_service))
     app.include_router(build_approvals_router(services.approval_service))
+    app.include_router(build_code_intelligence_router(services.code_intelligence_service))
+    app.include_router(build_learning_router(services.learning_service))
     app.include_router(build_provider_health_router(services.provider_health_service))
     app.include_router(
         build_v1_router(

@@ -1,6 +1,6 @@
 use crate::error::ApiError;
 use crate::providers::mammoth_provider::{self, AuthSource, MammothApiClient};
-use crate::providers::openai_compat::{self, OpenAiCompatClient, OpenAiCompatConfig};
+use crate::providers::registry::{AnyProvider, ProviderRegistry};
 use crate::providers::{self, Provider, ProviderKind};
 use crate::types::{MessageRequest, MessageResponse, StreamEvent};
 
@@ -20,9 +20,7 @@ async fn stream_via_provider<P: Provider>(
 
 #[derive(Debug, Clone)]
 pub enum ProviderClient {
-    MammothApi(MammothApiClient),
-    Xai(OpenAiCompatClient),
-    OpenAi(OpenAiCompatClient),
+    Anthropic(MammothApiClient),
 }
 
 impl ProviderClient {
@@ -35,26 +33,18 @@ impl ProviderClient {
         default_auth: Option<AuthSource>,
     ) -> Result<Self, ApiError> {
         let resolved_model = providers::resolve_model_alias(model);
-        match providers::detect_provider_kind(&resolved_model) {
-            ProviderKind::MammothApi => Ok(Self::MammothApi(match default_auth {
-                Some(auth) => MammothApiClient::from_auth(auth),
-                None => MammothApiClient::from_env()?,
+        match ProviderRegistry::for_model(&resolved_model)? {
+            AnyProvider::Anthropic(client) => Ok(Self::Anthropic(match default_auth {
+                Some(auth) => client.with_auth_source(auth),
+                None => client,
             })),
-            ProviderKind::Xai => Ok(Self::Xai(OpenAiCompatClient::from_env(
-                OpenAiCompatConfig::xai(),
-            )?)),
-            ProviderKind::OpenAi => Ok(Self::OpenAi(OpenAiCompatClient::from_env(
-                OpenAiCompatConfig::openai(),
-            )?)),
         }
     }
 
     #[must_use]
     pub const fn provider_kind(&self) -> ProviderKind {
         match self {
-            Self::MammothApi(_) => ProviderKind::MammothApi,
-            Self::Xai(_) => ProviderKind::Xai,
-            Self::OpenAi(_) => ProviderKind::OpenAi,
+            Self::Anthropic(_) => ProviderKind::Anthropic,
         }
     }
 
@@ -63,8 +53,7 @@ impl ProviderClient {
         request: &MessageRequest,
     ) -> Result<MessageResponse, ApiError> {
         match self {
-            Self::MammothApi(client) => send_via_provider(client, request).await,
-            Self::Xai(client) | Self::OpenAi(client) => send_via_provider(client, request).await,
+            Self::Anthropic(client) => send_via_provider(client, request).await,
         }
     }
 
@@ -73,35 +62,29 @@ impl ProviderClient {
         request: &MessageRequest,
     ) -> Result<MessageStream, ApiError> {
         match self {
-            Self::MammothApi(client) => stream_via_provider(client, request)
+            Self::Anthropic(client) => stream_via_provider(client, request)
                 .await
-                .map(MessageStream::MammothApi),
-            Self::Xai(client) | Self::OpenAi(client) => stream_via_provider(client, request)
-                .await
-                .map(MessageStream::OpenAiCompat),
+                .map(MessageStream::Anthropic),
         }
     }
 }
 
 #[derive(Debug)]
 pub enum MessageStream {
-    MammothApi(mammoth_provider::MessageStream),
-    OpenAiCompat(openai_compat::MessageStream),
+    Anthropic(mammoth_provider::MessageStream),
 }
 
 impl MessageStream {
     #[must_use]
     pub fn request_id(&self) -> Option<&str> {
         match self {
-            Self::MammothApi(stream) => stream.request_id(),
-            Self::OpenAiCompat(stream) => stream.request_id(),
+            Self::Anthropic(stream) => stream.request_id(),
         }
     }
 
     pub async fn next_event(&mut self) -> Result<Option<StreamEvent>, ApiError> {
         match self {
-            Self::MammothApi(stream) => stream.next_event().await,
-            Self::OpenAiCompat(stream) => stream.next_event().await,
+            Self::Anthropic(stream) => stream.next_event().await,
         }
     }
 }
@@ -114,28 +97,20 @@ pub fn read_base_url() -> String {
     mammoth_provider::read_base_url()
 }
 
-#[must_use]
-pub fn read_xai_base_url() -> String {
-    openai_compat::read_base_url(OpenAiCompatConfig::xai())
-}
-
 #[cfg(test)]
 mod tests {
     use crate::providers::{detect_provider_kind, resolve_model_alias, ProviderKind};
 
     #[test]
-    fn resolves_existing_and_grok_aliases() {
+    fn resolves_existing_anthropic_aliases() {
         assert_eq!(resolve_model_alias("opus"), "claude-opus-4-6");
-        assert_eq!(resolve_model_alias("grok"), "grok-3");
-        assert_eq!(resolve_model_alias("grok-mini"), "grok-3-mini");
+        assert_eq!(resolve_model_alias("sonnet"), "claude-sonnet-4-6");
+        assert_eq!(resolve_model_alias("haiku"), "claude-haiku-4-5-20251213");
     }
 
     #[test]
-    fn provider_detection_prefers_model_family() {
-        assert_eq!(detect_provider_kind("grok-3"), ProviderKind::Xai);
-        assert_eq!(
-            detect_provider_kind("claude-sonnet-4-6"),
-            ProviderKind::MammothApi
-        );
+    fn provider_detection_is_anthropic_only() {
+        assert_eq!(detect_provider_kind("claude-sonnet-4-6"), ProviderKind::Anthropic);
+        assert_eq!(detect_provider_kind("grok-3"), ProviderKind::Anthropic);
     }
 }

@@ -1,3 +1,5 @@
+pub mod audit;
+
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
@@ -6,8 +8,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use mammoth_runtime::{compact_session, CompactionConfig, Session};
 use plugins::{PluginError, PluginManager, PluginSummary};
-use runtime::{compact_session, CompactionConfig, Session};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommandManifestEntry {
@@ -1798,8 +1800,10 @@ mod tests {
         suggest_slash_commands, CommitPushPrRequest, DefinitionSource, SkillOrigin, SkillRoot,
         SlashCommand,
     };
+    use mammoth_runtime::{
+        CompactionConfig, ContentBlock, ConversationMessage, MessageRole, Session,
+    };
     use plugins::{PluginKind, PluginManager, PluginManagerConfig, PluginMetadata, PluginSummary};
-    use runtime::{CompactionConfig, ContentBlock, ConversationMessage, MessageRole, Session};
     use std::env;
     use std::fs;
     use std::path::{Path, PathBuf};

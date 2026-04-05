@@ -1,0 +1,21 @@
+[package]
+name = "mammoth-adapter-slack"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+async-trait = "0.1"
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+dashmap = "6"
+mammoth-runtime = { path = "../../runtime" }
+
+[lints]
+workspace = true

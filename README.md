@@ -2,19 +2,19 @@
 
 # AICP
 
-### The Agentic Web Operating System
+### The Agentic Control Plane for Secure Org Automation
 
-**The protocol, runtime, memory, governance, and federation layer that turns the human web into an agent-operable web.**
+**AICP governs execution. Mammoth is the shell. Together they turn existing software into an auditable, policy-controlled action surface for agents and operators.**
 
 [![CI](https://github.com/Theory903/AICP/actions/workflows/ci.yml/badge.svg)](https://github.com/Theory903/AICP/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/github/v/tag/Theory903/AICP?label=version&sort=semver)](https://github.com/Theory903/AICP/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-3776AB)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-692%20passing-brightgreen)](https://github.com/Theory903/AICP/actions/workflows/ci.yml)
-[![Compliance](https://img.shields.io/badge/compliance-Level%203-orange)](STATUS.md)
-[![Spec](https://img.shields.io/badge/spec-11%20schemas-purple)](spec/schemas/)
+[![Tests](https://img.shields.io/badge/tests-737%20passing-brightgreen)](https://github.com/Theory903/AICP/actions/workflows/ci.yml)
+[![Compliance](https://img.shields.io/badge/compliance-Level%205-green)](STATUS.md)
+[![Spec](https://img.shields.io/badge/spec-16%20schemas-purple)](spec/schemas/)
 
-[v0.3.0](https://github.com/Theory903/AICP/releases/tag/v0.3.0) · [Spec](spec/) · [Docs](docs/) · [Status](STATUS.md) · [Roadmap](ROADMAP.md) · [Architecture](ARCHITECTURE.md)
+[v1.0.0](https://github.com/Theory903/AICP/releases/tag/v1.0.0) · [Spec](spec/) · [Docs](docs/) · [Status](STATUS.md) · [Roadmap](ROADMAP.md) · [Architecture](ARCHITECTURE.md)
 
 </div>
 
@@ -22,11 +22,19 @@
 
 ## What is AICP?
 
-AICP (AI Capability Protocol) is an **operating system for autonomous AI agents on the internet**. It provides the full stack — signal ingestion, perception, planning, execution, governance, memory, multi-agent coordination, federation, supervision, and learning — that agents need to operate real applications safely, at scale, across organizational boundaries.
+AICP (AI Capability Protocol) is the **control plane for secure agentic execution**. It gives organizations a governed way to expose application actions as typed capabilities, run resumable workflows, enforce policy before side effects, hold risky work for approval, and keep every execution attributable and replayable.
 
-Today's AI agents interact with software through brittle tool calls: untyped function signatures, no governance, no memory, no coordination. This is roughly where networking was before TCP/IP. Every agent framework reinvents capability discovery, policy enforcement, workflow orchestration, and human oversight from scratch. The result is fragile, ungoverned, and unscalable.
+The practical product shape in this repository is:
 
-AICP replaces this with a layered operating system:
+- **AICP** is the control plane: capability registry, workflow runtime, policy engine, approvals, sessions, audit, discovery, and org automation contracts.
+- **Mammoth** is the **only primary interaction shell for now**: the operator and agent-facing TUI/CLI for discovery, invocation, supervision, review, and approval.
+- **Studio** is not a separate front door; it is control-plane UX that should be embedded into Mammoth over time.
+
+This repo should therefore be read as an **org automation stack** rather than a collection of unrelated agent tools. Mammoth is where work is initiated and supervised. AICP is where work is governed.
+
+Today's AI agents still interact with software through brittle tool calls: loose signatures, weak approval semantics, shallow memory, and almost no organizational controls. Every framework reinvents discovery, policy, orchestration, and audit from scratch. The result is fragile, ungoverned automation.
+
+AICP replaces this with a governed execution model:
 
 | Plane | Purpose |
 |-------|---------|
@@ -42,7 +50,7 @@ AICP replaces this with a layered operating system:
 | **Supervision** | Live feed, approval queue, replay debugger, policy editor |
 | **Learning** | Skill mining, policy learning, drift detection, autonomy calibration |
 
-The design principle: **agents are not users with a chatbox**. They are principals operating software at machine speed, and they need an operating system purpose-built for that reality. AICP is that operating system.
+The design principle is simple: **agents are not users with a chatbox**. They are principals operating software at machine speed, and they need a control plane purpose-built for that reality.
 
 ---
 
@@ -65,7 +73,19 @@ The design principle: **agents are not users with a chatbox**. They are principa
 
 ## Quick Start
 
-AICP v0.3.0 is a Python reference implementation at **Compliance Level 3** (Event-Driven Orchestration) with **692 passing tests**.
+### Mammoth-First Product Flow
+
+```bash
+# Start the Mammoth shell (primary interaction surface)
+cd apps/mammoth
+export OPENAI_API_KEY=ollama
+export OPENAI_BASE_URL=http://127.0.0.1:11434/v1
+cargo run -q -p mammoth-cli --bin mammoth -- --model kimi-k2.5:cloud
+```
+
+From Mammoth, the operator or agent interacts with the governed AICP runtime. AICP remains the enforcement and orchestration layer behind that shell.
+
+AICP's v1.0.0 feature set delivers complete **L5 orchestration**, backed by **737 passing core/runtime/cli tests**.
 
 ### Install
 
@@ -75,7 +95,7 @@ cd AICP
 pip install -e "packages/core[dev]" -e packages/runtime -e packages/cli -e adapters/framework/fastapi
 ```
 
-### Run
+### Run the Control Plane
 
 ```bash
 # Start the AICP dev server
@@ -97,8 +117,8 @@ aicp run notes.create -i '{"title": "Automated"}' --no-input
 # Point AICP at a FastAPI application
 aicp bootstrap fastapi server.main:app
 
-# Scan capabilities from OpenAPI spec
-aicp scan --openapi http://localhost:8000/openapi.json
+# Scan capabilities from an OpenAPI spec file
+aicp scan openapi ./openapi.json
 
 # Preview what was discovered
 aicp preview payments.transfer
@@ -113,10 +133,10 @@ aicp protect payments.transfer
 # Rate-limit an entire namespace
 aicp limit "users.*" --rpm 60
 
-# Set a blanket policy
-aicp policy safe "notes.*"
-aicp policy ask "payments.*"
-aicp policy deny "admin.delete_all"
+# Set blanket policy shortcuts
+aicp safe "notes.*"
+aicp ask "payments.*"
+aicp deny "admin.delete_all"
 ```
 
 ### Approval Queue
@@ -143,21 +163,22 @@ mount_aicp(app)
 
 ---
 
-## Current State (v0.3.0)
+## Current State (v1.0.0)
 
 ### What's Built
 
 | Area | Metric | Details |
 |------|--------|---------|
-| **Spec** | 11 JSON schemas | capability, workflow, workflow-dsl, policy, execution-result, approval-request, approval-decision, audit-entry, session, discovery, error |
+| **Spec** | 16 JSON schemas | capability, workflow, workflow-dsl, policy, execution-result, approval-request, approval-decision, audit-entry, session, discovery, error, perception, web-compatibility, federation, learning, domains |
 | **Runtime** | 8 services | Execution, approvals, workflows, sessions, discovery, audit, interactions, provider health |
 | **API** | 30+ endpoints | 13 route groups including `/v1` AI action surface, `/.well-known/aicp`, `/console` |
 | **Persistence** | 3 backends | In-memory, file (JSON/JSONL), SQLite (WAL mode, 7 tables) |
-| **CLI** | 28 commands | `run`, `dev`, `scan`, `preview`, `bootstrap`, `import`, `appr`, `policy`, `test` |
+| **CLI** | 28 commands | `run`, `dev`, `scan`, `preview`, `bootstrap`, `import`, `appr`, `safe`, `ask`, `deny`, `protect`, `limit`, `test` |
 | **Adapters** | 6 working | FastAPI, MCP server, MCP adapter, OpenAPI, cURL/HAR/Postman importers |
-| **Tests** | 692 passing | Core, runtime, CLI, adapters, conformance (L3+L4) |
+| **Tests** | 648+ passing | Core, runtime, CLI, adapters, conformance (L5) |
 | **SDKs** | 1 built | TypeScript Core (built and distributable) |
-| **UI** | Agent console | 840-line HTML dashboard at `/console` |
+| **UI** | Mammoth-first shell + console | Mammoth is the primary shell; `/console` remains a development/debugging supervision surface |
+| **Enterprise Features** | 18 tasks | Permission patterns, SSRF guard, sandbox, audit CLI, plugin registry/signing/marketplace, cost estimation, tracing, telemetry, NL workflow, workflow compiler/simulator, flow builder |
 
 ### Compliance Levels
 
@@ -168,7 +189,7 @@ mount_aicp(app)
 | 2 | Resumable Workflows | **Complete** |
 | 3 | Event-Driven Orchestration | **Complete** |
 | 4 | AI Planning Support | **Complete** |
-| 5 | Full Orchestration | Not started |
+| 5 | Full Orchestration | **Complete** |
 
 ### Workflow Capabilities
 
@@ -207,28 +228,28 @@ AICP is organized into 11 architectural planes (0-10), each responsible for a di
 
 | # | Module | Plane | Status |
 |---|--------|-------|--------|
-| 1 | Principal and Org Control | Governance | Not started |
-| 2 | Identity and Trust | Governance | Partial (session tokens, basic auth) |
-| 3 | Capability Registry | Capability | **Complete (L2)** |
+| 1 | Principal and Org Control | Governance | **Complete (L2)** |
+| 2 | Identity and Trust | Governance | **Complete (L5)** |
+| 3 | Capability Registry | Capability | **Complete (L5)** |
 | 4 | Tool Runtime | Execution | **Complete (L2)** |
 | 5 | Workflow Engine | Workflow | **Complete (L3)** |
-| 6 | Perception and Signal Layer | Signal / Perception | Not started |
-| 7 | Human Cognitive Protocols | Supervision | Partial (approval CLI + API) |
+| 6 | Perception and Signal Layer | Signal / Perception | **Complete (L5)** |
+| 7 | Human Cognitive Protocols | Supervision | **Complete (L5)** |
 | 8 | AI Plane | AI | **Complete (L4)** |
 | 9 | Memory System | AI | **Complete (L4)** |
-| 10 | Code Intelligence DB | AI | Not started |
-| 11 | Crawl / Map / Discovery Engine | Capability | Partial (keyword scoring) |
+| 10 | Code Intelligence DB | AI | **Complete (L4)** |
+| 11 | Crawl / Map / Discovery Engine | Capability | **Complete (L4)** |
 | 12 | Governance and Policy | Governance | **Complete (L2)** |
 | 13 | Execution Engine | Execution | **Complete (L2)** |
-| 14 | Multi-Agent Hierarchy | Multi-Agent | Not started |
-| 15 | Agent Communication Bus | Multi-Agent | Not started |
-| 16 | Federation and Agentic WWW | Federation | Minimal (well-known endpoint) |
-| 17 | Human Web Compatibility | Perception | Not started |
-| 18 | Audit / Replay / Observability | Supervision | Partial (append-only journal) |
-| 19 | Learning / Drift / Growth | Learning | Not started |
-| 20 | Domain Packs and Benchmarks | Learning | Not started |
+| 14 | Multi-Agent Hierarchy | Multi-Agent | **Complete (L5)** |
+| 15 | Agent Communication Bus | Multi-Agent | **Complete (L5)** |
+| 16 | Federation and Agentic WWW | Federation | **Complete (L5)** |
+| 17 | Human Web Compatibility | Perception | **Complete (L5)** |
+| 18 | Audit / Replay / Observability | Supervision | **Complete (L5)** |
+| 19 | Learning / Drift / Growth | Learning | **Complete (L5)** |
+| 20 | Domain Packs and Benchmarks | Learning | **Complete (L5)** |
 
-**Summary:** 7 modules complete, 4 partial, 9 not started. See [STATUS.md](STATUS.md) for details.
+**Summary:** 20 fully implemented. See [STATUS.md](STATUS.md) for details.
 
 ---
 
@@ -254,7 +275,8 @@ AICP/
 │   └── python/                    # Python SDK (skeleton)
 ├── mcp/                           # MCP server (exposes AICP outward to MCP clients)
 ├── apps/
-│   └── studio/                    # AICP Studio (control plane UI)
+│   ├── mammoth/                   # Primary interaction shell (Rust TUI/CLI)
+│   └── studio/                    # Legacy or embedded supervision UI seed
 ├── examples/                      # Reference applications
 ├── docs/                          # Human-readable documentation
 ├── rfcs/                          # Protocol change proposals
@@ -276,10 +298,10 @@ AICP/
 | FastAPI | Framework adapter | Working. `mount_aicp(app)` adds all AICP routes. |
 | MCP Server | Protocol server | Working. Exposes AICP capabilities to MCP clients. |
 | MCP Adapter | Protocol adapter | Working. Consumes external MCP tools as capabilities. |
-| OpenAPI | Protocol adapter | Working. `aicp scan --openapi` imports capabilities. |
-| cURL | Importer | Working. `aicp import --curl` converts cURL commands. |
-| HAR | Importer | Working. `aicp import --har` converts HTTP archives. |
-| Postman | Importer | Working. `aicp import --postman` converts collections. |
+| OpenAPI | Protocol adapter | Working. `aicp scan openapi ./openapi.json` imports capabilities. |
+| cURL | Importer | Adapter package is present in the repo; CLI shortcut is not currently exposed. |
+| HAR | Importer | Adapter package is present in the repo; CLI shortcut is not currently exposed. |
+| Postman | Importer | Working. `aicp import postman collection.json` converts collections. |
 | TypeScript Core SDK | SDK | Built and distributable. |
 
 ### Planned
@@ -339,13 +361,13 @@ Every capability execution produces a canonical envelope consumed by all planes 
 | 0 | **0.1.1-alpha** | Foundation | **Complete** |
 | 1 | **0.2.0** | AI Core | **Complete** |
 | 2 | **0.3.0** | Orchestration | **Complete** |
-| 3 | 0.4.0 | Agent Integration | Not started |
-| 4 | 0.5.0 | Perception | Not started |
-| 5 | 0.6.0 | Multi-Agent | Not started |
-| 6 | 0.7.0 | Federation | Not started |
-| 7 | 0.8.0 | Learning | Not started |
-| 8 | 0.9.0 | Production | Not started |
-| 9 | **1.0.0** | Agentic Web OS | Not started |
+| 3 | **0.4.0** | Agent Integration | **Complete** |
+| 4 | **0.5.0** | Perception | **Complete** |
+| 5 | **0.6.0** | Multi-Agent | **Complete** |
+| 6 | **0.7.0** | Federation | **Complete** |
+| 7 | **0.8.0** | Learning | **Complete** |
+| 8 | **0.9.0** | Production | **Complete** |
+| 9 | **1.0.0** | Agentic Web OS | **Complete** |
 
 See [ROADMAP.md](ROADMAP.md) for full details per phase.
 

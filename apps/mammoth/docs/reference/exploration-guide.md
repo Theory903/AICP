@@ -1,6 +1,12 @@
 # Exploration Guide
 
-> How to navigate and study the Claude Code source code.
+> How to navigate the clean-room references used to evolve Mammoth.
+
+Use this guide to map external patterns back into Mammoth implementation work. For actual Mammoth code, start with:
+- `apps/mammoth/crates/mammoth-cli/`
+- `apps/mammoth/crates/runtime/`
+- `apps/mammoth/crates/tools/`
+- `apps/mammoth/crates/commands/`
 
 ---
 

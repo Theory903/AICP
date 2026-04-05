@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use commands::{CommandManifestEntry, CommandRegistry, CommandSource};
-use runtime::{BootstrapPhase, BootstrapPlan};
+use mammoth_runtime::{BootstrapPhase, BootstrapPlan};
 use tools::{ToolManifestEntry, ToolRegistry, ToolSource};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,7 +73,11 @@ fn upstream_repo_candidates(primary_repo_root: &Path) -> Vec<PathBuf> {
         candidates.push(ancestor.join("mammoth-code"));
     }
 
-    candidates.push(primary_repo_root.join("reference-source").join("mammoth-code"));
+    candidates.push(
+        primary_repo_root
+            .join("reference-source")
+            .join("mammoth-code"),
+    );
     candidates.push(primary_repo_root.join("vendor").join("mammoth-code"));
 
     let mut deduped = Vec::new();

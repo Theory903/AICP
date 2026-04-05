@@ -1,24 +1,24 @@
-# Next Milestone: v0.2.0
+# Historical Milestone: v0.2.0
 
-> What must ship to advance from Compliance Level 2 (Resumable Workflows) toward Level 3 (Event-Driven Orchestration).
+> Historical planning snapshot preserved for context. The repository has since moved on to the v1.0.0 feature set (Compliance Level 5).
 
 ---
 
-## Current State: v0.1.1-alpha
+## Current State: v1.0.0 Feature Set
 
-AICP v0.1.1 is a working reference implementation at Compliance Level 2. See [STATUS.md](../../STATUS.md) for the complete inventory of what exists.
+AICP's current docs track the v1.0.0 feature set: complete L5 (Full Orchestration). See [STATUS.md](../../STATUS.md) for the complete inventory of what exists.
 
 **Key metrics:**
-- 9 JSON schemas in `/spec/schemas/`
+- 16 JSON schemas in `/spec/schemas/`
 - 8 runtime services (all complete)
 - 30+ API endpoints across 13 route groups
-- 172 passing tests
+- 698 passing core/runtime/cli tests
 - 6 working adapters
 - 28 CLI commands
 
 ---
 
-## v0.2.0 Scope
+## Original v0.2.0 Scope
 
 v0.2.0 is the next real release target. It must prove that AICP can handle event-driven orchestration, richer workflow patterns, and the first AI reasoning layer.
 
@@ -138,7 +138,7 @@ v0.2.0 is successful if:
 
 ## See Also
 
-- [/STATUS.md](../../STATUS.md) -- Current v0.1.1 implementation inventory
+- [/STATUS.md](../../STATUS.md) -- Current v0.3.0 feature-set implementation inventory
 - [/ROADMAP.md](../../ROADMAP.md) -- Full 10-phase roadmap to v1.0.0
 - [VISION.md](./VISION.md) -- Where this is all heading
 - [USE_CASES.md](./USE_CASES.md) -- Scenarios that v0.2.0 must support

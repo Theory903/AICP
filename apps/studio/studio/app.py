@@ -61,14 +61,13 @@ def build_workflow_replay(history: list[dict[str, Any]]) -> list[dict[str, Any]]
     replay: list[dict[str, Any]] = []
     for entry in sorted(history, key=lambda item: str(item.get("timestamp", ""))):
         metadata = entry.get("metadata") or {}
+        event_type = str(entry.get("event_type") or "event")
         replay.append(
             {
                 "id": entry.get("id"),
                 "timestamp": entry.get("timestamp"),
-                "event_type": entry.get("event_type"),
-                "title": title_map.get(
-                    entry.get("event_type"), entry.get("event_type", "event")
-                ),
+                "event_type": event_type,
+                "title": title_map.get(event_type, event_type),
                 "actor": entry.get("actor"),
                 "status": entry.get("status"),
                 "workflow_id": entry.get("workflow_id"),
@@ -122,7 +121,7 @@ def create_studio_app(runtime_store=None) -> FastAPI:
     audit_service = AuditService(store)
     approval_service = ApprovalService(store, audit_service=audit_service)
 
-    app = FastAPI(title="AICP Studio", version="0.1.1")
+    app = FastAPI(title="AICP Studio", version="0.3.0")
 
     @app.get("/", response_class=HTMLResponse)
     async def studio_dashboard() -> str:

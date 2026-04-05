@@ -174,6 +174,15 @@ impl ConversationMessage {
     }
 
     #[must_use]
+    pub fn assistant_text(text: impl Into<String>) -> Self {
+        Self {
+            role: MessageRole::Assistant,
+            blocks: vec![ContentBlock::Text { text: text.into() }],
+            usage: None,
+        }
+    }
+
+    #[must_use]
     pub fn tool_result(
         tool_use_id: impl Into<String>,
         tool_name: impl Into<String>,

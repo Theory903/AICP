@@ -1,44 +1,38 @@
 # AICP Architecture
 
-> **Version:** 0.1.1-alpha | **Target:** 1.0.0  
-> **Last updated:** 2026-04-03
+> **Version Target:** 1.0.0 feature set | **Target:** 1.0.0
+> **Last updated:** 2026-04-05
 
 ---
 
 ## 1. Mental Model
 
-**v0.1.1** (current):
+**Current practical model:**
 ```
-agent → AICP runtime → your backend
-```
-
-**v1.0.0** (target):
-```
-any intent, anywhere → AICP mesh → any system, any protocol, any jurisdiction, any speed — governed end to end
+operator or agent → Mammoth → AICP control plane → business systems
 ```
 
-AICP is the **Agentic Web OS** — the protocol, runtime, memory, governance, perception, execution, and federation layer that turns the human web into an agent-operable web.
+**v1.0.0 target:**
+```
+any intent, anywhere → Mammoth surfaces → AICP mesh → governed execution across apps, orgs, and protocols
+```
 
-The mesh is a protocol that any node implements. HTTP is to the human web what AICP is to the agentic web.
+AICP is the **control plane**. Mammoth is the **interaction shell**. For now, if a human or agent is operating the system, they do it through Mammoth. Studio is not a separate front door; it is supervision UX that should live inside Mammoth.
 
-**What sits between what:**
+The mesh remains protocol-driven, but the product experience should be read through this boundary:
+
+- **Mammoth decides how users and agents interact with the system**
+- **AICP decides what can run, how it runs, what needs approval, and how it is recorded**
+
+**Current layer model:**
 
 | Layer | Role |
 |-------|------|
-| LLM / Agent | The "user" of the application |
-| Signal ingestion | Sub-ms event classification and routing |
-| Perception | DOM, a11y tree, state APIs, screenshots, behavioral signals |
-| AI reasoning | Intent routing, planning, execution, judgment, memory |
-| Capabilities | Structured, typed, policy-governed action surfaces |
-| Workflows | Stateful, resumable, multi-step orchestration |
-| Governance | Policy evaluation, approval gates, trust tiers, compliance |
-| Execution | Deterministic invocation with saga, idempotency, audit |
-| Multi-agent | Hierarchical coordination across specialist agents |
-| Federation | Cross-org discovery, CRDT registries, DID auth |
-| Supervision | Human oversight — monitoring, intervention, replay, debugging |
-| Learning | Skill mining, policy learning, drift detection, autonomy calibration |
+| Mammoth | Operator and agent shell: prompt, invoke, supervise, review, approve |
+| AICP control plane | Policy, capabilities, workflows, sessions, approvals, audit, discovery |
+| Connected systems | Apps, tools, services, organizational backends |
 
-The frontend is not "for humans to do the task." It is **"for humans to supervise the AI doing the task."**
+This architecture is for **secure org automation**, not generic chat. Mammoth initiates and supervises work. AICP governs it.
 
 ---
 
@@ -938,3 +932,284 @@ aicp/
 | 9 | **1.0.0** | Agentic Web OS | Complete 11-plane architecture, stable protocol, production-ready |
 
 All components stay version-aligned. Spec is always authoritative. If docs and spec disagree, spec wins.
+
+---
+
+## 13. Mammoth Interaction Layer
+
+Mammoth is the primary interaction shell for AICP. It sits above all 11 control-plane planes, consuming their capabilities through the AICP runtime and exposing them to operators and agents via four channels.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     MAMMOTH INTERACTION LAYER                   │
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────────┐  ┌─────────┐  │
+│  │ Terminal    │  │ Web / Studio│  │   CLI    │  │ Chrome  │  │
+│  │ TUI         │  │ (axum/HTML) │  │ (batch)  │  │ Ext MV3 │  │
+│  │ (ratatui)   │  │             │  │          │  │ (SSE)   │  │
+│  └──────┬──────┘  └──────┬──────┘  └────┬─────┘  └────┬────┘  │
+│         └────────────────┴──────────────┴──────────────┘       │
+│                              channel.rs                         │
+│                         (Channel trait)                         │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+             ┌─────────────────▼──────────────────┐
+             │        AICP RUNTIME (Rust)          │
+             │  session · policy · tools · memory  │
+             └──────────────────┬─────────────────┘
+                                │
+        ┌───────────────────────▼──────────────────────────┐
+        │              AICP CONTROL PLANE                  │
+        │  Planes 0–10: Signal · Perception · AI ·         │
+        │  Capability · Workflow · Governance ·            │
+        │  Execution · Multi-Agent · Federation ·          │
+        │  Supervision · Learning                          │
+        └──────────────────────────────────────────────────┘
+```
+
+### 13.1 Channel Architecture
+
+All user-facing surfaces are instances of the `Channel` trait in `runtime/src/channel.rs`. Channels translate between human/agent intent and the AICP runtime. They MUST NOT contain orchestration logic.
+
+| `ChannelKind` | Surface | Entry Point | Notes |
+|---|---|---|---|
+| `Terminal` | ratatui TUI | `mammoth` (interactive) | Full TUI: transcript, inspector, composer, slash palette |
+| `Web` | Axum web server | `mammoth serve` | Studio HTML at `/`, session API at `/sessions/*`, SSE streams |
+| `Cli` | Non-interactive batch | `mammoth <subcmd>` | `mammoth serve`, `mammoth ext`, scripted automation |
+| `Extension` | Chrome MV3 extension | `mammoth ext` + `/ext/events` | SSE bridge at `/ext/events`, inbound at `/ext/message` |
+
+**Channel trait contract:**
+
+```rust
+pub trait Channel: Send + Sync {
+    fn name(&self) -> &str;
+    fn kind(&self) -> ChannelKind;
+    fn render_message(&self, msg: &ConversationMessage) -> String;
+    fn request_approval(&self, req: &ApprovalRequest) -> ApprovalDecision;
+    fn on_tool_progress(&self, event: &ToolProgressEvent);
+    fn shutdown(&self);
+}
+```
+
+Approval requests carry `channel: ChannelKind` so they route to the correct surface. The Terminal channel renders approval prompts inline; the Extension channel emits `ExtEvent::ApprovalRequest` over SSE for the browser to display.
+
+### 13.2 Terminal TUI Layout
+
+The ratatui TUI (`mammoth-cli/src/tui.rs`) renders a four-region layout:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ HEADER  Mammoth TUI · <branch>          <model> · <tokens>  │ 3 rows
+├────────────────────────────────┬────────────────────────────┤
+│                                │  INSPECTOR                 │
+│  TRANSCRIPT                    │  [Status] [Diff] [Tools]   │
+│  (scrollable conversation)     │                            │ fill
+│                                │  (tab-switched panels)     │
+│                                │                            │
+├────────────────────────────────┴────────────────────────────┤
+│ INPUT / COMPOSER                                            │ 6 rows
+│ (multi-line, cursor-aware, Ctrl-J for newline)              │
+├─────────────────────────────────────────────────────────────┤
+│ FOOTER  Ctrl-P palette · Tab inspector · Enter send …       │ 1 row
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Inspector tabs:**
+
+| Tab | Content |
+|-----|---------|
+| `Status` | Session status: model, permissions, LSP diagnostics, context size |
+| `Diff` | Live `git diff` of the working tree, updated after each tool turn |
+| `Tools` | Tool call log for the current session turn |
+
+**Slash command palette** (`Ctrl-P`): fuzzy-filtered list of all registered slash commands. Commands are discovered from `commands::slash_command_specs()` at runtime. Selected command text is inserted into the composer.
+
+**Key bindings:**
+
+| Key | Action |
+|-----|--------|
+| `Enter` | Submit composer to AI |
+| `Ctrl-J` | Insert newline in composer |
+| `Ctrl-P` | Open slash command palette |
+| `Tab` | Cycle inspector tab |
+| `Ctrl-C` | Quit (session is persisted before exit) |
+| `↑ / ↓` | Scroll transcript / navigate palette |
+
+### 13.3 Web Channel and Studio
+
+The `server` crate exposes an Axum HTTP server used by both the Web channel and the Chrome extension bridge.
+
+**Routes:**
+
+| Path | Handler | Purpose |
+|------|---------|---------|
+| `GET /` | Static HTML | Studio supervision UI |
+| `POST /sessions` | `create_session` | Create a new Web channel session |
+| `GET /sessions/:id/events` | SSE stream | Per-session `SessionEvent` stream to browser |
+| `POST /sessions/:id/message` | `send_message` | Submit a user turn to a session |
+| `GET /ext/events` | SSE broadcast | Extension event bus (`ExtEvent`) |
+| `POST /ext/message` | `receive_ext_message` | Inbound message from Chrome extension |
+
+**Extension events** over SSE:
+
+```rust
+pub enum ExtEvent {
+    Message    { content: String },
+    ApprovalRequest {
+        approval_id:    String,
+        capability_name: String,
+        description:    String,
+    },
+}
+```
+
+**`TurnRunner` trait** (object-safe, `Send + Sync`): injected AI inference backend. Separates the HTTP server from the specific model router, enabling test doubles and future multi-model routing.
+
+```rust
+pub trait TurnRunner: Send + Sync {
+    fn run_turn(
+        &self,
+        session_id: &str,
+        messages: &[ConversationMessage],
+        tx: Sender<SessionEvent>,
+    ) -> BoxFuture<'_, Result<(), AicpError>>;
+}
+```
+
+### 13.4 Crate Organization
+
+The Mammoth workspace (`apps/mammoth/`) is a Rust workspace. Crates map to concerns:
+
+| Crate | Role | AICP Planes consumed |
+|-------|------|---------------------|
+| `mammoth-cli` | Terminal TUI + CLI entry point; `run_repl()` / `run_prompt()` | All (via runtime) |
+| `runtime` | Session management, permissions, config, hooks, MCP client, model router | Planes 2, 3, 5, 6, 7 |
+| `tools` | 19 built-in tools + MCP tool wrappers | Plane 3 (Capability), Plane 6 (Execution) |
+| `server` | Axum web server (Web channel + Extension SSE bridge) | Plane 9 (Supervision) |
+| `lsp` | LSP client manager: diagnostics, go-to-def, references, context enrichment | Plane 1 (Perception) |
+| `aicp` | AICP governance/policy bridge | Planes 4, 5 (Capability, Governance) |
+| `api` | API client for AICP HTTP endpoints | Planes 3, 4, 5, 6 |
+| `commands` | CLI sub-command implementations + slash command registry | — |
+| `plugins` | Plugin loader and lifecycle | Plane 10 (Learning) |
+| `compat-harness` | Compatibility test harness | — |
+
+**Dependency order** (no cycles permitted):
+
+```
+aicp  ──►  runtime  ──►  tools  ──►  mammoth-cli
+                    ──►  server
+                    ──►  lsp
+                    ──►  commands
+                    ──►  plugins
+api   ──►  runtime
+```
+
+`packages/core` (Python) MUST NOT be imported by any Rust crate. The boundary is the AICP HTTP API.
+
+### 13.5 LSP Integration
+
+The `lsp` crate maps to **Plane 1 (Perception)**. It manages connections to language server processes and enriches AI context with real IDE-quality signals.
+
+| Method | Purpose |
+|--------|---------|
+| `collect_workspace_diagnostics()` | Harvest errors/warnings from all active LSPs |
+| `go_to_definition(file, position)` | Resolve symbol definition location |
+| `find_references(file, position)` | Find all references to a symbol |
+| `context_enrichment()` → `LspContextEnrichment` | Package LSP signals into a prompt section |
+
+`LspContextEnrichment::render_prompt_section()` serialises diagnostics, definitions, and references into a structured block that is prepended to AI turns. This is the primary mechanism by which Mammoth provides code-aware context to the planner (Plane 2).
+
+### 13.6 Remote Session Topology
+
+Mammoth supports three deployment topologies:
+
+```
+LOCAL (default)
+  operator ──► mammoth (local) ──► AICP runtime (local) ──► tools
+
+REMOTE SESSION  (MAMMOTH_CODE_REMOTE=1)
+  operator ──► mammoth (local) ──► Anthropic API (remote session)
+               └── MAMMOTH_CODE_REMOTE_SESSION_ID sets session ID
+               └── ANTHROPIC_BASE_URL overrides API base
+
+UPSTREAM PROXY  (CCR_UPSTREAM_PROXY_ENABLED=true + remote + token file)
+  operator ──► mammoth ──► upstream proxy WebSocket
+               ├── base_url/v1/code/upstreamproxy/ws  (https → wss)
+               └── injects 8 proxy env vars into all subprocesses
+```
+
+**Remote session env vars:**
+
+| Variable | Effect |
+|----------|--------|
+| `MAMMOTH_CODE_REMOTE` | `1 / true / yes / on` → activate remote session mode |
+| `MAMMOTH_CODE_REMOTE_SESSION_ID` | Session ID to resume on the remote endpoint |
+| `ANTHROPIC_BASE_URL` | Override API base URL for remote model endpoint |
+
+**Upstream proxy env vars** (all require `CCR_UPSTREAM_PROXY_ENABLED=true` AND remote AND token file):
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CCR_UPSTREAM_PROXY_ENABLED` | `false` | Master toggle |
+| `CCR_SESSION_TOKEN_PATH` | `/run/ccr/session_token` | Path to bearer token file |
+| `HTTPS_PROXY` | (from proxy WS) | Injected into subprocess env |
+| `SSL_CERT_FILE` | `~/.ccr/ca-bundle.crt` | CA bundle for TLS verification |
+| `NO_PROXY` | (from proxy) | Bypass list |
+| `NODE_EXTRA_CA_CERTS` | (same as SSL_CERT_FILE) | Node.js CA path |
+| `REQUESTS_CA_BUNDLE` | (same) | Python requests CA path |
+| `CURL_CA_BUNDLE` | (same) | curl CA path |
+
+The upstream proxy WebSocket URL is derived from `ANTHROPIC_BASE_URL` by replacing `https://` with `wss://` and appending `/v1/code/upstreamproxy/ws`.
+
+### 13.7 Data Flow: User Turn End-to-End
+
+```
+User input (any channel)
+       │
+       ▼
+channel.rs  ─────────────────────────────────────────────────
+       │  render_message() / request_approval()
+       │  Translates surface input to ConversationMessage
+       ▼
+runtime::ConversationClient
+       │  Appends to conversation_history
+       │  Enriches with LSP context (lsp::context_enrichment)
+       │  Submits to model router (TurnRunner)
+       ▼
+AI Model (Anthropic / remote / proxy)
+       │  Streams: TextDelta · ToolCallStart · ToolCallResult · Usage
+       ▼
+runtime::StreamEvent handler
+       │  ToolCallStart  ──► tools crate (capability lookup + execution)
+       │                      │
+       │                      ▼
+       │                 aicp::policy_eval()   (Plane 5 Governance)
+       │                      │
+       │                      ▼
+       │                 approval_gate         (Plane 7 Cognitive Protocols)
+       │                      │
+       │                      ▼
+       │                 tool execution        (Plane 6 Execution)
+       │                      │
+       │                      ▼
+       │                 audit_entry           (Plane 18 Audit)
+       │
+       │  TextDelta     ──► channel.render_message()
+       │  ToolCallResult──► channel.on_tool_progress()
+       │                    inspector diff/tool cache refresh (TUI)
+       ▼
+Session persisted  (runtime::persist_session)
+       │
+       ▼
+allowed_next_actions surfaced to channel (Execution Envelope)
+```
+
+### 13.8 Architectural Notes and Known Inconsistencies
+
+**Version table (Section 12) is stale.** All entries show `0.1.1-alpha`. STATUS.md confirms L4 is complete and the reference implementation is currently at v0.3.0 with 692+ tests. Section 12 should be updated when Section 12 is next revised.
+
+**Compliance level mismatch.** Section 11 states "Current reference implementation: Level 2." STATUS.md confirms L3 (Event-Driven Orchestration) and L4 (AI Planning Support) are both complete as of v0.3.0. Section 11 should read "Level 4."
+
+**Studio is not a separate application.** The mental model in Section 1 is correct — Studio is supervision UX embedded in the `server` crate's static HTML. It is not a standalone primary app. Any references to Studio as a separate deployment target are outdated.
+
+**Mammoth version alignment.** The Mammoth Rust workspace is not represented in the Section 12 version table. Mammoth should be added as a row when that table is next revised.

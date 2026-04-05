@@ -1,6 +1,14 @@
 # Architecture
 
-> Deep-dive into how Claude Code is structured internally.
+> Clean-room reference note for Mammoth shell architecture.
+
+This file captures external architecture patterns worth studying while building Mammoth. It is **not** the source of truth for Mammoth itself.
+
+Current Mammoth implementation paths:
+- `apps/mammoth/crates/mammoth-cli/src/main.rs`
+- `apps/mammoth/crates/mammoth-cli/src/tui.rs`
+- `apps/mammoth/crates/runtime/src/conversation.rs`
+- `apps/mammoth/crates/tools/src/lib.rs`
 
 ---
 

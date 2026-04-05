@@ -69,15 +69,12 @@ class WorkflowService:
         """Get a workflow from persistence, with runtime fallback."""
         workflow_id = self._require_text(workflow_id, field_name="workflow_id")
 
-        workflow = await self._store.get_workflow(workflow_id)
-        if workflow is not None:
-            return workflow
-
         workflow = await self._runtime.get_workflow(workflow_id)
         if workflow is not None:
             await self._save_workflow(workflow)
+            return workflow
 
-        return workflow
+        return await self._store.get_workflow(workflow_id)
 
     async def list_workflows(self) -> list[WorkflowState]:
         """List persisted workflows."""
@@ -200,10 +197,27 @@ class WorkflowService:
         workflow_id: str,
         name: str,
         payload: dict[str, Any],
-    ) -> None:
+        ) -> None:
         """Publish an event to a waiting workflow step."""
         workflow_id = self._require_text(workflow_id, field_name="workflow_id")
+        name = self._require_text(name, field_name="name")
         await self._runtime.publish_event(workflow_id, name, payload)
+
+        workflow = await self._runtime.get_workflow(workflow_id)
+        if workflow is None:
+            return
+
+        await self._save_workflow(workflow)
+        await self._append_audit(
+            event_type="workflow_event_published",
+            actor="runtime",
+            workflow_id=workflow_id,
+            status=workflow.status.value,
+            metadata={
+                "event_name": name,
+                "payload": deepcopy(payload),
+            },
+        )
 
     async def resume_after_approval(
         self,

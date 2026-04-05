@@ -1,6 +1,7 @@
 """Runtime-backed flagship payment transfer demo."""
 
 from pathlib import Path
+from typing import Any
 
 from aicp import Policy, PolicyCondition, PolicyEffect, PolicySubject
 from aicp.implementations import InMemoryCapabilityRepository
@@ -11,6 +12,14 @@ from aicp_runtime.services import ApprovalService, AuditService, WorkflowService
 from payment_transfer.capabilities import create_payment_capabilities
 
 APPROVAL_THRESHOLD = 1000.0
+
+
+def _as_json(value: Any) -> Any:
+    """Serialize pydantic models without constraining callers to one concrete type."""
+    dump = getattr(value, "model_dump", None)
+    if callable(dump):
+        return dump(mode="json")
+    return value
 
 
 async def run_platform_demo(store_path: str | Path, amount: float = 2000.0) -> dict:
@@ -27,15 +36,16 @@ async def run_platform_demo(store_path: str | Path, amount: float = 2000.0) -> d
         capability_provider.add_capability(capability)
 
     policy_engine = DefaultPolicyEngine()
-    await policy_engine.add_policy(
-        Policy(
-            name="high_value_approval",
-            description=f"Transfers over ${APPROVAL_THRESHOLD} require approval",
-            effect=PolicyEffect.ASK,
-            subject=PolicySubject(capability_name="payments.transfer"),
-            condition=PolicyCondition(require_confirmation=True),
+    if amount > APPROVAL_THRESHOLD:
+        await policy_engine.add_policy(
+            Policy(
+                name="high_value_approval",
+                description=f"Transfers over ${APPROVAL_THRESHOLD} require approval",
+                effect=PolicyEffect.ASK,
+                subject=PolicySubject(capability_name="payments.transfer"),
+                condition=PolicyCondition(require_confirmation=True),
+            )
         )
-    )
 
     audit_service = AuditService(runtime_store)
     approval_service = ApprovalService(runtime_store, audit_service=audit_service)
@@ -62,7 +72,10 @@ async def run_platform_demo(store_path: str | Path, amount: float = 2000.0) -> d
         ],
     )
 
-    await workflow_service.execute_step(workflow.id, {"requester": "agent-demo"})
+    initial_result = await workflow_service.execute_step(
+        workflow.id,
+        {"requester": "agent-demo"},
+    )
 
     approvals = await approval_service.list_approvals()
     approval = None
@@ -76,20 +89,17 @@ async def run_platform_demo(store_path: str | Path, amount: float = 2000.0) -> d
             decision="approved",
             approver="manager-demo",
         )
+        approval = await approval_service.get_approval(approval["id"])
+        approvals = [approval] if approval is not None else []
 
     final_workflow = await workflow_service.get_workflow(workflow.id)
     history = await audit_service.list_entries(workflow_id=workflow.id)
 
     return {
-        "workflow": final_workflow.model_dump(mode="json") if final_workflow else None,
-        "approval": approval,
-        "approval_requests": [
-            a.model_dump(mode="json") if hasattr(a, "model_dump") else a
-            for a in approvals
-        ],
-        "execution_result": resumed_result.model_dump(mode="json")
-        if resumed_result
-        else None,
+        "workflow": _as_json(final_workflow) if final_workflow else None,
+        "approval": _as_json(approval) if approval else None,
+        "approval_requests": [_as_json(a) for a in approvals],
+        "execution_result": _as_json(resumed_result or initial_result),
         "history": history,
     }
 

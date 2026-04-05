@@ -6,7 +6,7 @@ policy/workflow abstractions, and default in-memory implementations for local us
 
 from __future__ import annotations
 
-__version__ = "0.1.1"
+__version__ = "0.3.0"
 
 # Configuration
 # API management
@@ -28,9 +28,11 @@ from .capability import (
     AuthRequirement,
     Capability,
     CapabilityKind,
+    ContinuationSpec,
     InputSchema,
     OutputSchema,
     ProviderInfo,
+    RenderSpec,
 )
 from .config import AicpProjectConfig, load_project_config
 
@@ -89,9 +91,11 @@ __all__ = [
     "Capability",
     "CapabilityKind",
     "AuthRequirement",
+    "ContinuationSpec",
     "InputSchema",
     "OutputSchema",
     "ProviderInfo",
+    "RenderSpec",
     # Registry & validation
     "AicpRegistry",
     "AicpValidator",

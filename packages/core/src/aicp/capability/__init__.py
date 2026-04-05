@@ -76,6 +76,7 @@ class RenderSpec(BaseModel):
 
     format: str = "text"  # text, json, table, code, image
     fields: list[str] | None = None
+    table_columns: list[str] | None = None
     max_length: int | None = Field(default=None, ge=1)
     truncate: bool = True
     syntax: str | None = None
@@ -88,7 +89,7 @@ class RenderSpec(BaseModel):
         value = str(value).strip()
         return value or None
 
-    @field_validator("fields", mode="after")
+    @field_validator("fields", "table_columns", mode="after")
     @classmethod
     def _dedupe_fields(cls, value: list[str] | None) -> list[str] | None:
         if value is None:

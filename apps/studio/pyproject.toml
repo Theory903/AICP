@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aicp-studio"
-version = "0.1.1"
+version = "0.3.0"
 description = "AICP Studio - Thin control plane for approvals and workflow visibility"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "aicp-runtime>=0.1.0",
+    "aicp-runtime>=0.3.0",
     "fastapi>=0.110,<1",
     "pydantic>=2.7,<3",
     "uvicorn>=0.30,<1",

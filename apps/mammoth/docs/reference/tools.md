@@ -1,6 +1,13 @@
 # Tools Reference
 
-> Complete catalog of all ~40 agent tools in Claude Code.
+> Reference study for tool-system ideas Mammoth can port or adapt.
+
+Current Mammoth tool paths:
+- `apps/mammoth/crates/tools/src/lib.rs`
+- `apps/mammoth/crates/runtime/src/conversation.rs`
+- `apps/mammoth/crates/mammoth-cli/src/tui.rs`
+
+Treat the rest of this file as inspiration, not as the Mammoth tool contract.
 
 ---
 

@@ -1,0 +1,19 @@
+[package]
+name = "mammoth-adapter-telegram"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+teloxide = { version = "0.13", features = ["macros"] }
+dptree = "0.3"
+async-trait = "0.1"
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+dashmap = "6"
+mammoth-runtime = { path = "../../runtime" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }

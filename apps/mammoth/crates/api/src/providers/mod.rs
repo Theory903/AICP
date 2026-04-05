@@ -5,7 +5,7 @@ use crate::error::ApiError;
 use crate::types::{MessageRequest, MessageResponse};
 
 pub mod mammoth_provider;
-pub mod openai_compat;
+pub mod registry;
 
 pub type ProviderFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, ApiError>> + Send + 'a>>;
 
@@ -25,9 +25,7 @@ pub trait Provider {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProviderKind {
-    MammothApi,
-    Xai,
-    OpenAi,
+    Anthropic,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,7 +40,7 @@ const MODEL_REGISTRY: &[(&str, ProviderMetadata)] = &[
     (
         "opus",
         ProviderMetadata {
-            provider: ProviderKind::MammothApi,
+            provider: ProviderKind::Anthropic,
             auth_env: "ANTHROPIC_API_KEY",
             base_url_env: "ANTHROPIC_BASE_URL",
             default_base_url: mammoth_provider::DEFAULT_BASE_URL,
@@ -51,7 +49,7 @@ const MODEL_REGISTRY: &[(&str, ProviderMetadata)] = &[
     (
         "sonnet",
         ProviderMetadata {
-            provider: ProviderKind::MammothApi,
+            provider: ProviderKind::Anthropic,
             auth_env: "ANTHROPIC_API_KEY",
             base_url_env: "ANTHROPIC_BASE_URL",
             default_base_url: mammoth_provider::DEFAULT_BASE_URL,
@@ -60,7 +58,7 @@ const MODEL_REGISTRY: &[(&str, ProviderMetadata)] = &[
     (
         "haiku",
         ProviderMetadata {
-            provider: ProviderKind::MammothApi,
+            provider: ProviderKind::Anthropic,
             auth_env: "ANTHROPIC_API_KEY",
             base_url_env: "ANTHROPIC_BASE_URL",
             default_base_url: mammoth_provider::DEFAULT_BASE_URL,
@@ -69,7 +67,7 @@ const MODEL_REGISTRY: &[(&str, ProviderMetadata)] = &[
     (
         "claude-opus-4-6",
         ProviderMetadata {
-            provider: ProviderKind::MammothApi,
+            provider: ProviderKind::Anthropic,
             auth_env: "ANTHROPIC_API_KEY",
             base_url_env: "ANTHROPIC_BASE_URL",
             default_base_url: mammoth_provider::DEFAULT_BASE_URL,
@@ -78,7 +76,7 @@ const MODEL_REGISTRY: &[(&str, ProviderMetadata)] = &[
     (
         "claude-sonnet-4-6",
         ProviderMetadata {
-            provider: ProviderKind::MammothApi,
+            provider: ProviderKind::Anthropic,
             auth_env: "ANTHROPIC_API_KEY",
             base_url_env: "ANTHROPIC_BASE_URL",
             default_base_url: mammoth_provider::DEFAULT_BASE_URL,
@@ -87,55 +85,10 @@ const MODEL_REGISTRY: &[(&str, ProviderMetadata)] = &[
     (
         "claude-haiku-4-5-20251213",
         ProviderMetadata {
-            provider: ProviderKind::MammothApi,
+            provider: ProviderKind::Anthropic,
             auth_env: "ANTHROPIC_API_KEY",
             base_url_env: "ANTHROPIC_BASE_URL",
             default_base_url: mammoth_provider::DEFAULT_BASE_URL,
-        },
-    ),
-    (
-        "grok",
-        ProviderMetadata {
-            provider: ProviderKind::Xai,
-            auth_env: "XAI_API_KEY",
-            base_url_env: "XAI_BASE_URL",
-            default_base_url: openai_compat::DEFAULT_XAI_BASE_URL,
-        },
-    ),
-    (
-        "grok-3",
-        ProviderMetadata {
-            provider: ProviderKind::Xai,
-            auth_env: "XAI_API_KEY",
-            base_url_env: "XAI_BASE_URL",
-            default_base_url: openai_compat::DEFAULT_XAI_BASE_URL,
-        },
-    ),
-    (
-        "grok-mini",
-        ProviderMetadata {
-            provider: ProviderKind::Xai,
-            auth_env: "XAI_API_KEY",
-            base_url_env: "XAI_BASE_URL",
-            default_base_url: openai_compat::DEFAULT_XAI_BASE_URL,
-        },
-    ),
-    (
-        "grok-3-mini",
-        ProviderMetadata {
-            provider: ProviderKind::Xai,
-            auth_env: "XAI_API_KEY",
-            base_url_env: "XAI_BASE_URL",
-            default_base_url: openai_compat::DEFAULT_XAI_BASE_URL,
-        },
-    ),
-    (
-        "grok-2",
-        ProviderMetadata {
-            provider: ProviderKind::Xai,
-            auth_env: "XAI_API_KEY",
-            base_url_env: "XAI_BASE_URL",
-            default_base_url: openai_compat::DEFAULT_XAI_BASE_URL,
         },
     ),
 ];
@@ -148,19 +101,12 @@ pub fn resolve_model_alias(model: &str) -> String {
         .iter()
         .find_map(|(alias, metadata)| {
             (*alias == lower).then_some(match metadata.provider {
-                ProviderKind::MammothApi => match *alias {
+                ProviderKind::Anthropic => match *alias {
                     "opus" => "claude-opus-4-6",
                     "sonnet" => "claude-sonnet-4-6",
                     "haiku" => "claude-haiku-4-5-20251213",
                     _ => trimmed,
                 },
-                ProviderKind::Xai => match *alias {
-                    "grok" | "grok-3" => "grok-3",
-                    "grok-mini" | "grok-3-mini" => "grok-3-mini",
-                    "grok-2" => "grok-2",
-                    _ => trimmed,
-                },
-                ProviderKind::OpenAi => trimmed,
             })
         })
         .map_or_else(|| trimmed.to_string(), ToOwned::to_owned)
@@ -173,12 +119,12 @@ pub fn metadata_for_model(model: &str) -> Option<ProviderMetadata> {
     if let Some((_, metadata)) = MODEL_REGISTRY.iter().find(|(alias, _)| *alias == lower) {
         return Some(*metadata);
     }
-    if lower.starts_with("grok") {
+    if lower.starts_with("claude") {
         return Some(ProviderMetadata {
-            provider: ProviderKind::Xai,
-            auth_env: "XAI_API_KEY",
-            base_url_env: "XAI_BASE_URL",
-            default_base_url: openai_compat::DEFAULT_XAI_BASE_URL,
+            provider: ProviderKind::Anthropic,
+            auth_env: "ANTHROPIC_API_KEY",
+            base_url_env: "ANTHROPIC_BASE_URL",
+            default_base_url: mammoth_provider::DEFAULT_BASE_URL,
         });
     }
     None
@@ -190,15 +136,9 @@ pub fn detect_provider_kind(model: &str) -> ProviderKind {
         return metadata.provider;
     }
     if mammoth_provider::has_auth_from_env_or_saved().unwrap_or(false) {
-        return ProviderKind::MammothApi;
+        return ProviderKind::Anthropic;
     }
-    if openai_compat::has_api_key("OPENAI_API_KEY") {
-        return ProviderKind::OpenAi;
-    }
-    if openai_compat::has_api_key("XAI_API_KEY") {
-        return ProviderKind::Xai;
-    }
-    ProviderKind::MammothApi
+    ProviderKind::Anthropic
 }
 
 #[must_use]
@@ -216,24 +156,29 @@ mod tests {
     use super::{detect_provider_kind, max_tokens_for_model, resolve_model_alias, ProviderKind};
 
     #[test]
-    fn resolves_grok_aliases() {
-        assert_eq!(resolve_model_alias("grok"), "grok-3");
-        assert_eq!(resolve_model_alias("grok-mini"), "grok-3-mini");
-        assert_eq!(resolve_model_alias("grok-2"), "grok-2");
+    fn resolves_anthropic_aliases() {
+        assert_eq!(resolve_model_alias("opus"), "claude-opus-4-6");
+        assert_eq!(resolve_model_alias("sonnet"), "claude-sonnet-4-6");
+        assert_eq!(resolve_model_alias("haiku"), "claude-haiku-4-5-20251213");
     }
 
     #[test]
-    fn detects_provider_from_model_name_first() {
-        assert_eq!(detect_provider_kind("grok"), ProviderKind::Xai);
-        assert_eq!(
-            detect_provider_kind("claude-sonnet-4-6"),
-            ProviderKind::MammothApi
-        );
+    fn detects_anthropic_provider_for_supported_and_unknown_models() {
+        assert_eq!(detect_provider_kind("claude-sonnet-4-6"), ProviderKind::Anthropic);
+        assert_eq!(detect_provider_kind("grok"), ProviderKind::Anthropic);
+    }
+
+    #[test]
+    fn metadata_exists_for_anthropic_registry_models() {
+        let metadata =
+            super::metadata_for_model("claude-sonnet-4-6").expect("metadata should exist");
+        assert_eq!(metadata.provider, ProviderKind::Anthropic);
+        assert_eq!(metadata.auth_env, "ANTHROPIC_API_KEY");
     }
 
     #[test]
     fn keeps_existing_max_token_heuristic() {
         assert_eq!(max_tokens_for_model("opus"), 32_000);
-        assert_eq!(max_tokens_for_model("grok-3"), 64_000);
+        assert_eq!(max_tokens_for_model("claude-sonnet-4-6"), 64_000);
     }
 }

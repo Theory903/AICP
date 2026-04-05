@@ -1,5 +1,6 @@
 use crate::session::Session;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 const DEFAULT_INPUT_COST_PER_MILLION: f64 = 15.0;
 const DEFAULT_OUTPUT_COST_PER_MILLION: f64 = 75.0;
@@ -160,11 +161,13 @@ pub fn format_usd(amount: f64) -> String {
     format!("${amount:.4}")
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct UsageTracker {
     latest_turn: TokenUsage,
     cumulative: TokenUsage,
     turns: u32,
+    tool_totals: HashMap<String, TokenUsage>,
+    peak_turn_tokens: u32,
 }
 
 impl UsageTracker {
@@ -190,7 +193,63 @@ impl UsageTracker {
         self.cumulative.output_tokens += usage.output_tokens;
         self.cumulative.cache_creation_input_tokens += usage.cache_creation_input_tokens;
         self.cumulative.cache_read_input_tokens += usage.cache_read_input_tokens;
+        self.peak_turn_tokens = self.peak_turn_tokens.max(usage.total_tokens());
         self.turns += 1;
+    }
+
+    pub fn record_tool(&mut self, tool_name: &str, usage: TokenUsage) {
+        let entry = self.tool_totals.entry(tool_name.to_string()).or_default();
+        entry.input_tokens += usage.input_tokens;
+        entry.output_tokens += usage.output_tokens;
+        entry.cache_creation_input_tokens += usage.cache_creation_input_tokens;
+        entry.cache_read_input_tokens += usage.cache_read_input_tokens;
+    }
+
+    #[must_use]
+    pub fn tool_breakdown(&self) -> Vec<ToolUsageRecord> {
+        let mut records: Vec<ToolUsageRecord> = self
+            .tool_totals
+            .iter()
+            .map(|(name, usage)| ToolUsageRecord {
+                tool_name: name.clone(),
+                token_usage: *usage,
+            })
+            .collect();
+        records.sort_by(|a, b| {
+            b.token_usage
+                .total_tokens()
+                .cmp(&a.token_usage.total_tokens())
+        });
+        records
+    }
+
+    #[must_use]
+    pub fn check_budget(&self, pricing: ModelPricing, threshold: BudgetThreshold) -> BudgetStatus {
+        let cost = self
+            .cumulative
+            .estimate_cost_usd_with_pricing(pricing)
+            .total_cost_usd();
+        if cost > threshold.max_cost_usd {
+            BudgetStatus::Exceeded {
+                overage_usd: cost - threshold.max_cost_usd,
+            }
+        } else {
+            BudgetStatus::Ok
+        }
+    }
+
+    #[must_use]
+    pub fn session_analytics(&self) -> SessionAnalytics {
+        let avg = if self.turns == 0 {
+            0.0
+        } else {
+            f64::from(self.cumulative.total_tokens()) / f64::from(self.turns)
+        };
+        SessionAnalytics {
+            avg_tokens_per_turn: avg,
+            peak_turn_tokens: self.peak_turn_tokens,
+            total_cost_usd: self.cumulative.estimate_cost_usd().total_cost_usd(),
+        }
     }
 
     #[must_use]
@@ -206,6 +265,118 @@ impl UsageTracker {
     #[must_use]
     pub fn turns(&self) -> u32 {
         self.turns
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ToolUsageRecord {
+    pub tool_name: String,
+    pub token_usage: TokenUsage,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BudgetThreshold {
+    pub max_cost_usd: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BudgetStatus {
+    Ok,
+    Exceeded { overage_usd: f64 },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SessionAnalytics {
+    pub avg_tokens_per_turn: f64,
+    pub peak_turn_tokens: u32,
+    pub total_cost_usd: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ModelCostEstimate {
+    pub model: String,
+    pub cost_usd: f64,
+    pub pricing_source: String,
+}
+
+pub struct CostEstimator {
+    table: HashMap<String, ModelPricing>,
+}
+
+impl Default for CostEstimator {
+    fn default() -> Self {
+        let mut table = HashMap::new();
+        table.insert(
+            "claude-haiku-4-5".to_string(),
+            ModelPricing {
+                input_cost_per_million: 1.0,
+                output_cost_per_million: 5.0,
+                cache_creation_cost_per_million: 1.25,
+                cache_read_cost_per_million: 0.1,
+            },
+        );
+        table.insert(
+            "claude-sonnet-4-6".to_string(),
+            ModelPricing::default_sonnet_tier(),
+        );
+        table.insert(
+            "claude-opus-4-6".to_string(),
+            ModelPricing {
+                input_cost_per_million: 15.0,
+                output_cost_per_million: 75.0,
+                cache_creation_cost_per_million: 18.75,
+                cache_read_cost_per_million: 1.5,
+            },
+        );
+        table.insert(
+            "gpt-4o".to_string(),
+            ModelPricing {
+                input_cost_per_million: 2.5,
+                output_cost_per_million: 10.0,
+                cache_creation_cost_per_million: 0.0,
+                cache_read_cost_per_million: 1.25,
+            },
+        );
+        table.insert(
+            "gemini-1.5-pro".to_string(),
+            ModelPricing {
+                input_cost_per_million: 1.25,
+                output_cost_per_million: 5.0,
+                cache_creation_cost_per_million: 0.0,
+                cache_read_cost_per_million: 0.31,
+            },
+        );
+        Self { table }
+    }
+}
+
+impl CostEstimator {
+    #[must_use]
+    pub fn estimate(&self, model: &str, usage: TokenUsage) -> ModelCostEstimate {
+        let default_pricing = ModelPricing::default_sonnet_tier();
+        let (pricing, source) = self
+            .table
+            .get(model)
+            .map_or((default_pricing, "default_fallback"), |p| (*p, "known"));
+        ModelCostEstimate {
+            model: model.to_string(),
+            cost_usd: usage
+                .estimate_cost_usd_with_pricing(pricing)
+                .total_cost_usd(),
+            pricing_source: source.to_string(),
+        }
+    }
+
+    #[must_use]
+    pub fn compare_models(&self, usage: TokenUsage, models: &[&str]) -> Vec<ModelCostEstimate> {
+        let mut estimates: Vec<ModelCostEstimate> =
+            models.iter().map(|m| self.estimate(m, usage)).collect();
+        estimates.sort_by(|a, b| {
+            a.cost_usd
+                .partial_cmp(&b.cost_usd)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        estimates
     }
 }
 

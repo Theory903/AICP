@@ -1,8 +1,16 @@
-# Mammoth Code
+# Mammoth
 
-Mammoth Code is a local coding-agent CLI implemented in safe Rust. It is **Claude Code inspired** and developed as a **clean-room implementation**: it aims for a strong local agent experience, but it is **not** a direct port or copy of Claude Code.
+Mammoth is the **primary interaction shell** for the AICP stack.
 
-The Rust workspace is the current main product surface. The `mammoth` binary provides interactive sessions, one-shot prompts, workspace-aware tools, local agent workflows, and plugin-capable operation from a single workspace.
+It is the operator and agent entry point for discovering capabilities, running tasks, supervising workflows, handling approvals, reviewing diffs, and driving secure organizational automation against the AICP control plane.
+
+Product posture in this repository:
+
+- **Mammoth** is the only primary interaction surface for now.
+- **AICP** is the governed backend and protocol/runtime control plane.
+- **Studio** should be treated as embedded Mammoth supervision UX over time, not as a separate front door.
+
+The Rust workspace is therefore more than a local coding CLI. It is the shell through which users and agents interact with governed execution, policy, approvals, and audit-backed automation.
 
 ## Current status
 
@@ -20,6 +28,19 @@ The Rust workspace is the current main product surface. The `mammoth` binary pro
 - Provider credentials for the model you want to use
 
 ### Authentication
+
+OpenAI-compatible / Ollama-compatible models:
+
+```bash
+export OPENAI_API_KEY="ollama"
+export OPENAI_BASE_URL="http://127.0.0.1:11434/v1"
+```
+
+Example local shell launch:
+
+```bash
+cargo run -q -p mammoth-cli --bin mammoth -- --model kimi-k2.5:cloud
+```
 
 Anthropic-compatible models:
 
@@ -75,7 +96,7 @@ From the release build:
 
 ## Supported capabilities
 
-- Interactive REPL and one-shot prompt execution
+- Full-screen TUI shell plus one-shot prompt execution
 - Saved-session inspection and resume flows
 - Built-in workspace tools for shell, file read/write/edit, search, web fetch/search, todos, and notebook updates
 - Slash commands for status, compaction, config inspection, diff, export, session management, and version reporting
@@ -107,11 +128,11 @@ The Rust workspace is the active product implementation. It currently includes t
 
 ## Roadmap
 
+- Make Mammoth the rock-solid shell for AICP approvals, workflows, replay, and operator supervision
+- Expand TUI command palette, inspectors, review panes, and workflow/event surfaces
 - Publish packaged release artifacts for public installs
 - Add a repeatable release workflow and longer-lived changelog discipline
 - Expand platform verification beyond the current CI matrix
-- Add more task-focused examples and operator documentation
-- Continue tightening feature coverage and UX polish across the Rust implementation
 
 ## Release notes
 

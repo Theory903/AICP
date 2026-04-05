@@ -34,7 +34,7 @@ class PolicyDefaults(BaseModel):
 class AicpConfig(BaseModel):
     """Configuration for AICP on a FastAPI app."""
 
-    version: str = "0.1.1"
+    version: str = "0.3.0"
     provider_name: str = "fastapi"
     provider_url: str | None = None
 

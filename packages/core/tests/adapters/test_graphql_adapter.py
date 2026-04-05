@@ -71,11 +71,16 @@ def _introspection_payload() -> dict[str, Any]:
     }
 
 
-class StubGraphQLTransport(GraphQLTransport):
+class StubGraphQLTransport:
     def __init__(self, responses: list[dict[str, Any]]) -> None:
-        super().__init__(url="https://example.com", endpoint="/graphql")
+        self.url = "https://example.com"
+        self.endpoint = "/graphql"
         self._responses = list(responses)
         self.requests: list[dict[str, Any]] = []
+
+    @property
+    def endpoint_url(self) -> str:
+        return f"{self.url.rstrip('/')}/{self.endpoint.lstrip('/')}"
 
     async def send(self, request: dict[str, Any]) -> dict[str, Any]:
         self.requests.append(request)

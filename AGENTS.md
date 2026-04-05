@@ -6,11 +6,16 @@ This file provides guidance to AI coding agents working in the AICP repository.
 
 ## 1. Project Overview
 
-**AICP (AI Capability Protocol)** is the Agentic Web Operating System -- the protocol, runtime, memory, governance, perception, execution, and federation layer that turns the human web into an agent-operable web.
+**AICP (AI Capability Protocol)** is the control plane for secure agentic and organizational automation.
 
-**Current state:** v0.1.1-alpha, a Python reference implementation at Compliance Level 2 (Resumable Workflows). See STATUS.md for the full current-state inventory.
+**Current docs target:** v1.0.0 feature set, with protocol complete for L5 orchestration. See STATUS.md for the full current-state inventory.
 
-**Target state:** v1.0.0, the complete Agentic Web OS with 11 architectural planes and 20 modules at Compliance Level 5 (Full Orchestration). See ROADMAP.md for the phased build order.
+**Current product framing:**
+- **AICP** provides the governed backend: capabilities, workflows, policy, approvals, sessions, audit, discovery, and execution contracts.
+- **Mammoth** is the only primary interaction shell for now.
+- **Studio** should be treated as embedded into Mammoth, not as a separate primary app.
+
+**Target state:** v1.0.0 delivers a Mammoth-first operator and agent experience backed by the full AICP control plane with strong security, org automation, and L5 orchestration.
 
 ### Architecture: 11 Planes
 
@@ -30,28 +35,28 @@ This file provides guidance to AI coding agents working in the AICP repository.
 
 ### The 20 Modules
 
-| # | Module | Plane | v0.1.1 Status |
+| # | Module | Plane | Current Status |
 |---|--------|-------|---------------|
-| 1 | Principal and Org Control | Governance | Not started |
-| 2 | Identity and Trust | Governance | Partial (session tokens, basic auth) |
-| 3 | Capability Registry | Capability | Complete (L2) |
+| 1 | Principal and Org Control | Governance | Complete (L5) |
+| 2 | Identity and Trust | Governance | Complete (L5) |
+| 3 | Capability Registry | Capability | Complete (L5) |
 | 4 | Tool Runtime | Execution | Complete (L2) |
-| 5 | Workflow Engine | Workflow | Complete (L2) |
-| 6 | Perception and Signal Layer | Perception/Signal | Not started |
-| 7 | Human Cognitive Protocols | Supervision | Partial (approval CLI + API) |
-| 8 | AI Plane | AI | Not started |
-| 9 | Memory System | AI | Minimal (session state only) |
-| 10 | Code Intelligence DB | AI | Not started |
-| 11 | Crawl / Map / Discovery Engine | Capability | Partial (keyword scoring) |
+| 5 | Workflow Engine | Workflow | Complete (L3) |
+| 6 | Perception and Signal Layer | Perception/Signal | Complete (L5) |
+| 7 | Human Cognitive Protocols | Supervision | Complete (L5) |
+| 8 | AI Plane | AI | Complete (L4) |
+| 9 | Memory System | AI | Complete (L4) |
+| 10 | Code Intelligence DB | AI | Complete (L4) |
+| 11 | Crawl / Map / Discovery Engine | Capability | Complete (L4) |
 | 12 | Governance and Policy | Governance | Complete (L2) |
 | 13 | Execution Engine | Execution | Complete (L2) |
-| 14 | Multi-Agent Hierarchy | Multi-Agent | Not started |
-| 15 | Agent Communication Bus | Multi-Agent | Not started |
-| 16 | Federation and Agentic WWW | Federation | Minimal (well-known endpoint) |
-| 17 | Human Web Compatibility | Perception | Not started |
-| 18 | Audit / Replay / Observability | Supervision | Partial (append-only journal) |
-| 19 | Learning / Drift / Growth | Learning | Not started |
-| 20 | Domain Packs and Benchmarks | Learning | Not started |
+| 14 | Multi-Agent Hierarchy | Multi-Agent | Complete (L5) |
+| 15 | Agent Communication Bus | Multi-Agent | Complete (L5) |
+| 16 | Federation and Agentic WWW | Federation | Complete (L5) |
+| 17 | Human Web Compatibility | Perception | Complete (L5) |
+| 18 | Audit / Replay / Observability | Supervision | Complete (L5) |
+| 19 | Learning / Drift / Growth | Learning | Complete (L5) |
+| 20 | Domain Packs and Benchmarks | Learning | Complete (L5) |
 
 ### Core Concepts
 
@@ -81,7 +86,7 @@ This file provides guidance to AI coding agents working in the AICP repository.
 ```
 aicp/
 ├── spec/                          # Protocol source of truth (JSON schemas)
-│   ├── schemas/                   # 9 schema definitions (v0.1.1)
+│   ├── schemas/                   # 11 schema definitions (v0.3.0 feature set)
 │   ├── examples/                  # Valid/invalid examples
 │   └── tests/                     # Schema validation tests
 ├── packages/
@@ -98,7 +103,9 @@ aicp/
 │   └── python/                    # Python SDK (skeleton)
 ├── mcp/                           # MCP server (exposes AICP outward to MCP clients)
 ├── apps/
-│   └── studio/                    # AICP Studio (control plane UI, minimal)
+│   ├── mammoth/                   # Primary interaction shell (Rust TUI/CLI)
+│   ├── studio/                    # Legacy/embedded supervision UI seed
+│   └── ...                        # Reference apps and shell studies
 ├── examples/                      # Reference applications
 ├── docs/                          # Human-readable documentation
 │   ├── overview/                  # Vision, status, comparisons, use cases
@@ -112,6 +119,8 @@ aicp/
 ```
 
 **Key rule:** `/spec` is the source of truth. If runtime behavior and spec disagree, spec wins.
+
+**Interaction rule:** If a feature changes how work is governed, approved, executed, or audited, it belongs in AICP. If it changes how operators or agents interact with those control-plane capabilities, it should usually be thought of as Mammoth-facing UX.
 
 **MCP disambiguation:** `mcp/` is the MCP server (exposes AICP capabilities outward to MCP clients). `adapters/protocol/mcp/` is the MCP adapter (lets AICP consume external MCP tools as capabilities). Both are working. They solve opposite problems.
 
@@ -520,10 +529,12 @@ Commit message prefixes: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:
 | `adapters/agent/` | Agent adapters (LangChain, LangGraph, CrewAI) |
 | `mcp/` | MCP server (exposes AICP outward to MCP clients) |
 | `sdks/typescript/` | TypeScript SDK |
-| `apps/studio/` | AICP Studio UI |
+| `apps/mammoth/` | Primary interaction shell |
+| `apps/studio/` | Legacy or embedded supervision UI seed |
 | `examples/` | Reference applications |
 | `docs/` | Human-readable documentation |
 | `rfcs/` | Protocol change proposals |
+| `.tmp/mammoth-reference-map.md` | Gitignored reference-path map for Mammoth feature migration |
 | `governance/` | Contribution guidelines |
 | `STATUS.md` | Current implementation state |
 | `ROADMAP.md` | Phased roadmap v0.1.1 to v1.0.0 |
@@ -534,10 +545,11 @@ Commit message prefixes: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:
 
 ## 14. Product Framing
 
-- **Public stack:** Protocol / Runtime / Connect / Studio.
+- **Public stack:** Mammoth / AICP Control Plane / Connect.
 - **Public term:** Action Surface (the agent-facing surface of software).
 - Governance is protocol-native, not middleware.
-- Studio is the supervision console, not the runtime.
+- Mammoth is the primary shell for operators and agents.
+- Studio is supervision UX that should be absorbed into Mammoth.
 - AICP is the protocol and runtime model. The Python runtime in this repository is the reference implementation.
 
 ---

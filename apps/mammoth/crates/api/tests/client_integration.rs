@@ -213,12 +213,8 @@ async fn provider_client_dispatches_api_requests() {
         Some(AuthSource::ApiKey("test-key".to_string())),
     )
     .expect("api provider client should be constructed");
-    let client = match client {
-        ProviderClient::MammothApi(client) => {
-            ProviderClient::MammothApi(client.with_base_url(server.base_url()))
-        }
-        other => panic!("expected default provider, got {other:?}"),
-    };
+    let ProviderClient::Anthropic(client) = client;
+    let client = ProviderClient::Anthropic(client.with_base_url(server.base_url()));
 
     let response = client
         .send_message(&sample_request(false))

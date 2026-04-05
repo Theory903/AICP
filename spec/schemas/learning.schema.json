@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aicp.ai/spec/schemas/learning.schema.json",
+  "title": "Learning",
+  "description": "Learning System - skill mining, policy learning, drift detection, autonomy calibration",
+  "type": "object",
+  "definitions": {
+    "drift_type": {
+      "type": "string",
+      "enum": ["capability_usage", "policy_effectiveness", "workflow_patterns", "error_rates", "response_times"]
+    },
+    "autonomy_level": {
+      "type": "string",
+      "enum": ["constrained", "guided", "autonomous", "full"]
+    },
+    "skill": {
+      "type": "object",
+      "required": ["id", "name", "description"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "capability_names": { "type": "array", "items": { "type": "string" } },
+        "workflow_ids": { "type": "array", "items": { "type": "string" } },
+        "success_rate": { "type": "number" },
+        "usage_count": { "type": "integer" },
+        "avg_execution_time_ms": { "type": "number" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "mined_skill": {
+      "type": "object",
+      "required": ["id", "source_capabilities", "pattern_type", "confidence", "suggested_name"],
+      "properties": {
+        "id": { "type": "string" },
+        "source_capabilities": { "type": "array", "items": { "type": "string" } },
+        "source_workflows": { "type": "array", "items": { "type": "string" } },
+        "pattern_type": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "suggested_name": { "type": "string" },
+        "suggested_description": { "type": "string" },
+        "discovered_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "learned_policy": {
+      "type": "object",
+      "required": ["id", "name", "description", "conditions", "effect", "confidence"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "conditions": { "type": "object" },
+        "effect": { "type": "string" },
+        "confidence": { "type": "number" },
+        "training_data_size": { "type": "integer" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "last_updated": { "type": "string", "format": "date-time" }
+      }
+    },
+    "drift_detection": {
+      "type": "object",
+      "required": ["id", "drift_type", "metric_name", "baseline_value", "current_value", "change_percent"],
+      "properties": {
+        "id": { "type": "string" },
+        "drift_type": { "$ref": "#/definitions/drift_type" },
+        "metric_name": { "type": "string" },
+        "baseline_value": { "type": "number" },
+        "current_value": { "type": "number" },
+        "change_percent": { "type": "number" },
+        "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+        "detected_at": { "type": "string", "format": "date-time" },
+        "recommendations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "autonomy_calibration": {
+      "type": "object",
+      "required": ["agent_id", "autonomy_level", "trust_score"],
+      "properties": {
+        "agent_id": { "type": "string" },
+        "autonomy_level": { "$ref": "#/definitions/autonomy_level" },
+        "trust_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "last_calibrated": { "type": "string", "format": "date-time" },
+        "recommendations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "benchmark_result": {
+      "type": "object",
+      "required": ["id", "benchmark_name", "metric_name", "value", "unit"],
+      "properties": {
+        "id": { "type": "string" },
+        "benchmark_name": { "type": "string" },
+        "metric_name": { "type": "string" },
+        "value": { "type": "number" },
+        "unit": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      }
+    }
+  }
+}

@@ -24,15 +24,15 @@ from aicp_cli.commands.preview_cmd import preview_cmd
 from aicp_cli.commands.scan_cmd import scan
 from aicp_cli.commands.serve_cmd import serve_cmd
 from aicp_cli.commands.test_cmd import (
-    test_cmd,
-    test_execute_cmd,
-    test_approvals_cmd,
-    test_approve_cmd,
-    test_review_cmd,
-    test_rank_cmd,
-    test_health_cmd,
-    test_sessions_cmd,
-    test_interactions_cmd,
+    test_cmd as runtime_test_cmd,
+    test_execute_cmd as runtime_test_execute_cmd,
+    test_approvals_cmd as runtime_test_approvals_cmd,
+    test_approve_cmd as runtime_test_approve_cmd,
+    test_review_cmd as runtime_test_review_cmd,
+    test_rank_cmd as runtime_test_rank_cmd,
+    test_health_cmd as runtime_test_health_cmd,
+    test_sessions_cmd as runtime_test_sessions_cmd,
+    test_interactions_cmd as runtime_test_interactions_cmd,
 )
 
 CORE_COMMANDS = [
@@ -52,15 +52,15 @@ RUNTIME_COMMANDS = [
     appr_group,
     serve_cmd,
     import_group,
-    test_cmd,
-    test_execute_cmd,
-    test_approvals_cmd,
-    test_approve_cmd,
-    test_review_cmd,
-    test_rank_cmd,
-    test_health_cmd,
-    test_sessions_cmd,
-    test_interactions_cmd,
+    runtime_test_cmd,
+    runtime_test_execute_cmd,
+    runtime_test_approvals_cmd,
+    runtime_test_approve_cmd,
+    runtime_test_review_cmd,
+    runtime_test_rank_cmd,
+    runtime_test_health_cmd,
+    runtime_test_sessions_cmd,
+    runtime_test_interactions_cmd,
 ]
 
 POLICY_COMMANDS = [

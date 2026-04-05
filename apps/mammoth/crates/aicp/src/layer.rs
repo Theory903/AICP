@@ -1,4 +1,5 @@
-use runtime::{AicpConfig, ToolError, ToolExecutor};
+use mammoth_runtime::{AicpConfig, ToolError, ToolExecutor};
+use tokio::runtime::Handle;
 
 use crate::client::AicpClient;
 
@@ -42,9 +43,8 @@ impl<T: ToolExecutor> ToolExecutor for AicpToolExecutor<T> {
         }
 
         // 1. Policy gate.
-        let allowed = self
-            .client
-            .evaluate_policy(tool_name, input)
+        let allowed = Handle::current()
+            .block_on(self.client.evaluate_policy(tool_name, input))
             .unwrap_or(true); // fail-open on network error
 
         if !allowed {
@@ -59,11 +59,16 @@ impl<T: ToolExecutor> ToolExecutor for AicpToolExecutor<T> {
         // 3. Audit.
         match &result {
             Ok(output) => {
-                self.client.record_audit(tool_name, input, output, false);
+                let _ = Handle::current()
+                    .block_on(self.client.record_audit(tool_name, input, output, false));
             }
             Err(err) => {
-                self.client
-                    .record_audit(tool_name, input, &err.to_string(), true);
+                let _ = Handle::current().block_on(self.client.record_audit(
+                    tool_name,
+                    input,
+                    &err.to_string(),
+                    true,
+                ));
             }
         }
 

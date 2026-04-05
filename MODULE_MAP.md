@@ -1,8 +1,17 @@
 # MODULE_MAP.md -- Feature-to-Module Mapping
 
-> **Version:** 0.1.1-alpha | **Last updated:** 2026-04-03
+> **Version Target:** 1.0.0 | **Last updated:** 2026-04-05
 
-This document maps every feature, capability family, and protocol concern to its owning module. Use this to find where something lives or where new work should go.
+This document maps control-plane responsibilities to their owning modules. Use it to answer two practical questions:
+
+1. Where does this behavior belong in AICP?
+2. What supports Mammoth-first interaction and secure org automation?
+
+Read this map with the current product framing in mind:
+
+- **AICP** owns control-plane concerns: policy, workflow, execution, approvals, sessions, audit, discovery, trust, and org boundaries.
+- **Mammoth** owns the primary interaction shell.
+- **Studio** UX belongs inside Mammoth rather than as an independent front door.
 
 ---
 
@@ -10,32 +19,32 @@ This document maps every feature, capability family, and protocol concern to its
 
 | # | Module | Plane | Owner Package |
 |---|--------|-------|---------------|
-| 1 | Principal and Org Control | Governance | `packages/core` (planned) |
+| 1 | Principal and Org Control | Governance | `packages/core` |
 | 2 | Identity and Trust | Governance | `packages/runtime` |
 | 3 | Capability Registry | Capability | `packages/core` + `packages/runtime` |
 | 4 | Tool Runtime | Execution | `packages/runtime` |
 | 5 | Workflow Engine | Workflow | `packages/runtime` |
-| 6 | Perception and Signal Layer | Perception / Signal | Not started |
+| 6 | Perception and Signal Layer | Perception / Signal | `packages/core` |
 | 7 | Human Cognitive Protocols | Supervision | `packages/runtime` + `packages/cli` |
-| 8 | AI Plane | AI | Not started |
-| 9 | Memory System | AI | `packages/runtime` (session state only) |
+| 8 | AI Plane | AI | `packages/runtime` |
+| 9 | Memory System | AI | `packages/runtime` |
 | 10 | Code Intelligence DB | AI | Not started |
 | 11 | Crawl / Map / Discovery Engine | Capability | `packages/runtime` |
 | 12 | Governance and Policy | Governance | `packages/core` + `packages/runtime` |
 | 13 | Execution Engine | Execution | `packages/runtime` |
-| 14 | Multi-Agent Hierarchy | Multi-Agent | Not started |
-| 15 | Agent Communication Bus | Multi-Agent | Not started |
-| 16 | Federation and Agentic WWW | Federation | `packages/runtime` (minimal) |
-| 17 | Human Web Compatibility | Perception | Not started |
+| 14 | Multi-Agent Hierarchy | Multi-Agent | `packages/core` |
+| 15 | Agent Communication Bus | Multi-Agent | `packages/core` |
+| 16 | Federation and Agentic WWW | Federation | `packages/core` |
+| 17 | Human Web Compatibility | Perception | `packages/core` |
 | 18 | Audit / Replay / Observability | Supervision | `packages/runtime` |
-| 19 | Learning / Drift / Growth | Learning | Not started |
-| 20 | Domain Packs and Benchmarks | Learning | Not started |
+| 19 | Learning / Drift / Growth | Learning | `packages/core` |
+| 20 | Domain Packs and Benchmarks | Learning | `packages/core` |
 
 ---
 
 ## 1. Principal and Org Control
 
-**Plane:** Governance | **Status:** Not started | **Phase:** 8 (v0.9.0)
+**Plane:** Governance | **Status:** Complete (L2) | **Phase:** 0 (v0.1.1)
 
 | Feature | Description | v0.1.1 | v1.0.0 Target |
 |---------|-------------|--------|---------------|
@@ -48,7 +57,7 @@ This document maps every feature, capability family, and protocol concern to its
 
 ## 2. Identity and Trust
 
-**Plane:** Governance | **Status:** Partial | **Phase:** 6 (v0.7.0)
+**Plane:** Governance | **Status:** Complete (L5) | **Phase:** 6 (v0.7.0)
 
 | Feature | Description | v0.1.1 | v1.0.0 Target |
 |---------|-------------|--------|---------------|
@@ -133,17 +142,17 @@ This document maps every feature, capability family, and protocol concern to its
 
 ## 6. Perception and Signal Layer
 
-**Plane:** Perception / Signal | **Status:** Not started | **Phase:** 4 (v0.5.0)
+**Plane:** Perception / Signal | **Status:** Protocol + Stub | **Phase:** 4 (v0.5.0)
 
 | Feature | Description | v0.1.1 | v1.0.0 Target |
 |---------|-------------|--------|---------------|
-| a11y tree extraction | Parse accessibility tree | None | Cross-framework (React, Vue, Angular) |
-| DOM observation | Watch DOM changes | None | MutationObserver + virtual DOM diffing |
-| Screenshot capture | Take and analyze screenshots | None | Screenshot-to-action pipeline |
-| Behavioral signals | User intent, attention, interaction velocity | None | Cognitive signal processor |
-| Event bus | Sub-ms event ingestion and routing | None | Stream ingestion (HTTP/2, WS, gRPC, SSE) |
-| Signal classification | Classify events by intent/urgency/risk | None | ML classifier |
-| Deduplication | Collapse duplicate signals | None | Content-hash dedup with bloom filters |
+| a11y tree extraction | Parse accessibility tree | Schema + Stub | Cross-framework (React, Vue, Angular) |
+| DOM observation | Watch DOM changes | Schema + Stub | MutationObserver + virtual DOM diffing |
+| Screenshot capture | Take and analyze screenshots | Schema + Stub | Screenshot-to-action pipeline |
+| Behavioral signals | User intent, attention, interaction velocity | Schema + Stub | Cognitive signal processor |
+| Event bus | Sub-ms event ingestion and routing | Schema + Stub | Stream ingestion (HTTP/2, WS, gRPC, SSE) |
+| Signal classification | Classify events by intent/urgency/risk | Schema + Stub | ML classifier |
+| Deduplication | Collapse duplicate signals | Schema + Stub | Content-hash dedup with bloom filters |
 
 ---
 
@@ -165,16 +174,16 @@ This document maps every feature, capability family, and protocol concern to its
 
 ## 8. AI Plane
 
-**Plane:** AI | **Status:** Not started | **Phase:** 1 (v0.2.0)
+**Plane:** AI | **Status:** Complete (L4) | **Phase:** 1 (v0.2.0)
 
-| Feature | Description | v0.1.1 | v1.0.0 Target |
-|---------|-------------|--------|---------------|
-| Intent router | Route natural language to capabilities | None | LLM-backed intent classification |
-| Planner | Generate multi-step plans from goals | None | Constraint-satisfaction planner |
-| Executor | Run plans with rollback | None | Speculative execution, parallel paths |
-| Judge | Evaluate execution results | None | Success/failure/unsafe/ambiguous classification |
-| Context budget | Token-aware context management | None | Context truncation with priority |
-| Cognitive protocols | Domain-specific reasoning patterns | None | UX, SWE, Ops, Research, Finance |
+| Feature | Description | Current (v0.3.0) | v1.0.0 Target |
+|---------|-------------|------------------|---------------|
+| Intent router | Route natural language to capabilities | Working (`IntentRouter`) | Richer multimodal and org-aware routing |
+| Planner | Generate multi-step plans from goals | Working (`AICPlanner`) | Constraint-satisfaction planner with broader domain packs |
+| Executor | Run plans with rollback | Working | Speculative execution and parallel path optimization |
+| Judge | Evaluate execution results | Working (`AICJudge`) | Success/failure/unsafe/ambiguous plus deeper policy-aware judgment |
+| Context budget | Token-aware context management | Working (`MetaMemory`) | Larger-scale truncation, prioritization, and code-intelligence integration |
+| Cognitive protocols | Domain-specific reasoning patterns | Working (UX, SWE, Ops, Research, Finance) | Expanded protocol library and stronger domain packs |
 
 **Cognitive protocol families (v1.0.0 target):**
 
@@ -190,15 +199,15 @@ This document maps every feature, capability family, and protocol concern to its
 
 ## 9. Memory System
 
-**Plane:** AI | **Status:** Minimal | **Phase:** 1 (v0.2.0)
+**Plane:** AI | **Status:** Complete (L4) | **Phase:** 1 (v0.2.0)
 
-| Feature | Description | v0.1.1 | v1.0.0 Target |
-|---------|-------------|--------|---------------|
-| Working memory | Current session state | Working (session state) | Token-bounded working memory |
-| Episodic memory | Execution history | None | Queryable execution log |
-| Semantic memory | Facts and knowledge | None | Embedding-indexed knowledge store |
-| Skill memory | Learned procedures | None | Extracted from execution patterns |
-| Environmental memory | World state snapshots | None | Perception cache |
+| Feature | Description | Current (v0.3.0) | v1.0.0 Target |
+|---------|-------------|------------------|---------------|
+| Working memory | Current session state | Working | Stronger token-bounded working memory and richer context assembly |
+| Episodic memory | Execution history | Working | Cross-session retrieval and replay-aware summarization |
+| Semantic memory | Facts and knowledge | Working structure, limited retrieval | Embedding-indexed knowledge store |
+| Skill memory | Learned procedures | Working structure | Extracted execution patterns and adaptive strategy memory |
+| Environmental memory | World state snapshots | Working structure | Perception-backed deployment and topology memory |
 
 ---
 
@@ -284,7 +293,7 @@ composite_risk = max(financial, irreversibility, privacy)
 
 ## 14. Multi-Agent Hierarchy
 
-**Plane:** Multi-Agent | **Status:** Not started | **Phase:** 5 (v0.6.0)
+**Plane:** Multi-Agent | **Status:** Complete (L5) | **Phase:** 5 (v0.6.0)
 
 | Feature | Description | v0.1.1 | v1.0.0 Target |
 |---------|-------------|--------|---------------|
@@ -307,7 +316,7 @@ composite_risk = max(financial, irreversibility, privacy)
 
 ## 15. Agent Communication Bus
 
-**Plane:** Multi-Agent | **Status:** Not started | **Phase:** 5 (v0.6.0)
+**Plane:** Multi-Agent | **Status:** Complete (L5) | **Phase:** 5 (v0.6.0)
 
 | Feature | Description | v0.1.1 | v1.0.0 Target |
 |---------|-------------|--------|---------------|
@@ -320,7 +329,7 @@ composite_risk = max(financial, irreversibility, privacy)
 
 ## 16. Federation and Agentic WWW
 
-**Plane:** Federation | **Status:** Minimal | **Phase:** 6 (v0.7.0)
+**Plane:** Federation | **Status:** Protocol + Stub | **Phase:** 6 (v0.7.0)
 
 | Feature | Description | v0.1.1 | v1.0.0 Target |
 |---------|-------------|--------|---------------|
@@ -334,7 +343,7 @@ composite_risk = max(financial, irreversibility, privacy)
 
 ## 17. Human Web Compatibility
 
-**Plane:** Perception | **Status:** Not started | **Phase:** 4 (v0.5.0)
+**Plane:** Perception | **Status:** Protocol + Stub | **Phase:** 4 (v0.5.0)
 
 | Feature | Description | v0.1.1 | v1.0.0 Target |
 |---------|-------------|--------|---------------|
@@ -347,7 +356,7 @@ composite_risk = max(financial, irreversibility, privacy)
 
 ## 18. Audit / Replay / Observability
 
-**Plane:** Supervision | **Status:** Partial | **Phase:** 0 (v0.1.1), expanded Phase 9 (v1.0.0)
+**Plane:** Supervision | **Status:** Complete (L5) | **Phase:** 0 (v0.1.1)
 
 | Feature | Description | v0.1.1 | v1.0.0 Target |
 |---------|-------------|--------|---------------|
@@ -362,7 +371,7 @@ composite_risk = max(financial, irreversibility, privacy)
 
 ## 19. Learning / Drift / Growth
 
-**Plane:** Learning | **Status:** Not started | **Phase:** 7 (v0.8.0)
+**Plane:** Learning | **Status:** Protocol + Stub | **Phase:** 7 (v0.8.0)
 
 | Feature | Description | v0.1.1 | v1.0.0 Target |
 |---------|-------------|--------|---------------|
@@ -375,7 +384,7 @@ composite_risk = max(financial, irreversibility, privacy)
 
 ## 20. Domain Packs and Benchmarks
 
-**Plane:** Learning | **Status:** Not started | **Phase:** 7 (v0.8.0)
+**Plane:** Learning | **Status:** Protocol + Stub | **Phase:** 7 (v0.8.0)
 
 | Feature | Description | v0.1.1 | v1.0.0 Target |
 |---------|-------------|--------|---------------|

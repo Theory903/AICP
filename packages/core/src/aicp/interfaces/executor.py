@@ -62,6 +62,7 @@ class ExecutionResult(BaseModel):
 
     # Agent guidance
     next: dict[str, Any] | None = None
+    allowed_next_actions: list[dict[str, Any]] = Field(default_factory=list)
 
     # Rendering metadata
     rendered: str | None = None
@@ -97,6 +98,7 @@ class ExecutionResult(BaseModel):
         format_hint: str | None = None,
         can_continue: bool = True,
         continuation_hint: str | None = None,
+        allowed_next_actions: list[dict[str, Any]] | None = None,
     ) -> ExecutionResult:
         """Build a success result."""
         return cls(
@@ -109,6 +111,7 @@ class ExecutionResult(BaseModel):
             format_hint=format_hint,
             can_continue=can_continue,
             continuation_hint=continuation_hint,
+            allowed_next_actions=list(allowed_next_actions or []),
         )
 
     @classmethod
@@ -124,6 +127,7 @@ class ExecutionResult(BaseModel):
         approval_request_id: str | None = None,
         approval_status: str | None = None,
         status: ExecutionStatus = ExecutionStatus.FAILURE,
+        allowed_next_actions: list[dict[str, Any]] | None = None,
     ) -> ExecutionResult:
         """Build a failure-like result."""
         return cls(
@@ -136,6 +140,7 @@ class ExecutionResult(BaseModel):
             continuation_hint=continuation_hint,
             approval_request_id=approval_request_id,
             approval_status=approval_status,
+            allowed_next_actions=list(allowed_next_actions or []),
         )
 
 

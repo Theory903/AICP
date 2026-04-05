@@ -1,0 +1,64 @@
+{
+  "name": "aicp-vscode",
+  "displayName": "AICP",
+  "description": "AI Capability Protocol for VS Code",
+  "version": "0.1.0",
+  "publisher": "aicp",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "AI",
+    "Developer Tools"
+  ],
+  "activationEvents": [
+    "onCommand:aicp.start",
+    "onCommand:aicp.run"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aicp.start",
+        "title": "Start AICP Session"
+      },
+      {
+        "command": "aicp.run",
+        "title": "Run Capability"
+      },
+      {
+        "command": "aicp.dev",
+        "title": "Start AICP Dev Server"
+      },
+      {
+        "command": "aicp.appr",
+        "title": "Show Approval Queue"
+      }
+    ],
+    "configuration": {
+      "title": "AICP",
+      "properties": {
+        "aicp.devUrl": {
+          "type": "string",
+          "default": "http://localhost:8765",
+          "description": "AICP dev server URL"
+        },
+        "aicp.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically start AICP dev server on launch"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}

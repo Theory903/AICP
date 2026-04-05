@@ -526,6 +526,10 @@ class AicpExecutor(Executor):
                         "hint": "Already approved - execution can be resumed",
                     },
                     can_continue=True,
+                    allowed_next_actions=self._approval_allowed_next_actions(
+                        approval_request_id=existing_approved.get("id"),
+                        approval_status="approved",
+                    ),
                 )
 
             approval_request = await self._approval_service.create_approval_request(
@@ -561,6 +565,10 @@ class AicpExecutor(Executor):
                     "hint": decision.reason or "Approval required before execution",
                 },
                 can_continue=True,
+                allowed_next_actions=self._approval_allowed_next_actions(
+                    approval_request_id=approval_request_id,
+                    approval_status="pending",
+                ),
             )
 
         return ExecutionResult(
@@ -575,6 +583,7 @@ class AicpExecutor(Executor):
                 "hint": decision.reason or "Confirmation required before execution",
             },
             can_continue=True,
+            allowed_next_actions=self._confirmation_allowed_next_actions(),
         )
 
     def _approval_request_id(self, approval_request: Any) -> str:
@@ -639,6 +648,11 @@ class AicpExecutor(Executor):
             next_poll_url = polling_metadata.get("poll_url")
             continuation_hint = next_hint
 
+        allowed_next_actions = self._build_allowed_next_actions(
+            capability,
+            polling_metadata=polling_metadata,
+        )
+
         format_hint = getattr(render, "format", None) if render is not None else None
 
         return ExecutionResult(
@@ -657,7 +671,126 @@ class AicpExecutor(Executor):
             format_hint=format_hint,
             can_continue=can_continue,
             continuation_hint=continuation_hint,
+            allowed_next_actions=allowed_next_actions,
         )
+
+    def _build_allowed_next_actions(
+        self,
+        capability: Capability,
+        *,
+        polling_metadata: dict[str, Any] | None,
+    ) -> list[dict[str, Any]]:
+        actions: list[dict[str, Any]] = []
+        seen: set[str] = set()
+
+        if polling_metadata is not None:
+            self._append_allowed_next_action(
+                actions,
+                seen,
+                capability_name=polling_metadata.get("capability"),
+                reason="polling_continuation",
+                confidence=0.98,
+            )
+
+        continuation = getattr(capability, "continuation", None)
+        if continuation is not None and bool(getattr(continuation, "can_continue", False)):
+            for index, capability_name in enumerate(
+                getattr(continuation, "next_capabilities", []) or []
+            ):
+                self._append_allowed_next_action(
+                    actions,
+                    seen,
+                    capability_name=capability_name,
+                    reason="declared_continuation",
+                    confidence=max(0.75, 0.95 - (index * 0.05)),
+                )
+
+        for index, capability_name in enumerate(getattr(capability, "often_follows", []) or []):
+            self._append_allowed_next_action(
+                actions,
+                seen,
+                capability_name=capability_name,
+                reason="often_follows",
+                confidence=max(0.55, 0.7 - (index * 0.05)),
+            )
+
+        return actions
+
+    def _append_allowed_next_action(
+        self,
+        actions: list[dict[str, Any]],
+        seen: set[str],
+        *,
+        capability_name: Any,
+        reason: str,
+        confidence: float,
+    ) -> None:
+        normalized_name = str(capability_name or "").strip()
+        if not normalized_name or normalized_name in seen:
+            return
+
+        seen.add(normalized_name)
+        actions.append(
+            {
+                "kind": "capability",
+                "name": normalized_name,
+                "reason": reason,
+                "confidence": round(confidence, 2),
+            }
+        )
+
+    def _approval_allowed_next_actions(
+        self,
+        *,
+        approval_request_id: Any,
+        approval_status: str,
+    ) -> list[dict[str, Any]]:
+        actions: list[dict[str, Any]] = []
+        normalized_approval_id = str(approval_request_id or "").strip()
+
+        if normalized_approval_id:
+            actions.append(
+                {
+                    "kind": "approval",
+                    "name": normalized_approval_id,
+                    "reason": (
+                        "approval_already_granted"
+                        if approval_status == "approved"
+                        else "requires_approval"
+                    ),
+                    "requires_approval": approval_status != "approved",
+                    "confidence": 1.0,
+                }
+            )
+
+        actions.append(
+            {
+                "kind": "session_action",
+                "name": (
+                    "resume_approved_execution"
+                    if approval_status == "approved"
+                    else "await_approval"
+                ),
+                "reason": (
+                    "resume_approved"
+                    if approval_status == "approved"
+                    else "requires_approval"
+                ),
+                "confidence": 0.95 if approval_status == "approved" else 0.9,
+            }
+        )
+
+        return actions
+
+    def _confirmation_allowed_next_actions(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "kind": "session_action",
+                "name": "confirm_execution",
+                "reason": "requires_confirmation",
+                "confidence": 1.0,
+            }
+        ]
 
     def _polling_metadata(self, data: Any) -> dict[str, Any] | None:
         if not isinstance(data, dict):

@@ -1,6 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::{Arc, OnceLock, RwLock};
+use std::thread;
 use std::time::{Duration, Instant};
 
 use api::{
@@ -8,9 +11,11 @@ use api::{
     MessageRequest, MessageResponse, OutputContentBlock, ProviderClient,
     StreamEvent as ApiStreamEvent, ToolChoice, ToolDefinition, ToolResultContentBlock,
 };
+use lsp::LspManager;
+use lsp_types::Position;
 use plugins::PluginTool;
 use reqwest::blocking::Client;
-use runtime::{
+use mammoth_runtime::{
     edit_file, execute_bash, glob_search, grep_search, load_system_prompt, read_file, write_file,
     ApiClient, ApiRequest, AssistantEvent, BashCommandInput, ContentBlock, ConversationMessage,
     ConversationRuntime, GrepSearchInput, MessageRole, PermissionMode, PermissionPolicy,
@@ -533,6 +538,124 @@ pub fn mvp_tool_specs() -> Vec<ToolSpec> {
             }),
             required_permission: PermissionMode::DangerFullAccess,
         },
+        ToolSpec {
+            name: "lsp_hover",
+            description: "Fetch hover information at a file position.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "file": { "type": "string" },
+                    "line": { "type": "integer", "minimum": 1 },
+                    "character": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["file", "line", "character"],
+                "additionalProperties": false
+            }),
+            required_permission: PermissionMode::ReadOnly,
+        },
+        ToolSpec {
+            name: "lsp_definition",
+            description: "Find definition locations at a file position.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "file": { "type": "string" },
+                    "line": { "type": "integer", "minimum": 1 },
+                    "character": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["file", "line", "character"],
+                "additionalProperties": false
+            }),
+            required_permission: PermissionMode::ReadOnly,
+        },
+        ToolSpec {
+            name: "lsp_references",
+            description: "Find references at a file position.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "file": { "type": "string" },
+                    "line": { "type": "integer", "minimum": 1 },
+                    "character": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["file", "line", "character"],
+                "additionalProperties": false
+            }),
+            required_permission: PermissionMode::ReadOnly,
+        },
+        ToolSpec {
+            name: "lsp_symbols",
+            description: "List document symbols for a file.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "file": { "type": "string" }
+                },
+                "required": ["file"],
+                "additionalProperties": false
+            }),
+            required_permission: PermissionMode::ReadOnly,
+        },
+        ToolSpec {
+            name: "lsp_diagnostics",
+            description: "Collect diagnostics for a file.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "file": { "type": "string" }
+                },
+                "required": ["file"],
+                "additionalProperties": false
+            }),
+            required_permission: PermissionMode::ReadOnly,
+        },
+        ToolSpec {
+            name: "shell_exec",
+            description: "Execute a shell command and return stdout, stderr, and exit code.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "command": { "type": "string" },
+                    "cwd": { "type": "string" },
+                    "timeout_ms": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["command"],
+                "additionalProperties": false
+            }),
+            required_permission: PermissionMode::DangerFullAccess,
+        },
+        ToolSpec {
+            name: "shell_pipe",
+            description: "Execute a pipeline of shell commands.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "commands": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "minItems": 1
+                    }
+                },
+                "required": ["commands"],
+                "additionalProperties": false
+            }),
+            required_permission: PermissionMode::DangerFullAccess,
+        },
+        ToolSpec {
+            name: "shell_env",
+            description: "Return environment variables by key or dump all of them.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "keys": {
+                        "type": ["array", "null"],
+                        "items": { "type": "string" }
+                    }
+                },
+                "additionalProperties": false
+            }),
+            required_permission: PermissionMode::ReadOnly,
+        },
     ]
 }
 
@@ -559,6 +682,14 @@ pub fn execute_tool(name: &str, input: &Value) -> Result<String, String> {
         }
         "REPL" => from_value::<ReplInput>(input).and_then(run_repl),
         "PowerShell" => from_value::<PowerShellInput>(input).and_then(run_powershell),
+        "lsp_hover" => from_value::<LspPositionInput>(input).and_then(run_lsp_hover),
+        "lsp_definition" => from_value::<LspPositionInput>(input).and_then(run_lsp_definition),
+        "lsp_references" => from_value::<LspPositionInput>(input).and_then(run_lsp_references),
+        "lsp_symbols" => from_value::<LspFileInput>(input).and_then(run_lsp_symbols),
+        "lsp_diagnostics" => from_value::<LspFileInput>(input).and_then(run_lsp_diagnostics),
+        "shell_exec" => from_value::<ShellExecInput>(input).and_then(run_shell_exec),
+        "shell_pipe" => from_value::<ShellPipeInput>(input).and_then(run_shell_pipe),
+        "shell_env" => from_value::<ShellEnvInput>(input).and_then(run_shell_env),
         _ => Err(format!("unsupported tool: {name}")),
     }
 }
@@ -657,6 +788,38 @@ fn run_repl(input: ReplInput) -> Result<String, String> {
 
 fn run_powershell(input: PowerShellInput) -> Result<String, String> {
     to_pretty_json(execute_powershell(input).map_err(|error| error.to_string())?)
+}
+
+fn run_lsp_hover(input: LspPositionInput) -> Result<String, String> {
+    to_pretty_json(execute_lsp_hover(input))
+}
+
+fn run_lsp_definition(input: LspPositionInput) -> Result<String, String> {
+    to_pretty_json(execute_lsp_definition(input))
+}
+
+fn run_lsp_references(input: LspPositionInput) -> Result<String, String> {
+    to_pretty_json(execute_lsp_references(input))
+}
+
+fn run_lsp_symbols(input: LspFileInput) -> Result<String, String> {
+    to_pretty_json(execute_lsp_symbols(input))
+}
+
+fn run_lsp_diagnostics(input: LspFileInput) -> Result<String, String> {
+    to_pretty_json(execute_lsp_diagnostics(input))
+}
+
+fn run_shell_exec(input: ShellExecInput) -> Result<String, String> {
+    to_pretty_json(execute_shell_exec(input).map_err(|error| error.to_string())?)
+}
+
+fn run_shell_pipe(input: ShellPipeInput) -> Result<String, String> {
+    to_pretty_json(execute_shell_pipe(input).map_err(|error| error.to_string())?)
+}
+
+fn run_shell_env(input: ShellEnvInput) -> Result<String, String> {
+    to_pretty_json(execute_shell_env(input))
 }
 
 fn to_pretty_json<T: serde::Serialize>(value: T) -> Result<String, String> {
@@ -826,6 +989,35 @@ struct PowerShellInput {
     run_in_background: Option<bool>,
 }
 
+#[derive(Debug, Deserialize)]
+struct LspPositionInput {
+    file: String,
+    line: u32,
+    character: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct LspFileInput {
+    file: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ShellExecInput {
+    command: String,
+    cwd: Option<String>,
+    timeout_ms: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ShellPipeInput {
+    commands: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ShellEnvInput {
+    keys: Option<Vec<String>>,
+}
+
 #[derive(Debug, Serialize)]
 struct WebFetchOutput {
     bytes: usize,
@@ -971,6 +1163,59 @@ struct ReplOutput {
     exit_code: i32,
     #[serde(rename = "durationMs")]
     duration_ms: u128,
+}
+
+#[derive(Debug, Serialize)]
+struct ShellCommandOutput {
+    stdout: String,
+    stderr: String,
+    exit_code: i32,
+}
+
+#[derive(Debug, Serialize)]
+struct LspUnavailableOutput {
+    available: bool,
+    message: String,
+}
+
+#[derive(Debug, Serialize)]
+struct LspLocationsOutput {
+    available: bool,
+    file: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
+    locations: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct LspDiagnosticsOutput {
+    available: bool,
+    file: String,
+    diagnostics: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct LspSymbolsOutput {
+    available: bool,
+    file: String,
+    symbols: Vec<String>,
+}
+
+type SharedLspManager = Arc<LspManager>;
+
+fn global_lsp_manager() -> &'static RwLock<Option<SharedLspManager>> {
+    static MANAGER: OnceLock<RwLock<Option<SharedLspManager>>> = OnceLock::new();
+    MANAGER.get_or_init(|| RwLock::new(None))
+}
+
+pub fn set_global_lsp_manager(manager: Option<SharedLspManager>) {
+    if let Ok(mut slot) = global_lsp_manager().write() {
+        *slot = manager;
+    }
+}
+
+fn get_global_lsp_manager() -> Option<SharedLspManager> {
+    global_lsp_manager().read().ok().and_then(|guard| guard.clone())
 }
 
 #[derive(Debug, Serialize)]
@@ -2063,7 +2308,7 @@ fn response_to_events(response: MessageResponse) -> Vec<AssistantEvent> {
     events
 }
 
-fn final_assistant_text(summary: &runtime::TurnSummary) -> String {
+fn final_assistant_text(summary: &mammoth_runtime::TurnSummary) -> String {
     summary
         .assistant_messages
         .last()
@@ -2848,7 +3093,7 @@ fn iso8601_timestamp() -> String {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn execute_powershell(input: PowerShellInput) -> std::io::Result<runtime::BashCommandOutput> {
+fn execute_powershell(input: PowerShellInput) -> std::io::Result<mammoth_runtime::BashCommandOutput> {
     let _ = &input.description;
     let shell = detect_powershell_shell()?;
     execute_shell_command(
@@ -2881,13 +3126,236 @@ fn command_exists(command: &str) -> bool {
         .unwrap_or(false)
 }
 
+fn execute_shell_exec(input: ShellExecInput) -> std::io::Result<ShellCommandOutput> {
+    execute_shell_command_native(&input.command, input.cwd.as_deref(), input.timeout_ms)
+}
+
+fn execute_shell_pipe(input: ShellPipeInput) -> std::io::Result<ShellCommandOutput> {
+    execute_shell_command_native(&input.commands.join(" | "), None, None)
+}
+
+fn execute_shell_env(input: ShellEnvInput) -> BTreeMap<String, String> {
+    match input.keys {
+        Some(keys) => keys
+            .into_iter()
+            .map(|key| {
+                let value = std::env::var(&key).unwrap_or_default();
+                (key, value)
+            })
+            .collect(),
+        None => std::env::vars().collect(),
+    }
+}
+
+fn execute_lsp_hover(_input: LspPositionInput) -> LspUnavailableOutput {
+    LspUnavailableOutput {
+        available: false,
+        message: "LSP not available: hover support is not initialized".to_string(),
+    }
+}
+
+fn execute_lsp_definition(input: LspPositionInput) -> LspLocationsOutput {
+    let Some(manager) = get_global_lsp_manager() else {
+        return LspLocationsOutput {
+            available: false,
+            file: input.file,
+            message: Some("LSP not available: manager not initialized".to_string()),
+            locations: vec!["LSP not available: manager not initialized".to_string()],
+        };
+    };
+
+    let file = input.file.clone();
+    let path = PathBuf::from(&file);
+    match tokio::runtime::Runtime::new()
+        .map_err(|error| error.to_string())
+        .and_then(|runtime| {
+            runtime
+                .block_on(async move {
+                    manager
+                        .go_to_definition(
+                            &path,
+                            Position::new(input.line.saturating_sub(1), input.character.saturating_sub(1)),
+                        )
+                        .await
+                })
+                .map_err(|error| error.to_string())
+        }) {
+        Ok(locations) => LspLocationsOutput {
+            available: true,
+            file,
+            message: None,
+            locations: locations.into_iter().map(|location| location.to_string()).collect(),
+        },
+        Err(error) => LspLocationsOutput {
+            available: false,
+            file,
+            message: Some(error.clone()),
+            locations: vec![error],
+        },
+    }
+}
+
+fn execute_lsp_references(input: LspPositionInput) -> LspLocationsOutput {
+    let Some(manager) = get_global_lsp_manager() else {
+        return LspLocationsOutput {
+            available: false,
+            file: input.file,
+            message: Some("LSP not available: manager not initialized".to_string()),
+            locations: vec!["LSP not available: manager not initialized".to_string()],
+        };
+    };
+
+    let file = input.file.clone();
+    let path = PathBuf::from(&file);
+    match tokio::runtime::Runtime::new()
+        .map_err(|error| error.to_string())
+        .and_then(|runtime| {
+            runtime
+                .block_on(async move {
+                    manager
+                        .find_references(
+                            &path,
+                            Position::new(input.line.saturating_sub(1), input.character.saturating_sub(1)),
+                            true,
+                        )
+                        .await
+                })
+                .map_err(|error| error.to_string())
+        }) {
+        Ok(locations) => LspLocationsOutput {
+            available: true,
+            file,
+            message: None,
+            locations: locations.into_iter().map(|location| location.to_string()).collect(),
+        },
+        Err(error) => LspLocationsOutput {
+            available: false,
+            file,
+            message: Some(error.clone()),
+            locations: vec![error],
+        },
+    }
+}
+
+fn execute_lsp_symbols(input: LspFileInput) -> LspSymbolsOutput {
+    LspSymbolsOutput {
+        available: false,
+        file: input.file,
+        symbols: vec!["LSP not available: symbol listing is not initialized".to_string()],
+    }
+}
+
+fn execute_lsp_diagnostics(input: LspFileInput) -> LspDiagnosticsOutput {
+    let Some(manager) = get_global_lsp_manager() else {
+        return LspDiagnosticsOutput {
+            available: false,
+            file: input.file,
+            diagnostics: vec!["LSP not available: manager not initialized".to_string()],
+        };
+    };
+
+    let file = input.file.clone();
+    match tokio::runtime::Runtime::new()
+        .map_err(|error| error.to_string())
+        .and_then(|runtime| {
+            runtime
+                .block_on(async move { manager.collect_workspace_diagnostics().await })
+                .map_err(|error| error.to_string())
+        }) {
+        Ok(workspace) => {
+            let path = PathBuf::from(&file);
+            let diagnostics = workspace
+                .files
+                .into_iter()
+                .find(|entry| entry.path == path)
+                .map(|entry| {
+                    entry
+                        .diagnostics
+                        .into_iter()
+                        .map(|diagnostic| {
+                            format!(
+                                "{}:{} {}",
+                                diagnostic.range.start.line + 1,
+                                diagnostic.range.start.character + 1,
+                                diagnostic.message.replace('\n', " ")
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            LspDiagnosticsOutput {
+                available: true,
+                file,
+                diagnostics,
+            }
+        }
+        Err(error) => LspDiagnosticsOutput {
+            available: false,
+            file,
+            diagnostics: vec![error],
+        },
+    }
+}
+
+fn execute_shell_command_native(
+    command: &str,
+    cwd: Option<&str>,
+    timeout_ms: Option<u64>,
+) -> std::io::Result<ShellCommandOutput> {
+    let shell = if cfg!(target_os = "windows") { "cmd" } else { "sh" };
+    let shell_arg = if cfg!(target_os = "windows") { "/C" } else { "-lc" };
+    let mut process = std::process::Command::new(shell);
+    process.arg(shell_arg).arg(command);
+    if let Some(cwd) = cwd {
+        process.current_dir(cwd);
+    }
+    process.stdout(std::process::Stdio::piped());
+    process.stderr(std::process::Stdio::piped());
+    let mut child = process.spawn()?;
+
+    let started = Instant::now();
+    let timeout = timeout_ms.map(Duration::from_millis);
+    loop {
+        if let Some(status) = child.try_wait()? {
+            let mut stdout = String::new();
+            let mut stderr = String::new();
+            if let Some(mut out) = child.stdout.take() {
+                let _ = out.read_to_string(&mut stdout);
+            }
+            if let Some(mut err) = child.stderr.take() {
+                let _ = err.read_to_string(&mut stderr);
+            }
+            return Ok(ShellCommandOutput {
+                stdout,
+                stderr,
+                exit_code: status.code().unwrap_or(-1),
+            });
+        }
+
+        if timeout.is_some_and(|limit| started.elapsed() >= limit) {
+            child.kill()?;
+            let _ = child.wait();
+            return Ok(ShellCommandOutput {
+                stdout: String::new(),
+                stderr: format!(
+                    "command timed out after {}ms",
+                    timeout_ms.unwrap_or_default()
+                ),
+                exit_code: -1,
+            });
+        }
+
+        thread::sleep(Duration::from_millis(10));
+    }
+}
+
 #[allow(clippy::too_many_lines)]
 fn execute_shell_command(
     shell: &str,
     command: &str,
     timeout: Option<u64>,
     run_in_background: Option<bool>,
-) -> std::io::Result<runtime::BashCommandOutput> {
+) -> std::io::Result<mammoth_runtime::BashCommandOutput> {
     if run_in_background.unwrap_or(false) {
         let child = std::process::Command::new(shell)
             .arg("-NoProfile")
@@ -2898,7 +3366,7 @@ fn execute_shell_command(
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .spawn()?;
-        return Ok(runtime::BashCommandOutput {
+        return Ok(mammoth_runtime::BashCommandOutput {
             stdout: String::new(),
             stderr: String::new(),
             raw_output_path: None,
@@ -2933,7 +3401,7 @@ fn execute_shell_command(
         loop {
             if let Some(status) = child.try_wait()? {
                 let output = child.wait_with_output()?;
-                return Ok(runtime::BashCommandOutput {
+                return Ok(mammoth_runtime::BashCommandOutput {
                     stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
                     stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
                     raw_output_path: None,
@@ -2967,7 +3435,7 @@ Command exceeded timeout of {timeout_ms} ms",
                         stderr.trim_end()
                     )
                 };
-                return Ok(runtime::BashCommandOutput {
+                return Ok(mammoth_runtime::BashCommandOutput {
                     stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
                     stderr,
                     raw_output_path: None,
@@ -2990,7 +3458,7 @@ Command exceeded timeout of {timeout_ms} ms",
     }
 
     let output = process.output()?;
-    Ok(runtime::BashCommandOutput {
+    Ok(mammoth_runtime::BashCommandOutput {
         stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
         raw_output_path: None,
@@ -3088,7 +3556,7 @@ mod tests {
         push_output_block, AgentInput, AgentJob, SubagentToolExecutor,
     };
     use api::OutputContentBlock;
-    use runtime::{ApiRequest, AssistantEvent, ConversationRuntime, RuntimeError, Session};
+    use mammoth_runtime::{ApiRequest, AssistantEvent, ConversationRuntime, RuntimeError, Session};
     use serde_json::json;
 
     fn env_lock() -> &'static Mutex<()> {
@@ -3125,12 +3593,61 @@ mod tests {
         assert!(names.contains(&"StructuredOutput"));
         assert!(names.contains(&"REPL"));
         assert!(names.contains(&"PowerShell"));
+        assert!(names.contains(&"lsp_hover"));
+        assert!(names.contains(&"lsp_definition"));
+        assert!(names.contains(&"lsp_references"));
+        assert!(names.contains(&"lsp_symbols"));
+        assert!(names.contains(&"lsp_diagnostics"));
+        assert!(names.contains(&"shell_exec"));
+        assert!(names.contains(&"shell_pipe"));
+        assert!(names.contains(&"shell_env"));
     }
 
     #[test]
     fn rejects_unknown_tool_names() {
         let error = execute_tool("nope", &json!({})).expect_err("tool should be rejected");
         assert!(error.contains("unsupported tool"));
+    }
+
+    #[test]
+    fn shell_env_returns_requested_environment_values() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        std::env::set_var("MAMMOTH_TOOL_TEST_ENV", "present");
+
+        let result = execute_tool(
+            "shell_env",
+            &json!({
+                "keys": ["MAMMOTH_TOOL_TEST_ENV"]
+            }),
+        )
+        .expect("shell_env should succeed");
+
+        let output: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+        assert_eq!(output["MAMMOTH_TOOL_TEST_ENV"], "present");
+
+        std::env::remove_var("MAMMOTH_TOOL_TEST_ENV");
+    }
+
+    #[test]
+    fn lsp_tools_report_unavailable_without_manager() {
+        let result = execute_tool(
+            "lsp_definition",
+            &json!({
+                "file": "src/main.rs",
+                "line": 1,
+                "character": 1
+            }),
+        )
+        .expect("lsp_definition should succeed without manager");
+
+        let output: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+        assert_eq!(output["available"], false);
+        assert!(output["message"]
+            .as_str()
+            .expect("message")
+            .contains("LSP not available"));
     }
 
     #[test]
@@ -3748,7 +4265,7 @@ mod tests {
         input_path: String,
     }
 
-    impl runtime::ApiClient for MockSubagentApiClient {
+impl mammoth_runtime::ApiClient for MockSubagentApiClient {
         fn stream(&mut self, request: ApiRequest) -> Result<Vec<AssistantEvent>, RuntimeError> {
             self.calls += 1;
             match self.calls {
@@ -3809,7 +4326,7 @@ mod tests {
             .flat_map(|message| message.blocks.iter())
             .any(|block| matches!(
                 block,
-                runtime::ContentBlock::ToolResult { output, .. }
+            mammoth_runtime::ContentBlock::ToolResult { output, .. }
                     if output.contains("hello from child")
             )));
 

@@ -1,23 +1,57 @@
+#![allow(clippy::many_single_char_names)]
+#![allow(clippy::format_push_string)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::manual_ok_err)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::map_unwrap_or)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::derivable_impls)]
+#![allow(clippy::manual_let_else)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::collapsible_if)]
+#![allow(clippy::unused_async)]
+#![allow(clippy::self_only_used_in_recursion)]
+#![allow(clippy::write_with_newline)]
+#![allow(clippy::wrong_self_convention)]
+
+pub mod adapter;
+pub mod adapter_registry;
+pub mod session_export;
+pub mod session_mux;
+pub mod ssh;
+pub mod voice;
 pub mod channel;
 pub mod model_router;
-mod bash;
-mod bootstrap;
-mod compact;
-mod config;
-mod conversation;
-mod file_ops;
-mod hooks;
-mod json;
-mod mcp;
-mod mcp_client;
-mod mcp_stdio;
-mod oauth;
-mod permissions;
-mod prompt;
-mod remote;
+pub mod agent;
+pub mod memory;
+pub mod skills;
+pub mod bash;
+pub mod bootstrap;
+pub mod compact;
+pub mod config;
+pub mod conversation;
+pub mod file_ops;
+pub mod hooks;
+pub mod json;
+pub mod mcp;
+pub mod mcp_client;
+pub mod mcp_stdio;
+pub mod oauth;
+pub mod permissions;
+pub mod prompt;
+pub mod remote;
 pub mod sandbox;
-mod session;
-mod usage;
+pub mod session;
+pub mod usage;
+pub mod security;
+pub mod tracing;
+pub mod telemetry;
+pub mod nl_workflow;
+pub mod workflow_compiler;
+pub mod workflow_simulator;
+pub mod flow_builder_tui;
 
 pub use channel::{ApprovalDecision, ApprovalRequest, Channel, ChannelKind};
 pub use lsp::{
@@ -72,7 +106,8 @@ pub use oauth::{
 };
 pub use permissions::{
     PermissionMode, PermissionOutcome, PermissionPolicy, PermissionPromptDecision,
-    PermissionPrompter, PermissionRequest,
+    PermissionPrompter, PermissionRequest, AuditLog, PermissionAuditEntry, PermissionModeManager,
+    PatternRule, PermissionPattern, OperationalMode,
 };
 pub use prompt::{
     load_system_prompt, prepend_bullets, ContextFile, ProjectContext, PromptBuildError,
@@ -84,10 +119,33 @@ pub use remote::{
     DEFAULT_SESSION_TOKEN_PATH, DEFAULT_SYSTEM_CA_BUNDLE, NO_PROXY_HOSTS, UPSTREAM_PROXY_ENV_KEYS,
 };
 pub use session::{ContentBlock, ConversationMessage, MessageRole, Session, SessionError};
+pub use session_export::{ExportFormat, SessionExporter};
+pub use session_mux::{SessionCommand, SessionMux};
+pub use ssh::{SshSessionConfig, SshSessionHandler};
+pub use voice::{
+    TtsBackend, VoiceCommand, VoiceInput, VoiceInputConfig, VoiceOutput, VoiceOutputConfig,
+    WhisperBackend,
+};
 pub use model_router::{select as route_model, RouterInput, AUTO as MODEL_AUTO};
+pub use agent::{
+    AgentChannel, AgentConfig, AgentKind, AgentMessage, AgentMessageType, CoordinatorLoop,
+    TeamPreset,
+};
+pub use memory::{EntityRecord, EpisodicEntry, MemoryStore, WorkingMemoryItem};
+pub use skills::{load_skill_manifest, SkillError, SkillManifest, SkillRegistry};
 pub use usage::{
     format_usd, pricing_for_model, ModelPricing, TokenUsage, UsageCostEstimate, UsageTracker,
+    BudgetStatus, BudgetThreshold, CostEstimator, ModelCostEstimate, SessionAnalytics, ToolUsageRecord,
 };
+pub use security::{SsrfGuard, SsrfCheckResult};
+pub use tracing::{PerformanceTracer, SpanHandle, SpanRecord};
+pub use nl_workflow::{NlWorkflowParser, WorkflowSpec, WorkflowStep, BranchCondition, ParseError};
+pub use workflow_compiler::{WorkflowCompiler, CompileResult, CompileError};
+pub use workflow_simulator::{WorkflowSimulator, SimulationReport, StepSummary};
+pub use flow_builder_tui::{FlowBuilderOverlay, FlowBuilderAction};
+
+#[cfg(feature = "telemetry")]
+pub use telemetry::TelemetryExporter;
 
 #[cfg(test)]
 pub(crate) fn test_env_lock() -> std::sync::MutexGuard<'static, ()> {

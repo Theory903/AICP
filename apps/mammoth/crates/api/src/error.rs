@@ -4,6 +4,7 @@ use std::time::Duration;
 
 #[derive(Debug)]
 pub enum ApiError {
+    Provider(String),
     MissingCredentials {
         provider: &'static str,
         env_vars: &'static [&'static str],
@@ -44,6 +45,7 @@ impl ApiError {
     #[must_use]
     pub fn is_retryable(&self) -> bool {
         match self {
+            Self::Provider(_) => false,
             Self::Http(error) => error.is_connect() || error.is_timeout() || error.is_request(),
             Self::Api { retryable, .. } => *retryable,
             Self::RetriesExhausted { last_error, .. } => last_error.is_retryable(),
@@ -62,6 +64,7 @@ impl ApiError {
 impl Display for ApiError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Provider(message) => write!(f, "provider error: {message}"),
             Self::MissingCredentials { provider, env_vars } => write!(
                 f,
                 "missing {provider} credentials; export {} before calling the {provider} API",

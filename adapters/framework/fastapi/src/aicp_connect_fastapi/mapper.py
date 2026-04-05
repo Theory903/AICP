@@ -10,7 +10,14 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from aicp import Capability, CapabilityKind, ProviderInfo
+from aicp import (
+    Capability,
+    CapabilityKind,
+    ContinuationSpec,
+    InputSchema,
+    OutputSchema,
+    ProviderInfo,
+)
 from aicp_connect_fastapi.inspect import create_default_mapping, inspect_routes
 from aicp_connect_fastapi.types import AicpConfig, RouteMapping
 
@@ -61,13 +68,13 @@ def map_routes_to_capabilities(app: FastAPI, config: AicpConfig) -> list[Capabil
         elif mapping.kind == "async_action":
             kind = CapabilityKind.ASYNC_ACTION
 
-        input_schema = mapping.input_schema or {}
+        input_schema = dict(mapping.input_schema or {})
         if "properties" not in input_schema:
             input_schema["properties"] = {}
         if "required" in input_schema and input_schema["required"] is None:
             del input_schema["required"]
 
-        output_schema = mapping.output_schema or {}
+        output_schema = dict(mapping.output_schema or {})
         if "properties" not in output_schema:
             output_schema["properties"] = {}
 
@@ -90,25 +97,23 @@ def map_routes_to_capabilities(app: FastAPI, config: AicpConfig) -> list[Capabil
                 if name.startswith(f"{namespace}.") and name != mapping.capability_name
             ]
             if siblings:
-                continuation = {
-                    "can_continue": True,
-                    "next_capabilities": sorted(siblings)[:3],
-                }
+                continuation = ContinuationSpec(
+                    can_continue=True,
+                    next_capabilities=sorted(siblings)[:3],
+                )
                 if action == "create":
-                    continuation["next_hint"] = (
-                        f"View or list {namespace} after creation"
-                    )
+                    continuation.next_hint = f"View or list {namespace} after creation"
                 elif action in ("update", "patch"):
-                    continuation["next_hint"] = f"Get updated {namespace} or list all"
+                    continuation.next_hint = f"Get updated {namespace} or list all"
                 elif action == "delete":
-                    continuation["next_hint"] = f"List remaining {namespace}"
+                    continuation.next_hint = f"List remaining {namespace}"
 
         capability = Capability(
             name=mapping.capability_name,
             description=mapping.description or f"Auto-mapped from {mapping.route_path}",
             kind=kind,
-            input_schema=input_schema,
-            output_schema=output_schema,
+            input_schema=InputSchema(**input_schema),
+            output_schema=OutputSchema(**output_schema),
             tags=tags,
             provider=ProviderInfo(
                 name=config.provider_name, type="fastapi", url=config.provider_url

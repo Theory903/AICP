@@ -1,4 +1,7 @@
 mod hooks;
+pub mod registry;
+pub mod signing;
+pub mod tui;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};

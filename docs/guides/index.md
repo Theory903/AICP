@@ -1,27 +1,15 @@
 # Guides
 
-> Step-by-step guides for using and contributing to AICP — the Agentic Web Operating System.
+> Use Mammoth as the shell. Use AICP as the governed backend.
 
 ---
 
-## Getting Started
+## Recommended Getting Started Flow
 
-1. **Installation**
-   ```bash
-   pip install -e ./packages/core
-   ```
-
-2. **Quick Start**
-   - Register a capability
-   - Execute it via the executor
-
-3. **Run an Example**
-   ```bash
-   make demo-food
-   ```
-
-4. **Run the current platform stack**
-   - [Run Runtime + Studio](RUN_RUNTIME_STUDIO.md)
+1. Start with the product framing in [overview/index.md](../overview/index.md).
+2. Launch Mammoth to experience the primary interaction shell.
+3. Run the AICP runtime locally for governed execution.
+4. Use the food-ordering example as the first end-to-end approval and wait/resume demo.
 
 ---
 
@@ -29,59 +17,35 @@
 
 | Guide | Description |
 |-------|-------------|
-| [Architecture](ARCHITECTURE.md) | Technical architecture for contributors — 11 planes, 20 modules |
-| [How to Use AICP](HOW_TO_USE.md) | Complete usage reference — CLI, programmatic API, production patterns |
-| [CLI Reference](CLI_REFERENCE.md) | 28 CLI commands — bootstrap, preview, protect, serve, etc. |
-| [Runtime and Studio](RUN_RUNTIME_STUDIO.md) | Running the runtime, CLI, and Studio locally |
-| [Technical Specification](TECH_SPEC.md) | Protocol technical specification — data models, contracts |
+| [Mammoth](MAMMOTH.md) | Mammoth as the primary shell for operators and agents |
+| [Architecture](ARCHITECTURE.md) | Technical architecture for contributors |
+| [How to Use AICP](HOW_TO_USE.md) | Runtime, CLI, and control-plane usage patterns |
+| [CLI Reference](CLI_REFERENCE.md) | AICP CLI surfaces and commands |
+| [Technical Specification](TECH_SPEC.md) | Protocol and runtime design details |
+| [Product Shell DAC](PRODUCT_SHELL_DAC.md) | Legal-safe adaptation charter for Mammoth shell work |
 
 ---
 
-## Adapters
+## Historical / Transitional Guides
 
-| Adapter | Description |
-|----------|-------------|
-| **FastAPI** | Auto-discover routes from FastAPI apps |
-| **HTTP** | Execute capabilities over HTTP |
-| **OpenAPI** | Import OpenAPI specs as governed capabilities |
-| **MCP** | Bridge to MCP servers (Model Context Protocol) |
-| **Postman** | Import Postman collections |
-| **HAR** | Import HTTP Archives |
-| **cURL** | Import cURL commands |
-| **WebSocket** | Real-time streaming execution (planned) |
-| **GraphQL** | GraphQL-based execution (planned) |
+| Guide | Description |
+|-------|-------------|
+| [Run Runtime + Studio](RUN_RUNTIME_STUDIO.md) | Transitional guide for legacy supervision surfaces; treat Studio as embedded Mammoth UX going forward |
 
 ---
 
-## What Is Implemented (v0.1.1)
+## What These Guides Optimize For
 
-- 9 JSON schemas in `/spec/schemas/`
-- 8 runtime services (execution, approvals, workflows, sessions, discovery, audit, interactions, provider health)
-- 30+ API endpoints across 13 route groups
-- 3 persistence backends (memory, file, sqlite)
-- 28 CLI commands
-- 6 working adapters
-- 172 passing tests
-- Agent console UI at `/console`
-- TypeScript Core SDK built
-
----
-
-## What Is Planned (v0.2.0+)
-
-- YAML Workflow DSL
-- Parallel workflow steps and loop support
-- Wait-for-event primitives and timeout branching
-- AI Planner and Judge integration
-- Semantic capability discovery with embeddings
-- Session encryption
-- LangChain and LangGraph adapters
+- **Secure org automation** instead of raw tool calling
+- **Mammoth-first operator flow** instead of disconnected surfaces
+- **Policy, approval, audit, and replay** as product-level requirements
+- **Spec-first changes** when protocol behavior evolves
 
 ---
 
 ## See Also
 
-- [/overview/index.md](../overview/index.md) — Overview documents
-- [/ARCHITECTURE.md](../../ARCHITECTURE.md) — 11-plane system architecture
-- [/STATUS.md](../../STATUS.md) — Current implementation state
-- [/governance/CONTRIBUTING.md](../../governance/CONTRIBUTING.md) — How to contribute
+- [Overview](../overview/index.md)
+- [Reference](../reference/index.md)
+- [Status](../../STATUS.md)
+- [Roadmap](../../ROADMAP.md)

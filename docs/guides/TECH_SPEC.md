@@ -6,7 +6,7 @@
 
 ## Scope
 
-This specification defines the core data model and behavior required for an AICP-compliant implementation at Compliance Level 2 (Resumable Workflows).
+This specification defines the core data model and behavior required for the AICP v1.0.0 feature set, including complete L5 protocol with 16 JSON schemas.
 
 ---
 
@@ -14,9 +14,11 @@ This specification defines the core data model and behavior required for an AICP
 
 | Version | Status | Compliance Level |
 |---------|--------|-----------------|
-| v0.1.1-alpha | Current | L2 (Resumable Workflows) |
-| v0.2.0 | Next milestone | L3 (Event-Driven Orchestration) |
-| v1.0.0 | Target | L5 (Full Orchestration) |
+| v1.0.0 | Current | L5 (Protocol Ready) |
+| v0.3.0 | Previous milestone | L3+L4 |
+| v0.2.0 | Historical | L4 (AI Planning Support) |
+
+**Note:** v1.0.0 protocol is complete. Real service implementations for modules 6, 16-20 are in progress. |
 
 ---
 

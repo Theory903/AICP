@@ -195,7 +195,7 @@ Every use case demonstrates these AICP patterns:
 
 ---
 
-## v0.1.1 Implementation Status
+## v0.3.0 Feature-Set Snapshot
 
 | Use Case | Status | Notes |
 |----------|--------|-------|
@@ -203,8 +203,9 @@ Every use case demonstrates these AICP patterns:
 | Payment transfer workflow | Example exists | `examples/payment-transfer/` |
 | Enterprise approval | Partial | Approval lifecycle works, routing not implemented |
 | Multi-agent scenarios | Not started | Planned for v0.5.0 |
-| Cognitive protocols | Not started | Planned for v0.4.0 |
+| Cognitive protocols | Implemented | UX, SWE, Ops, Research, and Finance protocols shipped in v0.2.0 |
 | Healthcare domain pack | Not started | Planned for v0.8.0 |
+| Mammoth terminal client | In progress | AICP-native conversational terminal executing domain pack workflows; L1 (AICP middleware layer) complete |
 
 ---
 

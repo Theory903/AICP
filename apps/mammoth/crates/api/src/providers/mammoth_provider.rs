@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use runtime::{
+use mammoth_runtime::{
     load_oauth_credentials, save_oauth_credentials, OAuthConfig, OAuthRefreshRequest,
     OAuthTokenExchangeRequest,
 };
@@ -465,7 +465,7 @@ fn resolve_saved_oauth_token_set(
         expires_at: refreshed.expires_at,
         scopes: refreshed.scopes,
     };
-    save_oauth_credentials(&runtime::OAuthTokenSet {
+    save_oauth_credentials(&mammoth_runtime::OAuthTokenSet {
         access_token: resolved.access_token.clone(),
         refresh_token: resolved.refresh_token.clone(),
         expires_at: resolved.expires_at,
@@ -648,7 +648,7 @@ mod tests {
     use std::thread;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-    use runtime::{clear_oauth_credentials, save_oauth_credentials, OAuthConfig};
+    use mammoth_runtime::{clear_oauth_credentials, save_oauth_credentials, OAuthConfig};
 
     use super::{
         now_unix_timestamp, oauth_token_is_expired, resolve_saved_oauth_token,
@@ -790,7 +790,7 @@ mod tests {
         std::env::set_var("MAMMOTH_CONFIG_HOME", &config_home);
         std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
         std::env::remove_var("ANTHROPIC_API_KEY");
-        save_oauth_credentials(&runtime::OAuthTokenSet {
+        save_oauth_credentials(&mammoth_runtime::OAuthTokenSet {
             access_token: "saved-access-token".to_string(),
             refresh_token: Some("refresh".to_string()),
             expires_at: Some(now_unix_timestamp() + 300),
@@ -829,7 +829,7 @@ mod tests {
         std::env::set_var("MAMMOTH_CONFIG_HOME", &config_home);
         std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
         std::env::remove_var("ANTHROPIC_API_KEY");
-        save_oauth_credentials(&runtime::OAuthTokenSet {
+        save_oauth_credentials(&mammoth_runtime::OAuthTokenSet {
             access_token: "expired-access-token".to_string(),
             refresh_token: Some("refresh-token".to_string()),
             expires_at: Some(1),
@@ -844,7 +844,7 @@ mod tests {
             .expect("resolve refreshed token")
             .expect("token set present");
         assert_eq!(resolved.access_token, "refreshed-token");
-        let stored = runtime::load_oauth_credentials()
+        let stored = mammoth_runtime::load_oauth_credentials()
             .expect("load stored credentials")
             .expect("stored token set");
         assert_eq!(stored.access_token, "refreshed-token");
@@ -861,7 +861,7 @@ mod tests {
         std::env::set_var("MAMMOTH_CONFIG_HOME", &config_home);
         std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
         std::env::remove_var("ANTHROPIC_API_KEY");
-        save_oauth_credentials(&runtime::OAuthTokenSet {
+        save_oauth_credentials(&mammoth_runtime::OAuthTokenSet {
             access_token: "saved-access-token".to_string(),
             refresh_token: Some("refresh".to_string()),
             expires_at: Some(now_unix_timestamp() + 300),
@@ -885,7 +885,7 @@ mod tests {
         std::env::set_var("MAMMOTH_CONFIG_HOME", &config_home);
         std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
         std::env::remove_var("ANTHROPIC_API_KEY");
-        save_oauth_credentials(&runtime::OAuthTokenSet {
+        save_oauth_credentials(&mammoth_runtime::OAuthTokenSet {
             access_token: "expired-access-token".to_string(),
             refresh_token: Some("refresh-token".to_string()),
             expires_at: Some(1),
@@ -899,7 +899,7 @@ mod tests {
             matches!(error, crate::error::ApiError::Auth(message) if message.contains("runtime OAuth config is missing"))
         );
 
-        let stored = runtime::load_oauth_credentials()
+        let stored = mammoth_runtime::load_oauth_credentials()
             .expect("load stored credentials")
             .expect("stored token set");
         assert_eq!(stored.access_token, "expired-access-token");
@@ -917,7 +917,7 @@ mod tests {
         std::env::set_var("MAMMOTH_CONFIG_HOME", &config_home);
         std::env::remove_var("ANTHROPIC_AUTH_TOKEN");
         std::env::remove_var("ANTHROPIC_API_KEY");
-        save_oauth_credentials(&runtime::OAuthTokenSet {
+        save_oauth_credentials(&mammoth_runtime::OAuthTokenSet {
             access_token: "expired-access-token".to_string(),
             refresh_token: Some("refresh-token".to_string()),
             expires_at: Some(1),
@@ -933,7 +933,7 @@ mod tests {
             .expect("token set present");
         assert_eq!(resolved.access_token, "refreshed-token");
         assert_eq!(resolved.refresh_token.as_deref(), Some("refresh-token"));
-        let stored = runtime::load_oauth_credentials()
+        let stored = mammoth_runtime::load_oauth_credentials()
             .expect("load stored credentials")
             .expect("stored token set");
         assert_eq!(stored.refresh_token.as_deref(), Some("refresh-token"));

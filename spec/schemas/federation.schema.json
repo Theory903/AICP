@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aicp.ai/spec/schemas/federation.schema.json",
+  "title": "Federation",
+  "description": "Federation and Agentic WWW - discovery, CRDT registries, DID auth",
+  "type": "object",
+  "definitions": {
+    "discovery_protocol": {
+      "type": "string",
+      "enum": ["well_known", "dns_sd", "manual"]
+    },
+    "registry_sync_strategy": {
+      "type": "string",
+      "enum": ["crdt", "snapshot", "delta"]
+    },
+    "federation_node": {
+      "type": "object",
+      "required": ["id", "name", "endpoint"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "endpoint": { "type": "string", "format": "uri" },
+        "did": { "type": ["string", "null"] },
+        "capabilities": { "type": "array", "items": { "type": "string" } },
+        "trust_level": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "last_seen": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      }
+    },
+    "capability_share": {
+      "type": "object",
+      "required": ["id", "capability_name", "version", "shared_by", "shared_at"],
+      "properties": {
+        "id": { "type": "string" },
+        "capability_name": { "type": "string" },
+        "version": { "type": "string" },
+        "shared_by": { "type": "string" },
+        "shared_at": { "type": "string", "format": "date-time" },
+        "access_policy": { "type": "string", "default": "public" },
+        "rate_limit": { "type": ["object", "null"] }
+      }
+    },
+    "cross_org_capability": {
+      "type": "object",
+      "required": ["id", "local_name", "remote_name", "remote_org", "endpoint", "schema"],
+      "properties": {
+        "id": { "type": "string" },
+        "local_name": { "type": "string" },
+        "remote_name": { "type": "string" },
+        "remote_org": { "type": "string" },
+        "endpoint": { "type": "string", "format": "uri" },
+        "schema": { "type": "object" },
+        "shared": { "type": "boolean", "default": false },
+        "rate_limit": { "type": ["object", "null"] }
+      }
+    },
+    "crdt_registry": {
+      "type": "object",
+      "required": ["id", "name", "node_id"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "node_id": { "type": "string" },
+        "entries": { "type": "object" },
+        "vector_clock": { "type": "object" },
+        "last_updated": { "type": "string", "format": "date-time" }
+      }
+    },
+    "well_known_discovery": {
+      "type": "object",
+      "required": ["url", "capabilities"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "capabilities": { "type": "array", "items": { "type": "object" } },
+        "version": { "type": "string", "default": "1.0" },
+        "organization": { "type": ["string", "null"] },
+        "contact": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

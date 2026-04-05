@@ -1,0 +1,2 @@
+- 2026-04-05: Simplifying `crates/api` to Anthropic-only required collapsing `ProviderKind`, `AnyProvider`, and `ProviderClient` down to a single Anthropic path while preserving the `Provider` trait and Anthropic alias resolution (`opus`, `sonnet`, `haiku`).
+- 2026-04-05: Deleting non-Anthropic provider modules also required pruning `api` crate re-exports and removing OpenAI-compat integration coverage so `cargo check -p api` only exercises Anthropic-facing code paths.

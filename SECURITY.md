@@ -1,5 +1,15 @@
 # Security Policy
 
+AICP is a **security-critical control plane** for organizational automation. It decides whether agent-initiated or operator-initiated actions may execute, whether they require approval, how they are attributed, and how they are audited.
+
+The current product model is Mammoth-first:
+
+- **Mammoth** is the shell through which users and agents interact with the system
+- **AICP** is the enforcement and governance layer behind that shell
+- **Studio-style supervision UX** should be treated as embedded control-plane functionality inside Mammoth
+
+Because of that, security issues in this repository are not just backend bugs. They can affect policy enforcement, workflow safety, approval correctness, session integrity, auditability, and future org-boundary guarantees.
+
 ## Supported Versions
 
 | Version | Supported          |
@@ -28,6 +38,7 @@ You will receive an acknowledgment within **48 hours**. We aim to triage and res
 ### In Scope
 - Policy bypass (capability executed without policy evaluation)
 - Approval bypass (approval-gated action executed without human approval)
+- Mammoth shell actions that can trigger ungoverned AICP execution
 - Session hijacking or token forgery
 - Injection vulnerabilities in the runtime or CLI
 - Path traversal in file-based persistence
@@ -52,5 +63,5 @@ AICP is designed with security as a first-class concern:
 ## Known Limitations (v0.3.0)
 - Session storage is plaintext (encryption planned for v0.9.0)
 - No rate limiting at the API boundary
-- No multi-tenant isolation enforcement
+- Tenant scoping is partial: session/tenant mismatch checks exist, but database-level isolation and per-tenant execution quotas are not enforced
 - Semantic retrieval uses keyword co-occidence only (no embeddings)

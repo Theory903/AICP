@@ -4,7 +4,9 @@ use std::path::PathBuf;
 use crate::args::{OutputFormat, PermissionMode};
 use crate::input::{LineEditor, ReadOutcome};
 use crate::render::{Spinner, TerminalRenderer};
-use runtime::{ConversationClient, ConversationMessage, RuntimeError, StreamEvent, UsageSummary};
+use mammoth_runtime::{
+    ConversationClient, ConversationMessage, RuntimeError, StreamEvent, UsageSummary,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionConfig {
@@ -44,6 +46,8 @@ pub enum SlashCommand {
     Help,
     Status,
     Compact,
+    Skills,
+    Diagnostics,
     Unknown(String),
 }
 
@@ -64,6 +68,8 @@ impl SlashCommand {
             "help" => Self::Help,
             "status" => Self::Status,
             "compact" => Self::Compact,
+            "skills" => Self::Skills,
+            "diagnostics" => Self::Diagnostics,
             other => Self::Unknown(other.to_string()),
         })
     }
@@ -86,6 +92,14 @@ const SLASH_COMMAND_HANDLERS: &[SlashCommandHandler] = &[
     SlashCommandHandler {
         command: SlashCommand::Compact,
         summary: "Compact local session history",
+    },
+    SlashCommandHandler {
+        command: SlashCommand::Skills,
+        summary: "List available skills",
+    },
+    SlashCommandHandler {
+        command: SlashCommand::Diagnostics,
+        summary: "Show current diagnostics status",
     },
 ];
 
@@ -158,12 +172,10 @@ impl CliApp {
             SlashCommand::Help => Self::handle_help(out),
             SlashCommand::Status => self.handle_status(out),
             SlashCommand::Compact => self.handle_compact(out),
+            SlashCommand::Skills => self.handle_skills(out),
+            SlashCommand::Diagnostics => self.handle_diagnostics(out),
             SlashCommand::Unknown(name) => {
                 writeln!(out, "Unknown slash command: /{name}")?;
-                Ok(CommandResult::Continue)
-            }
-            _ => {
-                writeln!(out, "Slash command unavailable in this mode")?;
                 Ok(CommandResult::Continue)
             }
         }
@@ -176,6 +188,8 @@ impl CliApp {
                 SlashCommand::Help => "/help",
                 SlashCommand::Status => "/status",
                 SlashCommand::Compact => "/compact",
+                SlashCommand::Skills => "/skills",
+                SlashCommand::Diagnostics => "/diagnostics",
                 _ => continue,
             };
             writeln!(out, "  {name:<9} {}", handler.summary)?;
@@ -210,6 +224,18 @@ impl CliApp {
             "Compacted session history into a local summary ({} messages total compacted).",
             self.state.compacted_messages
         )?;
+        Ok(CommandResult::Continue)
+    }
+
+    fn handle_skills(&mut self, out: &mut impl Write) -> io::Result<CommandResult> {
+        writeln!(out, "Available skills:")?;
+        writeln!(out, "  review       Code review and safety checks")?;
+        writeln!(out, "  diagnostics  LSP and runtime diagnostics")?;
+        Ok(CommandResult::Continue)
+    }
+
+    fn handle_diagnostics(&mut self, out: &mut impl Write) -> io::Result<CommandResult> {
+        writeln!(out, "LSP not active")?;
         Ok(CommandResult::Continue)
     }
 
@@ -264,7 +290,7 @@ impl CliApp {
 
     fn write_turn_output(
         &self,
-        summary: &runtime::TurnSummary,
+        summary: &mammoth_runtime::TurnSummary,
         out: &mut impl Write,
     ) -> io::Result<()> {
         match self.config.output_format {
@@ -373,6 +399,11 @@ mod tests {
             SlashCommand::parse("/compact now"),
             Some(SlashCommand::Compact)
         );
+        assert_eq!(SlashCommand::parse("/skills"), Some(SlashCommand::Skills));
+        assert_eq!(
+            SlashCommand::parse("/diagnostics"),
+            Some(SlashCommand::Diagnostics)
+        );
     }
 
     #[test]
@@ -384,6 +415,27 @@ mod tests {
         assert!(output.contains("/help"));
         assert!(output.contains("/status"));
         assert!(output.contains("/compact"));
+        assert!(output.contains("/skills"));
+        assert!(output.contains("/diagnostics"));
+    }
+
+    #[test]
+    fn diagnostics_command_reports_inactive_lsp() {
+        let config = SessionConfig {
+            model: "sonnet".into(),
+            permission_mode: PermissionMode::DangerFullAccess,
+            config: None,
+            output_format: OutputFormat::Text,
+        };
+
+        let mut app = super::CliApp::new(config).expect("app should initialize");
+        let mut out = Vec::new();
+        let result = app
+            .handle_submission("/diagnostics", &mut out)
+            .expect("diagnostics command succeeds");
+        assert_eq!(result, CommandResult::Continue);
+        let output = String::from_utf8_lossy(&out);
+        assert!(output.contains("LSP not active"));
     }
 
     #[test]

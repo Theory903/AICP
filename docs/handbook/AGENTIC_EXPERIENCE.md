@@ -351,11 +351,11 @@ AI: "Status is pending_approval. Policy requires_approval=true.
 
 ## Implementation Priority
 
-| Phase | Focus | v0.1.1 |
+| Phase | Focus | v0.3.0 Feature Set |
 |-------|-------|--------|
 | Phase 1 | Response templates, allowed_next_actions, structured errors | Implemented |
 | Phase 2 | Workflow state tracking, current step context | Implemented |
-| Phase 3 | Semantic discovery, cognitive protocols | Planned (v0.4.0) |
+| Phase 3 | Semantic discovery, cognitive protocols | Cognitive protocols shipped; semantic retrieval still planned |
 | Phase 4 | Perception layer, multi-agent coordination | Planned (v0.5.0+) |
 
 ---

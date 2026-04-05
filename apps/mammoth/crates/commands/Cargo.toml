@@ -10,5 +10,5 @@ workspace = true
 
 [dependencies]
 plugins = { path = "../plugins" }
-runtime = { path = "../runtime" }
+mammoth-runtime = { path = "../runtime" }
 serde_json.workspace = true

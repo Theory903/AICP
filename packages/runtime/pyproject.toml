@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aicp-runtime"
-version = "0.1.1"
+version = "0.3.0"
 description = "AICP Runtime - Governed execution engine"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [{ name = "AICP Team" }]
 requires-python = ">=3.10"
 dependencies = [
-    "aicp-core>=0.1.0",
+    "aicp-core>=0.3.0",
     "fastapi>=0.110",
 ]
 

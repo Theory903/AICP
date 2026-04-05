@@ -2,6 +2,7 @@ mod init;
 mod input;
 mod render;
 mod aicp_cmds;
+mod tui;
 
 use std::collections::BTreeSet;
 use std::env;
@@ -17,9 +18,10 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use api::{
-    resolve_startup_auth_source, AuthSource, MammothApiClient, ContentBlockDelta, InputContentBlock,
-    InputMessage, MessageRequest, MessageResponse, OutputContentBlock,
-    StreamEvent as ApiStreamEvent, ToolChoice, ToolDefinition, ToolResultContentBlock,
+    AuthSource, ContentBlockDelta, InputContentBlock, InputMessage, MessageRequest, MessageResponse,
+    OutputContentBlock,
+    MammothApiClient, ProviderClient, StreamEvent as ApiStreamEvent, ToolChoice, ToolDefinition,
+    ToolResultContentBlock,
 };
 
 use commands::{
@@ -31,7 +33,7 @@ use compat_harness::{extract_manifest, UpstreamPaths};
 use init::initialize_repo;
 use plugins::{PluginManager, PluginManagerConfig};
 use render::{MarkdownStreamState, Spinner, TerminalRenderer};
-use runtime::{
+use mammoth_runtime::{
     clear_oauth_credentials, generate_pkce_pair, generate_state, load_system_prompt,
     parse_oauth_callback_request_target, save_oauth_credentials, ApiClient, ApiRequest,
     AssistantEvent, CompactionConfig, ConfigLoader, ConfigSource, ContentBlock,
@@ -47,6 +49,7 @@ use aicp::AicpToolExecutor;
 use server::{serve as server_serve, AppState, TurnRunner as ServerTurnRunner};
 
 const DEFAULT_MODEL: &str = MODEL_AUTO;
+const MAMMOTH_MARK: &str = "/\\oo/\\";
 fn max_tokens_for_model(model: &str) -> u32 {
     if model.contains("opus") {
         32_000
@@ -690,7 +693,7 @@ fn dump_manifests() {
 }
 
 fn print_bootstrap_plan() {
-    for phase in runtime::BootstrapPlan::mammoth_default().phases() {
+    for phase in mammoth_runtime::BootstrapPlan::mammoth_default().phases() {
         println!("- {phase:?}");
     }
 }
@@ -716,7 +719,7 @@ fn run_login() -> Result<(), Box<dyn std::error::Error>> {
     let default_oauth = default_oauth_config();
     let oauth = config.oauth().unwrap_or(&default_oauth);
     let callback_port = oauth.callback_port.unwrap_or(DEFAULT_OAUTH_CALLBACK_PORT);
-    let redirect_uri = runtime::loopback_redirect_uri(callback_port);
+    let redirect_uri = mammoth_runtime::loopback_redirect_uri(callback_port);
     let pkce = generate_pkce_pair()?;
     let state = generate_state()?;
     let authorize_url =
@@ -752,7 +755,7 @@ fn run_login() -> Result<(), Box<dyn std::error::Error>> {
         OAuthTokenExchangeRequest::from_config(oauth, code, state, pkce.verifier, redirect_uri);
     let runtime = tokio::runtime::Runtime::new()?;
     let token_set = runtime.block_on(client.exchange_oauth_code(oauth, &exchange_request))?;
-    save_oauth_credentials(&runtime::OAuthTokenSet {
+    save_oauth_credentials(&mammoth_runtime::OAuthTokenSet {
         access_token: token_set.access_token,
         refresh_token: token_set.refresh_token,
         expires_at: token_set.expires_at,
@@ -791,7 +794,7 @@ fn open_browser(url: &str) -> io::Result<()> {
 
 fn wait_for_oauth_callback(
     port: u16,
-) -> Result<runtime::OAuthCallbackParams, Box<dyn std::error::Error>> {
+) -> Result<mammoth_runtime::OAuthCallbackParams, Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(("127.0.0.1", port))?;
     let (mut stream, _) = listener.accept()?;
     let mut buffer = [0_u8; 4096];
@@ -1084,7 +1087,7 @@ fn run_resume_command(
             message: Some(render_repl_help()),
         }),
         SlashCommand::Compact => {
-            let result = runtime::compact_session(
+            let result = mammoth_runtime::compact_session(
                 session,
                 CompactionConfig {
                     max_estimated_tokens: 0,
@@ -1215,6 +1218,18 @@ fn run_repl(
     allowed_tools: Option<AllowedToolSet>,
     permission_mode: PermissionMode,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    if io::stdin().is_terminal() && io::stdout().is_terminal() {
+        return tui::run_app(LiveCli::new(model, true, allowed_tools, permission_mode)?);
+    }
+
+    run_line_repl(model, allowed_tools, permission_mode)
+}
+
+fn run_line_repl(
+    model: &str,
+    allowed_tools: Option<AllowedToolSet>,
+    permission_mode: PermissionMode,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut cli = LiveCli::new(model, true, allowed_tools, permission_mode)?;
     let mut editor = input::LineEditor::new("> ", slash_command_completion_candidates());
     println!("{}", cli.startup_banner());
@@ -1337,14 +1352,14 @@ impl LiveCli {
             format!(
                 "{} {}",
                 if color {
-                    "\x1b[1;38;5;45m🦞 Mammoth Code\x1b[0m"
+                    "\x1b[1;38;5;45m/\\oo/\\ Mammoth\x1b[0m"
                 } else {
-                    "Mammoth Code"
+                    "Mammoth"
                 },
                 if color {
-                    "\x1b[2m· ready\x1b[0m"
+                    "\x1b[2m· command deck ready\x1b[0m"
                 } else {
-                    "· ready"
+                    "· command deck ready"
                 }
             ),
             format!("  Workspace        {workspace_summary}"),
@@ -1373,11 +1388,215 @@ impl LiveCli {
         lines.join("\n")
     }
 
+    fn run_turn_capture(
+        &mut self,
+        input: &str,
+    ) -> Result<mammoth_runtime::TurnSummary, Box<dyn std::error::Error>> {
+        let session = self.runtime.session().clone();
+        let mut runtime = build_runtime(
+            session,
+            self.model.clone(),
+            self.system_prompt.clone(),
+            true,
+            false,
+            self.allowed_tools.clone(),
+            self.permission_mode,
+            None,
+        )?;
+        let summary = runtime.run_turn(input, None)?;
+        self.runtime = runtime;
+        self.persist_session()?;
+        Ok(summary)
+    }
+
+    fn help_report() -> String {
+        render_repl_help()
+    }
+
+    fn status_report(&self) -> String {
+        let cumulative = self.runtime.usage().cumulative_usage();
+        let latest = self.runtime.usage().current_turn_usage();
+        format_status_report(
+            &self.model,
+            StatusUsage {
+                message_count: self.runtime.session().messages.len(),
+                turns: self.runtime.usage().turns(),
+                latest,
+                cumulative,
+                estimated_tokens: self.runtime.estimated_tokens(),
+            },
+            self.permission_mode.as_str(),
+            &status_context(Some(&self.session.path)).expect("status context should load"),
+        )
+    }
+
+    fn cost_report(&self) -> String {
+        format_cost_report(self.runtime.usage().cumulative_usage())
+    }
+
+    fn diff_report() -> Result<String, Box<dyn std::error::Error>> {
+        render_diff_report()
+    }
+
+    fn version_report() -> String {
+        render_version_report()
+    }
+
+    fn config_report(section: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
+        render_config_report(section)
+    }
+
+    fn memory_report() -> Result<String, Box<dyn std::error::Error>> {
+        render_memory_report()
+    }
+
+    fn agents_report(args: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
+        let cwd = env::current_dir()?;
+        Ok(handle_agents_slash_command(args, &cwd)?)
+    }
+
+    fn skills_report(args: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
+        let cwd = env::current_dir()?;
+        Ok(handle_skills_slash_command(args, &cwd)?)
+    }
+
+    fn teleport_report(target: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
+        let Some(target) = target.map(str::trim).filter(|value| !value.is_empty()) else {
+            return Ok("Usage: /teleport <symbol-or-path>".to_string());
+        };
+        render_teleport_report(target)
+    }
+
+    fn debug_tool_call_report(&self) -> Result<String, Box<dyn std::error::Error>> {
+        render_last_tool_debug_report(self.runtime.session())
+    }
+
+    fn set_model_report(
+        &mut self,
+        model: Option<String>,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let Some(model) = model else {
+            return Ok(format_model_report(
+                &self.model,
+                self.runtime.session().messages.len(),
+                self.runtime.usage().turns(),
+            ));
+        };
+
+        let model = resolve_model_alias(&model).to_string();
+        if model == self.model {
+            return Ok(format_model_report(
+                &self.model,
+                self.runtime.session().messages.len(),
+                self.runtime.usage().turns(),
+            ));
+        }
+
+        let previous = self.model.clone();
+        let session = self.runtime.session().clone();
+        let message_count = session.messages.len();
+        self.runtime = build_runtime(
+            session,
+            model.clone(),
+            self.system_prompt.clone(),
+            true,
+            true,
+            self.allowed_tools.clone(),
+            self.permission_mode,
+            None,
+        )?;
+        self.model.clone_from(&model);
+        Ok(format_model_switch_report(&previous, &model, message_count))
+    }
+
+    fn set_permissions_report(
+        &mut self,
+        mode: Option<String>,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let Some(mode) = mode else {
+            return Ok(format_permissions_report(self.permission_mode.as_str()));
+        };
+
+        let normalized = normalize_permission_mode(&mode).ok_or_else(|| {
+            format!(
+                "unsupported permission mode '{mode}'. Use read-only, workspace-write, or danger-full-access."
+            )
+        })?;
+
+        if normalized == self.permission_mode.as_str() {
+            return Ok(format_permissions_report(normalized));
+        }
+
+        let previous = self.permission_mode.as_str().to_string();
+        let session = self.runtime.session().clone();
+        self.permission_mode = permission_mode_from_label(normalized);
+        self.runtime = build_runtime(
+            session,
+            self.model.clone(),
+            self.system_prompt.clone(),
+            true,
+            true,
+            self.allowed_tools.clone(),
+            self.permission_mode,
+            None,
+        )?;
+        Ok(format_permissions_switch_report(&previous, normalized))
+    }
+
+    fn clear_session_report(
+        &mut self,
+        confirm: bool,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        if !confirm {
+            return Ok(
+                "clear: confirmation required; run /clear --confirm to start a fresh session."
+                    .to_string(),
+            );
+        }
+
+        self.session = create_managed_session_handle()?;
+        self.runtime = build_runtime(
+            Session::new(),
+            self.model.clone(),
+            self.system_prompt.clone(),
+            true,
+            true,
+            self.allowed_tools.clone(),
+            self.permission_mode,
+            None,
+        )?;
+        Ok(format!(
+            "Session cleared\n  Mode             fresh session\n  Preserved model  {}\n  Permission mode  {}\n  Session          {}",
+            self.model,
+            self.permission_mode.as_str(),
+            self.session.id,
+        ))
+    }
+
+    fn compact_report_string(&mut self) -> Result<String, Box<dyn std::error::Error>> {
+        let result = self.runtime.compact(CompactionConfig::default());
+        let removed = result.removed_message_count;
+        let kept = result.compacted_session.messages.len();
+        let skipped = removed == 0;
+        self.runtime = build_runtime(
+            result.compacted_session,
+            self.model.clone(),
+            self.system_prompt.clone(),
+            true,
+            true,
+            self.allowed_tools.clone(),
+            self.permission_mode,
+            None,
+        )?;
+        self.persist_session()?;
+        Ok(format_compact_report(removed, kept, skipped))
+    }
+
     fn run_turn(&mut self, input: &str) -> Result<(), Box<dyn std::error::Error>> {
         let mut spinner = Spinner::new();
         let mut stdout = io::stdout();
         spinner.tick(
-            "🦀 Thinking...",
+            "Mammoth thinking...",
             TerminalRenderer::new().color_theme(),
             &mut stdout,
         )?;
@@ -2907,7 +3126,7 @@ fn build_system_prompt() -> Result<Vec<String>, Box<dyn std::error::Error>> {
 }
 
 fn build_runtime_plugin_state(
-) -> Result<(runtime::RuntimeFeatureConfig, GlobalToolRegistry), Box<dyn std::error::Error>> {
+) -> Result<(mammoth_runtime::RuntimeFeatureConfig, GlobalToolRegistry), Box<dyn std::error::Error>> {
     let cwd = env::current_dir()?;
     let loader = ConfigLoader::default_for(&cwd);
     let runtime_config = loader.load()?;
@@ -2919,7 +3138,7 @@ fn build_runtime_plugin_state(
 fn build_plugin_manager(
     cwd: &Path,
     loader: &ConfigLoader,
-    runtime_config: &runtime::RuntimeConfig,
+    runtime_config: &mammoth_runtime::RuntimeConfig,
 ) -> PluginManager {
     let plugin_settings = runtime_config.plugins();
     let mut plugin_config = PluginManagerConfig::new(loader.config_home().to_path_buf());
@@ -3327,11 +3546,11 @@ impl CliPermissionPrompter {
     }
 }
 
-impl runtime::PermissionPrompter for CliPermissionPrompter {
+impl mammoth_runtime::PermissionPrompter for CliPermissionPrompter {
     fn decide(
         &mut self,
-        request: &runtime::PermissionRequest,
-    ) -> runtime::PermissionPromptDecision {
+        request: &mammoth_runtime::PermissionRequest,
+    ) -> mammoth_runtime::PermissionPromptDecision {
         println!();
         println!("Permission approval required");
         println!("  Tool             {}", request.tool_name);
@@ -3346,9 +3565,9 @@ impl runtime::PermissionPrompter for CliPermissionPrompter {
             Ok(_) => {
                 let normalized = response.trim().to_ascii_lowercase();
                 if matches!(normalized.as_str(), "y" | "yes") {
-                    runtime::PermissionPromptDecision::Allow
+                    mammoth_runtime::PermissionPromptDecision::Allow
                 } else {
-                    runtime::PermissionPromptDecision::Deny {
+                    mammoth_runtime::PermissionPromptDecision::Deny {
                         reason: format!(
                             "tool '{}' denied by user approval prompt",
                             request.tool_name
@@ -3356,7 +3575,7 @@ impl runtime::PermissionPrompter for CliPermissionPrompter {
                     }
                 }
             }
-            Err(error) => runtime::PermissionPromptDecision::Deny {
+            Err(error) => mammoth_runtime::PermissionPromptDecision::Deny {
                 reason: format!("permission approval failed: {error}"),
             },
         }
@@ -3365,7 +3584,7 @@ impl runtime::PermissionPrompter for CliPermissionPrompter {
 
 struct DefaultRuntimeClient {
     runtime: tokio::runtime::Runtime,
-    client: MammothApiClient,
+    client: ProviderClient,
     model: String,
     enable_tools: bool,
     emit_output: bool,
@@ -3385,8 +3604,7 @@ impl DefaultRuntimeClient {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
             runtime: tokio::runtime::Runtime::new()?,
-            client: MammothApiClient::from_auth(resolve_cli_auth_source()?)
-                .with_base_url(api::read_base_url()),
+            client: build_provider_client(&model)?,
             model,
             enable_tools,
             emit_output,
@@ -3397,14 +3615,8 @@ impl DefaultRuntimeClient {
     }
 }
 
-fn resolve_cli_auth_source() -> Result<AuthSource, Box<dyn std::error::Error>> {
-    Ok(resolve_startup_auth_source(|| {
-        let cwd = env::current_dir().map_err(api::ApiError::from)?;
-        let config = ConfigLoader::default_for(&cwd).load().map_err(|error| {
-            api::ApiError::Auth(format!("failed to load runtime OAuth config: {error}"))
-        })?;
-        Ok(config.oauth().cloned())
-    })?)
+fn build_provider_client(model: &str) -> Result<ProviderClient, Box<dyn std::error::Error>> {
+    Ok(ProviderClient::from_model(model)?)
 }
 
 impl ApiClient for DefaultRuntimeClient {
@@ -3552,7 +3764,7 @@ impl ApiClient for DefaultRuntimeClient {
     }
 }
 
-fn final_assistant_text(summary: &runtime::TurnSummary) -> String {
+fn final_assistant_text(summary: &mammoth_runtime::TurnSummary) -> String {
     summary
         .assistant_messages
         .last()
@@ -3570,7 +3782,7 @@ fn final_assistant_text(summary: &runtime::TurnSummary) -> String {
         .unwrap_or_default()
 }
 
-fn collect_tool_uses(summary: &runtime::TurnSummary) -> Vec<serde_json::Value> {
+fn collect_tool_uses(summary: &mammoth_runtime::TurnSummary) -> Vec<serde_json::Value> {
     summary
         .assistant_messages
         .iter()
@@ -3586,7 +3798,7 @@ fn collect_tool_uses(summary: &runtime::TurnSummary) -> Vec<serde_json::Value> {
         .collect()
 }
 
-fn collect_tool_results(summary: &runtime::TurnSummary) -> Vec<serde_json::Value> {
+fn collect_tool_results(summary: &mammoth_runtime::TurnSummary) -> Vec<serde_json::Value> {
     summary
         .tool_results
         .iter()
@@ -4398,6 +4610,7 @@ fn print_help() {
 #[cfg(test)]
 mod tests {
     use super::{
+        build_provider_client,
         describe_tool_progress, filter_tool_specs, format_compact_report, format_cost_report,
         format_internal_prompt_progress_line, format_model_report, format_model_switch_report,
         format_permissions_report, format_permissions_switch_report, format_resume_report,
@@ -4409,13 +4622,21 @@ mod tests {
         CliAction, CliOutputFormat, InternalPromptProgressEvent, InternalPromptProgressState,
         SlashCommand, StatusUsage, DEFAULT_MODEL,
     };
-    use api::{MessageResponse, OutputContentBlock, Usage};
+    use api::{MessageResponse, OutputContentBlock, ProviderKind, Usage};
     use plugins::{PluginTool, PluginToolDefinition, PluginToolPermission};
-    use runtime::{AssistantEvent, ContentBlock, ConversationMessage, MessageRole, PermissionMode};
+    use mammoth_runtime::{AssistantEvent, ContentBlock, ConversationMessage, MessageRole, PermissionMode};
     use serde_json::json;
     use std::path::PathBuf;
+    use std::sync::{Mutex, OnceLock};
     use std::time::Duration;
     use tools::GlobalToolRegistry;
+
+    fn env_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
 
     fn registry_with_plugin_tool() -> GlobalToolRegistry {
         GlobalToolRegistry::with_plugin_tools(vec![PluginTool::new(
@@ -4519,6 +4740,14 @@ mod tests {
         assert_eq!(resolve_model_alias("sonnet"), "claude-sonnet-4-6");
         assert_eq!(resolve_model_alias("haiku"), "claude-haiku-4-5-20251213");
         assert_eq!(resolve_model_alias("custom-opus"), "custom-opus");
+    }
+
+    #[test]
+    fn build_provider_client_supports_openai_compatible_models() {
+        let client = build_provider_client("kimi-k2.5:cloud")
+            .expect("provider client should build");
+
+        assert_eq!(client.provider_kind(), ProviderKind::Anthropic);
     }
 
     #[test]
@@ -4713,7 +4942,7 @@ mod tests {
     #[test]
     fn permission_policy_uses_plugin_tool_permissions() {
         let policy = permission_policy(PermissionMode::ReadOnly, &registry_with_plugin_tool());
-        let required = policy.required_mode_for("plugin_echo");
+        let required = policy.required_mode_for("plugin_echo", "");
         assert_eq!(required, PermissionMode::WorkspaceWrite);
     }
 
@@ -4807,7 +5036,7 @@ mod tests {
 
     #[test]
     fn cost_report_uses_sectioned_layout() {
-        let report = format_cost_report(runtime::TokenUsage {
+        let report = format_cost_report(mammoth_runtime::TokenUsage {
             input_tokens: 20,
             output_tokens: 8,
             cache_creation_input_tokens: 3,
@@ -4880,13 +5109,13 @@ mod tests {
             StatusUsage {
                 message_count: 7,
                 turns: 3,
-                latest: runtime::TokenUsage {
+                latest: mammoth_runtime::TokenUsage {
                     input_tokens: 5,
                     output_tokens: 4,
                     cache_creation_input_tokens: 1,
                     cache_read_input_tokens: 0,
                 },
-                cumulative: runtime::TokenUsage {
+                cumulative: mammoth_runtime::TokenUsage {
                     input_tokens: 20,
                     output_tokens: 8,
                     cache_creation_input_tokens: 2,

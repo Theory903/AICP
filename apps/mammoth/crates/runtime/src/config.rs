@@ -54,6 +54,62 @@ pub struct RuntimeFeatureConfig {
     permission_mode: Option<ResolvedPermissionMode>,
     sandbox: SandboxConfig,
     aicp: Option<AicpConfig>,
+    skills: SkillsConfig,
+    agents: AgentsConfig,
+    lsp_config: LspConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkillsConfig {
+    pub enabled: bool,
+    pub search_paths: Vec<String>,
+    pub active: Vec<String>,
+}
+
+impl Default for SkillsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            search_paths: Vec::new(),
+            active: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentsConfig {
+    pub enabled: bool,
+    pub default_team: Option<String>,
+    pub coordinator_model: Option<String>,
+}
+
+impl Default for AgentsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            default_team: None,
+            coordinator_model: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LspConfig {
+    pub enabled: bool,
+    pub server_command: Option<String>,
+    pub server_args: Vec<String>,
+    pub workspace_root: Option<String>,
+}
+
+impl Default for LspConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            server_command: None,
+            server_args: Vec::new(),
+            workspace_root: None,
+        }
+    }
 }
 
 /// Configuration for the AICP execution governance layer.
@@ -286,6 +342,9 @@ impl ConfigLoader {
             permission_mode: parse_optional_permission_mode(&merged_value)?,
             sandbox: parse_optional_sandbox_config(&merged_value)?,
             aicp: parse_optional_aicp_config(&merged_value)?,
+            skills: parse_optional_skills_config(&merged_value)?,
+            agents: parse_optional_agents_config(&merged_value)?,
+            lsp_config: parse_optional_lsp_config(&merged_value)?,
         };
 
         Ok(RuntimeConfig {
@@ -429,6 +488,21 @@ impl RuntimeFeatureConfig {
     pub fn with_aicp(mut self, aicp: AicpConfig) -> Self {
         self.aicp = Some(aicp);
         self
+    }
+
+    #[must_use]
+    pub fn skills(&self) -> &SkillsConfig {
+        &self.skills
+    }
+
+    #[must_use]
+    pub fn agents(&self) -> &AgentsConfig {
+        &self.agents
+    }
+
+    #[must_use]
+    pub fn lsp_config(&self) -> &LspConfig {
+        &self.lsp_config
     }
 }
 
@@ -739,6 +813,59 @@ fn parse_optional_aicp_config(root: &JsonValue) -> Result<Option<AicpConfig>, Co
     }))
 }
 
+fn parse_optional_skills_config(root: &JsonValue) -> Result<SkillsConfig, ConfigError> {
+    let Some(object) = root.as_object() else {
+        return Ok(SkillsConfig::default());
+    };
+    let Some(skills_value) = object.get("skills") else {
+        return Ok(SkillsConfig::default());
+    };
+    let skills = expect_object(skills_value, "merged settings.skills")?;
+    Ok(SkillsConfig {
+        enabled: optional_bool(skills, "enabled", "merged settings.skills")?.unwrap_or(false),
+        search_paths: optional_string_array(skills, "searchPaths", "merged settings.skills")?
+            .unwrap_or_default(),
+        active: optional_string_array(skills, "active", "merged settings.skills")?
+            .unwrap_or_default(),
+    })
+}
+
+fn parse_optional_agents_config(root: &JsonValue) -> Result<AgentsConfig, ConfigError> {
+    let Some(object) = root.as_object() else {
+        return Ok(AgentsConfig::default());
+    };
+    let Some(agents_value) = object.get("agents") else {
+        return Ok(AgentsConfig::default());
+    };
+    let agents = expect_object(agents_value, "merged settings.agents")?;
+    Ok(AgentsConfig {
+        enabled: optional_bool(agents, "enabled", "merged settings.agents")?.unwrap_or(false),
+        default_team: optional_string(agents, "defaultTeam", "merged settings.agents")?
+            .map(str::to_string),
+        coordinator_model: optional_string(agents, "coordinatorModel", "merged settings.agents")?
+            .map(str::to_string),
+    })
+}
+
+fn parse_optional_lsp_config(root: &JsonValue) -> Result<LspConfig, ConfigError> {
+    let Some(object) = root.as_object() else {
+        return Ok(LspConfig::default());
+    };
+    let Some(lsp_value) = object.get("lsp") else {
+        return Ok(LspConfig::default());
+    };
+    let lsp = expect_object(lsp_value, "merged settings.lsp")?;
+    Ok(LspConfig {
+        enabled: optional_bool(lsp, "enabled", "merged settings.lsp")?.unwrap_or(false),
+        server_command: optional_string(lsp, "serverCommand", "merged settings.lsp")?
+            .map(str::to_string),
+        server_args: optional_string_array(lsp, "serverArgs", "merged settings.lsp")?
+            .unwrap_or_default(),
+        workspace_root: optional_string(lsp, "workspaceRoot", "merged settings.lsp")?
+            .map(str::to_string),
+    })
+}
+
 fn parse_filesystem_mode_label(value: &str) -> Result<FilesystemIsolationMode, ConfigError> {
     match value {
         "off" => Ok(FilesystemIsolationMode::Off),
@@ -1017,8 +1144,8 @@ fn push_unique(target: &mut Vec<String>, value: String) {
 #[cfg(test)]
 mod tests {
     use super::{
-        ConfigLoader, ConfigSource, McpServerConfig, McpTransport, ResolvedPermissionMode,
-        MAMMOTH_SETTINGS_SCHEMA_NAME,
+        AgentsConfig, ConfigLoader, ConfigSource, LspConfig, McpServerConfig, McpTransport,
+        ResolvedPermissionMode, SkillsConfig, MAMMOTH_SETTINGS_SCHEMA_NAME,
     };
     use crate::json::JsonValue;
     use crate::sandbox::FilesystemIsolationMode;
@@ -1343,6 +1470,72 @@ mod tests {
             Some("plugin-cache/installed.json")
         );
         assert_eq!(loaded.plugins().bundled_root(), Some("./bundled-plugins"));
+
+        fs::remove_dir_all(root).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn defaults_skills_agents_and_lsp_config() {
+        assert_eq!(SkillsConfig::default().enabled, false);
+        assert!(SkillsConfig::default().search_paths.is_empty());
+        assert_eq!(AgentsConfig::default().enabled, false);
+        assert!(LspConfig::default().server_args.is_empty());
+    }
+
+    #[test]
+    fn parses_skills_agents_and_lsp_config() {
+        let root = temp_dir();
+        let cwd = root.join("project");
+        let home = root.join("home").join(".mammoth");
+        fs::create_dir_all(cwd.join(".mammoth")).expect("project config dir");
+        fs::create_dir_all(&home).expect("home config dir");
+
+        fs::write(
+            cwd.join(".mammoth").join("settings.local.json"),
+            r#"{
+              "skills": {
+                "enabled": true,
+                "searchPaths": ["skills", ".mammoth/skills"],
+                "active": ["review", "qa"]
+              },
+              "agents": {
+                "enabled": true,
+                "defaultTeam": "core",
+                "coordinatorModel": "opus"
+              },
+              "lsp": {
+                "enabled": true,
+                "serverCommand": "rust-analyzer",
+                "serverArgs": ["--stdio"],
+                "workspaceRoot": "apps/mammoth"
+              }
+            }"#,
+        )
+        .expect("write local settings");
+
+        let loaded = ConfigLoader::new(&cwd, &home)
+            .load()
+            .expect("config should load");
+
+        assert!(loaded.feature_config().skills().enabled);
+        assert_eq!(
+            loaded.feature_config().skills().active,
+            vec!["review", "qa"]
+        );
+        assert!(loaded.feature_config().agents().enabled);
+        assert_eq!(
+            loaded.feature_config().agents().default_team.as_deref(),
+            Some("core")
+        );
+        assert!(loaded.feature_config().lsp_config().enabled);
+        assert_eq!(
+            loaded
+                .feature_config()
+                .lsp_config()
+                .server_command
+                .as_deref(),
+            Some("rust-analyzer")
+        );
 
         fs::remove_dir_all(root).expect("cleanup temp dir");
     }

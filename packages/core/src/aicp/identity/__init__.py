@@ -1,0 +1,30 @@
+"""
+Identity and Trust Module
+Module 2 - DID-based authentication and trust tiers
+"""
+
+from aicp.identity.did import (
+    TrustTier,
+    IdentityStatus,
+    DIDMethod,
+    DIDDocument,
+    VerifiableCredential,
+    Identity,
+    TrustPolicy,
+    TrustEvaluator,
+    DIDRegistry,
+    create_aicp_identity,
+)
+
+__all__ = [
+    "TrustTier",
+    "IdentityStatus", 
+    "DIDMethod",
+    "DIDDocument",
+    "VerifiableCredential",
+    "Identity",
+    "TrustPolicy",
+    "TrustEvaluator",
+    "DIDRegistry",
+    "create_aicp_identity",
+]

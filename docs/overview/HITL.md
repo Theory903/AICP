@@ -99,7 +99,7 @@ When the runtime creates an approval request, it includes everything the human n
 
 Not all HITL checkpoints require the same level of human engagement. AICP supports a spectrum:
 
-| Mode | Human Effort | Description | v0.1.1 |
+| Mode | Human Effort | Description | v0.1.1 Baseline |
 |------|-------------|-------------|--------|
 | Full review | High | Human examines all arguments and context | Implemented |
 | Quick approve | Medium | Human sees summary, approves/rejects | Implemented |
@@ -157,7 +157,7 @@ Match approval to pending execution context
   └──> Context invalidated ──> Reject resume, notify agent
 ```
 
-This is implemented and working in v0.1.1.
+This shipped in the v0.1.1 baseline and remains part of the current runtime.
 
 ---
 
@@ -173,7 +173,7 @@ This is implemented and working in v0.1.1.
 
 ---
 
-## v0.1.1 Implementation Status
+## Historical v0.1.1 Baseline
 
 | Feature | Status |
 |---------|--------|

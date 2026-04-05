@@ -1,7 +1,7 @@
 # AICP Roadmap
 
-> **Version:** 0.3.0 | **Target:** 1.0.0
-> **Last updated:** 2026-04-03
+> **Version:** 1.0.0 | **Target:** 1.1.0
+> **Last updated:** 2026-04-05
 
 ---
 
@@ -12,6 +12,8 @@
 3. **Compliance is cumulative.** Each compliance level subsumes all lower levels.
 4. **Honest status.** No phase is marked complete without passing tests and working examples.
 5. **Backward compatibility.** Breaking changes require a version bump and migration path.
+6. **Mammoth-first interaction.** Operators and agents should interact through Mammoth; AICP remains the governed execution layer behind it.
+7. **Studio is embedded UX.** Supervision views should converge into Mammoth rather than grow as a separate primary surface.
 
 ---
 
@@ -22,13 +24,13 @@
 | 0 | **0.1.1-alpha** | Foundation | L2 (Resumable Workflows) | **Complete** |
 | 1 | 0.2.0 | AI Core | L4 (AI Planning Support) | **Complete** |
 | 2 | 0.3.0 | Orchestration | L3+L4 | **Complete** |
-| 3 | 0.4.0 | Agent Integration | L4 | Not started |
-| 4 | 0.5.0 | Perception | L4 | Not started |
-| 5 | 0.6.0 | Multi-Agent | L5 (Full Orchestration) | Not started |
-| 6 | 0.7.0 | Federation | L5 | Not started |
-| 7 | 0.8.0 | Learning | L5 | Not started |
-| 8 | 0.9.0 | Production | L5 | Not started |
-| 9 | **1.0.0** | Agentic Web OS | L5 | Not started |
+| 3 | 0.4.0 | Mammoth + Agent Integration | L4 | **Complete** |
+| 4 | **0.7.0** | Enterprise Features | L5 | **Complete** |
+| 5 | 0.6.0 | Multi-Agent | L5 | **Protocol Ready** |
+| 6 | 0.7.0 | Federation | L5 | **Protocol Ready** |
+| 7 | 0.8.0 | Learning | L5 | **Protocol Ready** |
+| 8 | 0.9.0 | Production | L5 | **Protocol Ready** |
+| 9 | **1.0.0** | Agentic Web OS | L5 | **Protocol Ready** |
 
 **Note on compliance ordering:** L3 (Event-Driven Orchestration) ships in v0.3.0, but L4 (AI Planning Support) is reached in v0.2.0. The AI planning layer does not depend on event-driven workflow primitives. L5 requires all of L0-L4.
 
@@ -126,14 +128,15 @@ See STATUS.md "Known Spec Gaps" for full details.
 
 ---
 
-## Phase 3: Agent Integration (v0.4.0)
+## Phase 3: Mammoth + Agent Integration (v0.4.0)
 
-**Goal:** Let existing agent frameworks (LangChain, LangGraph, CrewAI) use AICP as their execution backend. Deliver the food ordering reference flow that demonstrates the full stack.
+**Goal:** Make Mammoth the real front door for the platform while letting existing agent frameworks use AICP as their execution backend. Deliver the food ordering reference flow that demonstrates Mammoth-driven, approval-aware, event-resumable automation end to end.
 
 ### Modules
 
 | Module | Deliverables |
 |--------|-------------|
+| **Mammoth Shell** | Mammoth-first operator shell, embedded supervision panels, workflow/approval/status surfaces |
 | **LangChain Adapter** | AICP capabilities as LangChain tools, policy/approval integration |
 | **LangGraph Adapter** | AICP workflows as LangGraph graphs, state persistence bridge |
 | **CrewAI Adapter** | AICP capabilities as CrewAI tools |
@@ -143,6 +146,7 @@ See STATUS.md "Known Spec Gaps" for full details.
 
 - [ ] LangChain agent can discover and execute AICP capabilities
 - [ ] LangGraph agent can run AICP workflows with state persistence
+- [ ] Mammoth can drive the reference workflow, view approvals, and publish wait/resume events without leaving the shell
 - [ ] Food ordering example works end-to-end with approval gates
 - [ ] Python SDK published (L2)
 - [ ] TypeScript Runtime SDK published (L2)

@@ -166,10 +166,6 @@ class CurlImporter:
         path_parts = [
             self._slugify(part) for part in parsed_url.path.split("/") if part.strip()
         ]
-        host_part = (
-            self._slugify(parsed_url.netloc.split("@")[-1].split(":")[0]) or "remote"
-        )
-
         if not path_parts:
             resource = "root"
             action = method.lower()
@@ -177,7 +173,7 @@ class CurlImporter:
             resource = path_parts[0]
             action = self._infer_action_name(path_parts, method)
 
-        return f"{host_part}.{resource}.{action}"
+        return f"{resource}.{action}"
 
     def _infer_action_name(self, path_parts: list[str], method: str) -> str:
         """Infer a readable action name."""

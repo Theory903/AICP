@@ -1,6 +1,14 @@
 # Subsystems Guide
 
-> Detailed documentation of Claude Code's major subsystems.
+> Reference study for subsystems Mammoth may absorb or adapt.
+
+Current Mammoth subsystem entrypoints:
+- `apps/mammoth/crates/runtime/`
+- `apps/mammoth/crates/plugins/`
+- `apps/mammoth/crates/server/`
+- `apps/mammoth/crates/aicp/`
+
+The descriptions below are external-study notes, not Mammoth source-of-truth docs.
 
 ---
 

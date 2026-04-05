@@ -1,5 +1,13 @@
 # Bridge Layer (VS Code / JetBrains IDE Integration)
 
+> External bridge reference for future Mammoth remote-control and IDE integration work.
+
+Current Mammoth-adjacent bridge/server paths:
+- `apps/mammoth/crates/server/src/lib.rs`
+- `apps/mammoth/crates/server/src/studio.html`
+
+This document describes a richer external bridge model that Mammoth may selectively absorb.
+
 ## Architecture Overview
 
 The bridge (`src/bridge/`, ~31 files) connects Claude Code CLI sessions to

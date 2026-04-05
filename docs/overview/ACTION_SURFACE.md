@@ -185,7 +185,7 @@ Every capability execution produces the canonical execution envelope. This is th
 
 ## Execution Modes
 
-| Mode | Latency | Use Case | v0.1.1 |
+| Mode | Latency | Use Case | v0.1.1 Baseline |
 |------|---------|----------|--------|
 | `sync` | <500ms | Simple queries and actions | Implemented |
 | `async` | Seconds to hours | Long-running operations with callbacks | Planned (v0.3.0) |
@@ -238,11 +238,11 @@ These are non-negotiable properties of a well-formed Action Surface:
 
 ---
 
-## v0.1.1 Implementation Status
+## Historical v0.1.1 Baseline
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Capability schema and validation | Complete | 9 JSON schemas in `/spec/schemas/` |
+| Capability schema and validation | Complete | 11 JSON schemas in `/spec/schemas/` |
 | Policy evaluation before execution | Complete | JSON rule engine |
 | Approval checkpoints | Complete | CLI inline + API |
 | Execution envelope | Complete | All fields populated |

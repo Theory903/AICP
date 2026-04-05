@@ -40,7 +40,7 @@ async def test_postman_importer_maps_collection_items_to_capabilities() -> None:
     assert capability.provider is not None
     assert capability.provider.name == "payments-collection"
     assert capability.provider.type == "postman"
-    assert capability.input_schema.required == ["body", "payment_id"]
+    assert capability.input_schema.required == ["payment_id", "body"]
 
 
 @pytest.mark.asyncio

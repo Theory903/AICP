@@ -6,10 +6,11 @@
 
 ## Schemas
 
-| Schema | Description | v0.1.1 |
-|--------|-------------|--------|
-| `capability.schema.json` | Capability definition with typed I/O | Implemented |
+| Schema | Description | Current |
+|--------|-------------|---------|
+| `capability.schema.json` | Capability definition with typed I/O, 5 kinds | Implemented |
 | `workflow.schema.json` | Workflow definition with steps and transitions | Implemented |
+| `workflow-dsl.schema.json` | YAML-friendly workflow DSL | Implemented |
 | `policy.schema.json` | Policy rules with effects and conditions | Implemented |
 | `execution-result.schema.json` | Execution envelope (canonical response) | Implemented |
 | `discovery.schema.json` | Discovery endpoint response | Implemented |
@@ -17,6 +18,12 @@
 | `approval-request.schema.json` | Approval request for HITL | Implemented |
 | `approval-decision.schema.json` | Approval decision (approve/reject/modify) | Implemented |
 | `audit-entry.schema.json` | Immutable audit record | Implemented |
+| `session.schema.json` | Session identity and resumable state | Implemented |
+| `perception.schema.json` | a11y tree, DOM snapshot, behavioral signals | Protocol |
+| `web-compatibility.schema.json` | Web actions, form definitions | Protocol |
+| `federation.schema.json` | CRDT registries, DID auth | Protocol |
+| `learning.schema.json` | Skills, drift detection, autonomy | Protocol |
+| `domains.schema.json` | Domain packs, benchmarks | Protocol |
 
 ---
 
@@ -28,8 +35,8 @@ All protocol objects must validate against these schemas.
 # Run conformance tests
 pytest spec/tests/
 
-# Validate a specific schema
-aicp validate capability path/to/capability.json
+# Run schema-focused core tests
+pytest -q packages/core/tests/conformance
 ```
 
 ---
@@ -67,9 +74,12 @@ AICP supports TOON (Token-Oriented Object Notation) as an AI-optimized alternati
 
 | Version | Protocol Changes | Compliance Level |
 |---------|-----------------|-------------------|
-| v0.1.1-alpha | 9 schemas, basic workflows | L2 (Resumable Workflows) |
-| v0.2.0 | YAML DSL, semantic search, session encryption | L3 (Event-Driven) |
-| v1.0.0 | 11 planes, 20 modules, full orchestration | L5 (Full Orchestration) |
+| v0.1.1-alpha | 11 schemas, resumable workflows baseline | L2 (Resumable Workflows) |
+| v0.2.0 | Planner, judge, memory, intent router | L4 (AI Planning Support) |
+| v0.3.0 | Orchestration primitives, YAML DSL, subflows, loops | L3 + shipped L4 components |
+| v1.0.0 | 16 schemas, 20 modules, full orchestration | L5 (Protocol Ready) |
+
+**Note:** v1.0.0 protocol is complete. Modules 6, 11, 16-20 have schemas and stub interfaces; real implementations are in progress.
 
 ---
 

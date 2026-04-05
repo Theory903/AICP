@@ -1,6 +1,10 @@
 # Reference repos (studied but not part of AICP)
 ref/
 
+# Sensitive internal docs (agent guidance, implementation plans)
+docs/AGENT_SYSTEM_PROMPT.md
+docs/plans/
+
 # Dependencies
 node_modules/
 __pycache__/

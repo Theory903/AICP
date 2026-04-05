@@ -257,6 +257,9 @@ class TestErrorHandling:
         assert result.status == ExecutionStatus.FAILURE
         assert result.error_code == "requires_approval"
         assert result.approval_request_id == "apr_123"
+        assert result.allowed_next_actions[0]["kind"] == "approval"
+        assert result.allowed_next_actions[0]["name"] == "apr_123"
+        assert result.allowed_next_actions[0]["reason"] == "requires_approval"
 
     def test_execute_after_approval_bypasses_policy_re_evaluation(self):
         from aicp.interfaces import ExecutionStatus
@@ -360,6 +363,89 @@ class TestErrorHandling:
         assert result.status == ExecutionStatus.SUCCESS
         assert result.warnings is not None
         assert result.warnings[0]["code"] == "output_validation_warning"
+
+    def test_executor_surfaces_allowed_next_actions_from_continuation_and_often_follows(
+        self,
+    ):
+        from aicp.interfaces import ExecutionStatus
+
+        repo = InMemoryCapabilityRepository()
+        repo.add_capability(
+            Capability.model_validate(
+                {
+                    "name": "orders.place",
+                    "description": "Place an order",
+                    "kind": "action",
+                    "continuation": {
+                        "can_continue": True,
+                        "next_capabilities": ["orders.track"],
+                        "next_hint": "Track the order after placement.",
+                    },
+                    "often_follows": ["orders.cancel"],
+                }
+            ),
+            handler=lambda args, ctx: {"order_id": "ord_123", **args},
+        )
+        executor = AicpExecutor(repo, DefaultPolicyEngine())
+
+        import asyncio
+
+        result = asyncio.run(executor.execute("orders.place", {"item": "pizza"}))
+
+        assert result.status == ExecutionStatus.SUCCESS
+        assert result.next is not None
+        assert result.next["action"] == "continue"
+        assert result.next["capability"] == "orders.track"
+        assert [action["name"] for action in result.allowed_next_actions] == [
+            "orders.track",
+            "orders.cancel",
+        ]
+        assert result.allowed_next_actions[0]["reason"] == "declared_continuation"
+        assert result.allowed_next_actions[1]["reason"] == "often_follows"
+
+    def test_executor_prefers_polling_action_ahead_of_static_continuation(self):
+        from aicp.interfaces import ExecutionStatus
+
+        repo = InMemoryCapabilityRepository()
+        repo.add_capability(
+            Capability.model_validate(
+                {
+                    "name": "exports.start",
+                    "description": "Start export job",
+                    "kind": "async_action",
+                    "continuation": {
+                        "can_continue": True,
+                        "next_capabilities": ["exports.status"],
+                    },
+                }
+            ),
+            handler=lambda args, ctx: {
+                "job_id": "job_123",
+                "_aicp": {
+                    "polling": {
+                        "capability": "exports.poll",
+                        "arguments": {"job_id": "job_123"},
+                        "hint": "Poll for completion.",
+                        "poll_after_ms": 1000,
+                    }
+                },
+            },
+        )
+        executor = AicpExecutor(repo, DefaultPolicyEngine())
+
+        import asyncio
+
+        result = asyncio.run(executor.execute("exports.start", {}))
+
+        assert result.status == ExecutionStatus.SUCCESS
+        assert result.next is not None
+        assert result.next["action"] == "wait"
+        assert result.next["capability"] == "exports.poll"
+        assert [action["name"] for action in result.allowed_next_actions] == [
+            "exports.poll",
+            "exports.status",
+        ]
+        assert result.allowed_next_actions[0]["reason"] == "polling_continuation"
 
 
 class TestPolicyConditions:

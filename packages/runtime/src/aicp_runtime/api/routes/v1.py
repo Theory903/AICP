@@ -79,6 +79,14 @@ class AgentErrorPayload(BaseModel):
     fix_hint: str | None = None
 
 
+class AllowedNextActionView(BaseModel):
+    kind: str
+    name: str
+    reason: str | None = None
+    requires_approval: bool | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
+
+
 class AgentExecutionResponse(BaseModel):
     execution_id: str | None = None
     workflow_id: str | None = None
@@ -90,6 +98,7 @@ class AgentExecutionResponse(BaseModel):
     warnings: list[dict[str, Any]] | None = None
     approval_request: ApprovalRequestView | None = None
     next: ContinuationHint | None = None
+    allowed_next_actions: list[AllowedNextActionView] = Field(default_factory=list)
 
 
 class AgentWorkflowView(BaseModel):
@@ -150,6 +159,34 @@ class AgentWorkflowExecuteRequest(BaseModel):
         if not isinstance(value, dict):
             raise ValueError("arguments must be an object")
         return value
+
+
+class AgentWorkflowEventRequest(BaseModel):
+    name: str = Field(min_length=1)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _normalize_name(cls, value: Any) -> str:
+        name = str(value or "").strip()
+        if not name:
+            raise ValueError("name cannot be empty")
+        return name
+
+    @field_validator("payload", mode="before")
+    @classmethod
+    def _normalize_payload(cls, value: Any) -> dict[str, Any]:
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise ValueError("payload must be an object")
+        return value
+
+
+class AgentWorkflowEventResponse(BaseModel):
+    published: bool
+    workflow_id: str
+    event_name: str
 
 
 class AgentApprovalDecisionRequest(BaseModel):
@@ -237,6 +274,7 @@ class AgentSurfaceMapper:
         approval_service: ApprovalService,
     ) -> AgentExecutionResponse:
         approval_request = None
+        actions = cls.allowed_next_actions(result)
         approval_request_id = getattr(result, "approval_request_id", None)
         if isinstance(approval_request_id, str) and approval_request_id.strip():
             approval_request = await approval_service.get_approval(approval_request_id)
@@ -249,6 +287,19 @@ class AgentSurfaceMapper:
                 data=result.data,
                 warnings=result.warnings,
                 next=cls.continuation_hint(result.next),
+                allowed_next_actions=actions,
+            )
+
+        approval_status = str(getattr(result, "approval_status", "") or "").strip().lower()
+
+        if result.error_code == "requires_approval" and approval_status == "approved":
+            return AgentExecutionResponse(
+                execution_id=getattr(result, "execution_id", None),
+                capability_name=capability_name,
+                status=AgentExecutionStatus.RUNNING,
+                approval_request=cls.approval_view(approval_request),
+                next=cls.continuation_hint(result.next),
+                allowed_next_actions=actions,
             )
 
         if result.error_code == "requires_approval":
@@ -259,6 +310,7 @@ class AgentSurfaceMapper:
                 approval_request=cls.approval_view(approval_request),
                 next=cls.continuation_hint(result.next),
                 error=cls.error_payload(result),
+                allowed_next_actions=actions,
             )
 
         return AgentExecutionResponse(
@@ -267,6 +319,7 @@ class AgentSurfaceMapper:
             status=AgentExecutionStatus.FAILED,
             error=cls.error_payload(result),
             next=cls.continuation_hint(result.next),
+            allowed_next_actions=actions,
         )
 
     @classmethod
@@ -308,6 +361,34 @@ class AgentSurfaceMapper:
             error=AgentErrorPayload(message=step_result.error),
             next=cls.continuation_hint(step_result.next),
         )
+
+    @classmethod
+    def allowed_next_actions(
+        cls, result: ExecutionResult
+    ) -> list[AllowedNextActionView]:
+        payload = getattr(result, "allowed_next_actions", []) or []
+        actions: list[AllowedNextActionView] = []
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "").strip()
+            kind = str(item.get("kind") or "").strip()
+            if not name or not kind:
+                continue
+            actions.append(
+                AllowedNextActionView(
+                    kind=kind,
+                    name=name,
+                    reason=optional_text(item.get("reason")),
+                    requires_approval=item.get("requires_approval")
+                    if isinstance(item.get("requires_approval"), bool)
+                    else None,
+                    confidence=item.get("confidence")
+                    if isinstance(item.get("confidence"), (int, float))
+                    else None,
+                )
+            )
+        return actions
 
     @classmethod
     def approval_view(
@@ -761,6 +842,34 @@ def build_v1_router(
         if payload.status == AgentExecutionStatus.PAUSED_FOR_APPROVAL:
             response.status_code = status.HTTP_202_ACCEPTED
         return payload
+
+    @router.post(
+        "/workflows/{workflow_id}/events",
+        response_model=AgentWorkflowEventResponse,
+        status_code=status.HTTP_202_ACCEPTED,
+    )
+    async def publish_workflow_event(
+        workflow_id: str,
+        request: AgentWorkflowEventRequest,
+    ) -> AgentWorkflowEventResponse:
+        try:
+            await workflow_service.publish_event(
+                workflow_id=workflow_id,
+                name=request.name,
+                payload=request.payload,
+            )
+        except ValueError as exc:
+            message = str(exc)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=message,
+            ) from exc
+
+        return AgentWorkflowEventResponse(
+            published=True,
+            workflow_id=workflow_id,
+            event_name=request.name,
+        )
 
     @router.get("/approvals", response_model=list[ApprovalRequestView])
     async def list_approvals(

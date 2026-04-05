@@ -161,30 +161,47 @@ class TestYAMLWorkflow:
     def test_workflow_name(self, workflow):
         assert workflow.name == "food_order"
 
-    def test_workflow_has_four_steps(self, workflow):
-        assert len(workflow.steps) == 4
+    def test_workflow_has_five_steps(self, workflow):
+        assert len(workflow.steps) == 5
 
     def test_step_ids(self, workflow):
         ids = [s.id for s in workflow.steps]
-        assert ids == ["list_menu", "add_to_cart", "view_cart", "checkout"]
+        assert ids == [
+            "list_menu",
+            "add_to_cart",
+            "view_cart",
+            "checkout",
+            "await_confirmation",
+        ]
 
     def test_capability_names(self, workflow):
         caps = [s.capability_name for s in workflow.steps]
-        assert caps == [
+        assert caps[:4] == [
             "food.list_menu",
             "food.add_to_cart",
             "food.view_cart",
             "food.checkout",
         ]
+        assert not caps[4]
 
     def test_step_types(self, workflow):
-        for step in workflow.steps:
-            assert step.metadata.get("type") == "capability"
+        assert [step.metadata.get("type") for step in workflow.steps] == [
+            "capability",
+            "capability",
+            "capability",
+            "capability",
+            "wait_event",
+        ]
 
     def test_checkout_has_arguments(self, workflow):
         checkout = next(s for s in workflow.steps if s.id == "checkout")
         assert "delivery_address" in (checkout.arguments or {})
         assert "payment_method" in (checkout.arguments or {})
+
+    def test_wait_event_step_waits_for_order_confirmation(self, workflow):
+        wait_step = next(s for s in workflow.steps if s.id == "await_confirmation")
+        assert wait_step.metadata.get("wait_for_event") == "order.confirmed"
+        assert wait_step.metadata.get("timeout_ms") == 30_000
 
     def test_yaml_round_trip(self, parser, workflow):
         """to_yaml → parse should produce the same step IDs."""

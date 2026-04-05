@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aicp-example-payment-transfer"
-version = "0.1.1"
+version = "0.3.0"
 description = "AICP Payment Transfer Example"
 requires-python = ">=3.10"
 dependencies = [
     "aiohttp",
-    "aicp-core>=0.1.0",
-    "aicp-runtime>=0.1.0",
+    "aicp-core>=0.3.0",
+    "aicp-runtime>=0.3.0",
 ]
 
 [tool.setuptools.packages.find]

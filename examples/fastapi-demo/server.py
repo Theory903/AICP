@@ -54,7 +54,7 @@ async def health():
 async def aicp_discovery():
     """AICP Discovery endpoint - lists all available capabilities."""
     return {
-        "version": "0.1.1",
+        "version": "0.3.0",
         "capabilities": [
             {
                 "name": "food.list_menu",

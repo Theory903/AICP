@@ -1,3 +1,4 @@
+use crate::memory::MemoryStore;
 use crate::session::{ContentBlock, ConversationMessage, MessageRole, Session};
 
 const COMPACT_CONTINUATION_PREAMBLE: &str =
@@ -87,6 +88,15 @@ pub fn get_compact_continuation_message(
 
 #[must_use]
 pub fn compact_session(session: &Session, config: CompactionConfig) -> CompactionResult {
+    compact_session_with_memory(session, config, None)
+}
+
+#[must_use]
+pub fn compact_session_with_memory(
+    session: &Session,
+    config: CompactionConfig,
+    memory: Option<&mut MemoryStore>,
+) -> CompactionResult {
     if !should_compact(session, config) {
         return CompactionResult {
             summary: String::new(),
@@ -111,6 +121,13 @@ pub fn compact_session(session: &Session, config: CompactionConfig) -> Compactio
         merge_compact_summaries(existing_summary.as_deref(), &summarize_messages(removed));
     let formatted_summary = format_compact_summary(&summary);
     let continuation = get_compact_continuation_message(&summary, true, !preserved.is_empty());
+
+    if let Some(store) = memory {
+        store.push_episode(
+            &format!("compaction: {}", formatted_summary),
+            vec!["compaction".to_string(), "conversation".to_string()],
+        );
+    }
 
     let mut compacted_messages = vec![ConversationMessage {
         role: MessageRole::System,
@@ -505,6 +522,7 @@ mod tests {
         collect_key_files, compact_session, estimate_session_tokens, format_compact_summary,
         get_compact_continuation_message, infer_pending_work, should_compact, CompactionConfig,
     };
+    use crate::memory::MemoryStore;
     use crate::session::{ContentBlock, ConversationMessage, MessageRole, Session};
 
     #[test]
@@ -698,5 +716,34 @@ mod tests {
         ]);
         assert_eq!(pending.len(), 1);
         assert!(pending[0].contains("Next: update tests"));
+    }
+
+    #[test]
+    fn records_compaction_summary_in_memory_store() {
+        let session = Session {
+            version: 1,
+            messages: vec![
+                ConversationMessage::user_text("Investigate runtime memory behavior ".repeat(50)),
+                ConversationMessage::assistant(vec![ContentBlock::Text {
+                    text: "Summarized recent activity".repeat(50),
+                }]),
+                ConversationMessage::user_text("Preserve this work"),
+            ],
+        };
+        let mut memory = MemoryStore::new(8);
+
+        let result = super::compact_session_with_memory(
+            &session,
+            CompactionConfig {
+                preserve_recent_messages: 1,
+                max_estimated_tokens: 1,
+            },
+            Some(&mut memory),
+        );
+
+        assert_eq!(result.removed_message_count, 2);
+        let summary = memory.summarize_for_prompt(4);
+        assert!(summary.contains("compaction"));
+        assert!(summary.contains("Conversation summary"));
     }
 }

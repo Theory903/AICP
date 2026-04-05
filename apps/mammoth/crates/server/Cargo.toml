@@ -1,5 +1,5 @@
 [package]
-name = "server"
+name = "mammoth-server"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,9 +8,13 @@ publish.workspace = true
 [dependencies]
 async-stream = "0.3"
 axum = "0.8"
-runtime = { path = "../runtime" }
+futures-core = "0.3"
+hmac = "0.12"
+hex = "0.4"
+mammoth-runtime = { path = "../runtime" }
 serde = { version = "1", features = ["derive"] }
 serde_json.workspace = true
+sha2 = "0.10"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "net", "time"] }
 
 [dev-dependencies]

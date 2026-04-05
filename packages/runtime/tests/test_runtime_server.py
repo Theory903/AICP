@@ -608,6 +608,154 @@ def test_runtime_server_exposes_ai_facing_v1_execute_contract() -> None:
     assert payload["data"]["created"] is True
 
 
+def test_runtime_server_v1_execute_includes_allowed_next_actions() -> None:
+    repo = InMemoryCapabilityRepository("runtime-test")
+    repo.add_capability(
+        Capability.model_validate(
+            {
+                "name": "orders.place",
+                "description": "Place order",
+                "kind": "action",
+                "continuation": {
+                    "can_continue": True,
+                    "next_capabilities": ["orders.track"],
+                    "next_hint": "Track the order after placement.",
+                },
+                "often_follows": ["orders.cancel"],
+            }
+        ),
+        handler=lambda args, ctx: {"order_id": "ord_123", **args},
+    )
+    app = create_app(capability_provider=repo)
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/execute",
+        json={
+            "capability_name": "orders.place",
+            "arguments": {"item": "pizza"},
+            "context": {},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [action["name"] for action in payload["allowed_next_actions"]] == [
+        "orders.track",
+        "orders.cancel",
+    ]
+    assert payload["allowed_next_actions"][0]["reason"] == "declared_continuation"
+    assert payload["allowed_next_actions"][1]["reason"] == "often_follows"
+
+
+def test_runtime_server_v1_execute_includes_allowed_next_actions_when_paused_for_approval(
+) -> None:
+    repo = InMemoryCapabilityRepository("runtime-test")
+    repo.add_capability(
+        Capability(
+            name="payments.transfer",
+            description="Transfer funds",
+            kind=CapabilityKind.ACTION,
+        ),
+        handler=lambda args, ctx: {"transferred": True, **args},
+    )
+    policy_engine = DefaultPolicyEngine()
+
+    import asyncio
+
+    asyncio.run(
+        policy_engine.add_policy(
+            Policy(
+                name="high_value_approval",
+                effect=PolicyEffect.ASK,
+                subject=PolicySubject(capability_name="payments.transfer"),
+                condition=PolicyCondition(require_confirmation=True),
+            )
+        )
+    )
+
+    app = create_app(capability_provider=repo, policy_engine=policy_engine)
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/execute",
+        json={
+            "capability_name": "payments.transfer",
+            "arguments": {"amount": 5000},
+            "context": {"requester_id": "agent-1"},
+        },
+    )
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["status"] == "paused_for_approval"
+    assert payload["allowed_next_actions"][0]["kind"] == "approval"
+    assert payload["allowed_next_actions"][0]["name"] == payload["approval_request"]["id"]
+    assert payload["allowed_next_actions"][0]["reason"] == "requires_approval"
+
+
+def test_runtime_server_v1_execute_auto_resumes_after_matching_approval() -> None:
+    repo = InMemoryCapabilityRepository("runtime-test")
+    repo.add_capability(
+        Capability(
+            name="payments.transfer",
+            description="Transfer funds",
+            kind=CapabilityKind.ACTION,
+        ),
+        handler=lambda args, ctx: {"transferred": True, **args},
+    )
+    policy_engine = DefaultPolicyEngine()
+
+    import asyncio
+
+    asyncio.run(
+        policy_engine.add_policy(
+            Policy(
+                name="high_value_approval",
+                effect=PolicyEffect.ASK,
+                subject=PolicySubject(capability_name="payments.transfer"),
+                condition=PolicyCondition(require_confirmation=True),
+            )
+        )
+    )
+
+    app = create_app(capability_provider=repo, policy_engine=policy_engine)
+    client = TestClient(app)
+
+    first_response = client.post(
+        "/v1/execute",
+        json={
+            "capability_name": "payments.transfer",
+            "arguments": {"amount": 5000},
+            "context": {"requester_id": "agent-1"},
+        },
+    )
+    approval_id = first_response.json()["approval_request"]["id"]
+    decision_response = client.post(
+        f"/v1/approvals/{approval_id}/decide",
+        json={
+            "decision": "approved",
+            "approver_id": "finance-manager",
+            "reason": "Approved by human operator",
+        },
+    )
+    second_response = client.post(
+        "/v1/execute",
+        json={
+            "capability_name": "payments.transfer",
+            "arguments": {"amount": 5000},
+            "context": {"requester_id": "agent-1"},
+        },
+    )
+
+    assert first_response.status_code == 202
+    assert decision_response.status_code in {200, 202}
+    assert second_response.status_code == 200
+    payload = second_response.json()
+    assert payload["status"] == "completed"
+    assert payload["data"]["transferred"] is True
+
+
 def test_runtime_server_exposes_v1_execution_explorer_records() -> None:
     repo = InMemoryCapabilityRepository("runtime-test")
     repo.add_capability(
@@ -798,6 +946,102 @@ def test_runtime_server_exposes_ai_facing_v1_pause_and_resume_flow() -> None:
     assert resumed["workflow_id"] == workflow_id
     assert resumed["status"] == "completed"
     assert resumed["data"]["transferred"] is True
+
+
+def test_runtime_server_exposes_ai_facing_v1_wait_event_publish_flow() -> None:
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    repo = InMemoryCapabilityRepository("runtime-test")
+    repo.add_capability(
+        Capability(
+            name="orders.capture",
+            description="Capture a confirmed order",
+            kind=CapabilityKind.ACTION,
+        ),
+        handler=lambda args, ctx: {"captured": True, **args},
+    )
+    app = create_app(capability_provider=repo)
+    client = TestClient(app)
+
+    workflow_response = client.post(
+        "/v1/workflows",
+        json={
+            "name": "food_order_confirmation",
+            "description": "Wait for restaurant confirmation before capture",
+            "steps": [
+                {
+                    "id": "await_confirmation",
+                    "metadata": {
+                        "type": "wait_event",
+                        "wait_for_event": "order.confirmed",
+                        "timeout_ms": 1000,
+                    },
+                },
+                {
+                    "id": "capture_order",
+                    "capability_name": "orders.capture",
+                    "arguments": {"stage": "captured"},
+                },
+            ],
+        },
+    )
+    workflow_id = workflow_response.json()["id"]
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        first_step_future = executor.submit(
+            lambda: client.post(
+                f"/v1/workflows/{workflow_id}/execute",
+                json={"arguments": {}},
+            )
+        )
+
+        deadline = time.monotonic() + 2.0
+        while True:
+            state_response = client.get(f"/workflows/{workflow_id}")
+            assert state_response.status_code == 200
+            if state_response.json()["status"] == "waiting_event":
+                break
+            assert time.monotonic() < deadline, state_response.text
+            time.sleep(0.01)
+
+        publish_response = client.post(
+            f"/v1/workflows/{workflow_id}/events",
+            json={
+                "name": "order.confirmed",
+                "payload": {"order_id": "ord_123", "status": "confirmed"},
+            },
+        )
+        first_step_response = first_step_future.result(timeout=2)
+
+    assert publish_response.status_code == 202
+    assert publish_response.json() == {
+        "published": True,
+        "workflow_id": workflow_id,
+        "event_name": "order.confirmed",
+    }
+
+    assert first_step_response.status_code == 200
+    first_payload = first_step_response.json()
+    assert first_payload["status"] == "completed"
+    assert first_payload["data"] == {"order_id": "ord_123", "status": "confirmed"}
+
+    second_step_response = client.post(
+        f"/v1/workflows/{workflow_id}/execute",
+        json={"arguments": {}},
+    )
+    assert second_step_response.status_code == 200
+    second_payload = second_step_response.json()
+    assert second_payload["status"] == "completed"
+    assert second_payload["data"]["captured"] is True
+
+    history_response = client.get("/history", params={"workflow_id": workflow_id})
+    assert history_response.status_code == 200
+    assert any(
+        entry["event_type"] == "workflow_event_published"
+        and entry["metadata"].get("event_name") == "order.confirmed"
+        for entry in history_response.json()
+    )
 
 
 def test_runtime_server_exposes_v1_session_lifecycle() -> None:
