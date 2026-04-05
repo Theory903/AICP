@@ -1,0 +1,20 @@
+{
+  "name": "mammoth-vscode",
+  "displayName": "Mammoth",
+  "version": "0.1.0",
+  "engines": { "vscode": "^1.85.0" },
+  "main": "./dist/extension.js",
+  "scripts": {
+    "test": "jest",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  }
+}
