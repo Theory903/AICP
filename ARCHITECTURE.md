@@ -788,7 +788,7 @@ Implementations declare their conformance level:
 | **4** | **AI Planning Support** | Level 3 + planner, judge, context builder, allowed-next-actions schema |
 | **5** | **Full Orchestration** | Level 4 + multi-agent coordination, subflows, cross-flow events, federation, supervision console |
 
-**Current reference implementation: Level 2** — core sequential runtime with compensation, approval auto-resume, 3 persistence backends, 8 services, 172 tests passing.
+**Current reference implementation: Level 5** — full orchestration with multi-agent coordination, subflows, cross-flow events, federation, supervision, 16 schemas, 740 Python tests + 77 Rust tests passing.
 
 ---
 

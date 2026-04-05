@@ -209,7 +209,7 @@ Each phase maps to a specific version. See ROADMAP.md for full details per phase
 
 | Phase | Version | Focus | Key Deliverables | Target Compliance |
 |-------|---------|-------|------------------|-------------------|
-| 0 | 0.1.1-alpha | Foundation | Spec, runtime, CLI, persistence, adapters, console, tests | L2 (complete) |
+| 0 | 0.1.1-alpha | Foundation | Spec, runtime, CLI, persistence, adapters, console, tests | L5 (complete) |
 | 1 | 0.2.0 | AI Core | Planner, judge, memory/context builder, intent router, cognitive protocols | L4 |
 | 2 | 0.3.0 | Orchestration | YAML DSL, event-driven flows, parallel/loop, subflows | L3+L4 |
 | 3 | 0.4.0 | Agent Integration | LangChain, LangGraph, CrewAI adapters, food ordering reference flow | L4 |
@@ -226,7 +226,7 @@ Each phase maps to a specific version. See ROADMAP.md for full details per phase
 
 | Metric | Value |
 |--------|-------|
-| Tests Passing | 648 (Python) + 162 (Rust) = 810+ |
+| Tests Passing | 740 (Python) + 77 (Rust) = 817+ |
 | API Endpoints | 30+ |
 | Runtime Services | 8 |
 | Persistence Backends | 3 |
@@ -349,4 +349,4 @@ Enterprise features for Mammoth (Rust TUI shell):
 - `apps/mammoth/crates/commands/src/audit.rs`
 - `packages/runtime/src/aicp_runtime/workflow/subflow.py`
 
-Total tests: 648 (Python runtime) + 136 (Rust mammoth-runtime)
+Total tests: 740 (Python) + 77 (Rust mammoth-cli)
