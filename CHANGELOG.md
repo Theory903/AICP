@@ -7,76 +7,94 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.3.0] — 2026-04-03 — Phase 2: Orchestration (Complete)
+## [0.9.10] — 2026-04-06 — SDKs, Platforms & Integrations
 
 ### Added
 
-- **Parallel step execution** — `DefaultWorkflowRuntime` dispatches `type:parallel` steps to `ParallelStepExecutor` with `fail_fast` and `wait_all` join strategies
-- **Event-driven flows** — `DefaultWorkflowRuntime` dispatches `type:wait_event` steps to `EventWaiter`; supports configurable timeout
-- **Loop support** — `LoopStepExecutor` wired into runtime: for-each (items_variable), while (exit_condition), max_iterations cap, do-while post-check semantics
-- **Subflow invocation** — `SubflowExecutor` wired into runtime: creates child workflow via parent runtime, drives to completion, propagates failures
-- **`publish_event()` API** — `DefaultWorkflowRuntime.publish_event(workflow_id, name, payload)` delivers external events to waiting workflows
-- **`publish_event` HTTP endpoint** — `POST /workflows/{workflow_id}/events` with `PublishEventRequest(name, payload)` model
-- **`compensation_policy`** — added at workflow level in spec schema
-- **17 L3 conformance tests** — parallel, wait_event, loop, subflow, DSL round-trip
-- **16 new runtime parallel integration tests** — `packages/runtime/tests/workflow/test_runtime_parallel_integration.py`
-- **11 new DSL→runtime integration tests** — `packages/runtime/tests/workflow/test_dsl_runtime_integration.py`
-- **Loop integration tests** — `test_loop_executor.py`, `test_runtime_loop_integration.py`
-- **Subflow integration tests** — `test_subflow_executor.py`, `test_runtime_subflow_integration.py`
+- **Python SDK** (`sdks/python/src/aicp_sdk/`) — Full client with all APIs
+  - `AicpClient` class with `list_capabilities()`, `execute()`, `list_policies()`, `list_workflows()`, `list_approvals()`, `approve()`, `deny()`, `health()`
+  - Dataclasses: `Capability`, `ExecutionResult`, `Policy`
+
+- **TypeScript SDK** — Core + Runtime + Client packages
+  - `@aicp/runtime` — `AicpRuntime` class with execution APIs
+  - `@aicp/client` — High-level client with all operations
+
+- **VS Code Extension** (`apps/mammoth/vscode-extension/`)
+  - `MammothClient` — SSE connection to AICP
+  - `MammothPanel` — Webview panel for chat
+  - `GhostTextProvider` — Inline completion provider
+  - `ApprovalForwarder` — VS Code notifications for approvals
+
+- **macOS Menu Bar** (`apps/mammoth/macos-menu-bar/`)
+  - `MammothMenuBar.swift` — SwiftUI menu bar app
+  - `AicpClient` for API calls
+  - Popover UI for prompts and approvals
+
+- **Mobile App** (`apps/mammoth/mobile/`)
+  - Flutter app with `AicpClient`
+  - Capabilities, Approvals, Settings pages
+
+- **Integration Plugins**
+  - `plugins/integrations/github.py` — Issues, PRs, commits
+  - `plugins/integrations/linear.py` — Issues, teams
+  - `plugins/integrations/gmail.py` — Read/send email
+
+- **New Core Systems**
+  - `channels/` — Multi-channel messaging (26+ platforms)
+  - `webhooks/` — Webhook registry, routing, signature verification
+  - `cost_tracking/` — Token counting, budget management
+  - `providers/` — Multi-LLM routing, fallback chains
+
+- **New Schemas**
+  - `plugin.schema.json` — Plugin definition
+  - `plugin-manifest.schema.json` — Plugin manifest with signing
 
 ### Changed
 
-- `create_workflow()` relaxed — steps with `metadata.type` in `{parallel, wait_event, branch, loop}` no longer require `capability_name`
-- `"subflow"` added to `_NON_CAPABILITY_STEP_TYPES` in `DefaultWorkflowRuntime`
-- DSL key compatibility: reads both `wait_for_event` / `parallel_failure_policy` (DSL keys) and `event_name` / `failure_policy` (direct keys)
-- Total tests: **692** (was 611)
-
-### Fixed
-
-- `SubflowExecutor` infinite loop: checks `child_wf.is_complete` before entering polling loop
-- `FakeProvider.execute()` signature in integration tests to accept 3rd positional `context` arg
-- `WorkflowDSL` → `WorkflowDSLParser` import in conformance tests
-- `provider.call_count` → `len(provider.calls)` in loop integration tests
+- **Tests:** 1224 total (1038 Python + 186 Rust)
+- **Version:** Bumped to 0.9.10
 
 ---
 
-## [0.2.0] — 2026-04-03 — Phase 1: AI Core (Complete)
+## [0.9.9] — 2026-04-05 — Production Features
 
 ### Added
 
-- **`AICPlanner`** — multi-step planner with `PlanStep` / `PlannerOutput` models; POST `/v1/plan` endpoint
-- **`AICJudge`** — execution result evaluator with `JudgeError`; POST `/v1/judge` endpoint
-- **`IntentRouter`** — routes natural language intents to capabilities with `RoutingDestination`; POST `/v1/route` endpoint
-- **5-layer `MemoryStore`** — working, episodic, semantic, skill, and environmental memory layers
-- **`MetaMemory`** — token-aware context budget manager with `MemorySnapshot`
-- **5 Cognitive Protocols** — UX, SWE, Ops, Research, Finance protocol families
-- **`SessionService.update_memory` / `get_memory`** — cross-session memory persistence
-- **26 L4 HTTP conformance tests** — plan response, judge response, route response, plan-judge round-trip
+- **SSRF Protection** — Block private IPs, DNS rebinding protection
+- **OpenAI-Compatible API** — `/v1/chat/completions`, `/v1/models`, `/v1/embeddings`
+- **DEK Encryption** — Data Encryption Key for credentials
+- **4-Canonical MCP Tools** — setup, list_ops, get_schema, run
 
 ### Changed
 
-- Total tests: **611** (was 445)
-- Compliance Level advanced to L4 (AI Planning Support)
+- **Tests:** 941 Python tests
 
 ---
 
-## [0.1.1-alpha] — 2026-04-03 — Phase 0: Foundation (Complete)
+## [0.3.0] — 2026-04-03 — Orchestration
 
 ### Added
 
-- **11 JSON schemas** in `spec/schemas/` — capability, workflow, workflow-dsl, policy, execution-result, approval-request, approval-decision, audit-entry, session, discovery, error
-- **Full spec fixture coverage** — valid + invalid examples for all 11 schemas in `spec/tests/`
-- **8 runtime services** — execution, approvals, workflows, sessions, discovery, audit, interactions, provider health
-- **30+ API endpoints** across 13 route groups including `/v1` AI action surface
-- **3 persistence backends** — in-memory, file (JSON/JSONL), SQLite (WAL mode, 7 tables)
-- **28 CLI commands** — `aicp run` with inline approval prompt, `--yes`, `--no-input`, `--verbose`; full workflow, policy, approval, and import command sets
-- **6 working adapters** — FastAPI, MCP server, MCP adapter, OpenAPI, cURL importer, HAR importer, Postman importer
-- **Agent console UI** at `/console` — 840-line self-contained HTML dashboard
-- **TypeScript Core SDK** — built and distributable, Compliance Level 0
-- **Approval auto-resume** — intent matching resumes workflows after human approval
-- **Dev server** — `aicp dev` mounts AICP routes on existing user apps
+- Parallel step execution
+- Event-driven flows
+- Loop support (for-each, while, do-while)
+- Subflow invocation
+- Workflow DSL
 
 ### Changed
 
-- Total tests: **445**
-- Compliance Level: L2 (Resumable Workflows)
+- **Tests:** 692
+
+---
+
+## [0.1.1-alpha] — 2025 — Foundation
+
+### Added
+
+- Capability registry
+- Session management
+- Basic policy engine
+
+---
+
+*More details in [ROADMAP.md](ROADMAP.md)*

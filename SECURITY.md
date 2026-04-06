@@ -1,67 +1,87 @@
 # Security Policy
 
-AICP is a **security-critical control plane** for organizational automation. It decides whether agent-initiated or operator-initiated actions may execute, whether they require approval, how they are attributed, and how they are audited.
+AICP is a **security-critical control plane** for organizational automation. It governs agent execution, enforces policy, manages approvals, and maintains audit trails.
 
-The current product model is Mammoth-first:
+Because AICP controls what actions can execute and when humans must approve them, security issues here affect:
+- Policy enforcement
+- Workflow safety
+- Approval correctness
+- Session integrity
+- Auditability
+- Org-boundary guarantees
 
-- **Mammoth** is the shell through which users and agents interact with the system
-- **AICP** is the enforcement and governance layer behind that shell
-- **Studio-style supervision UX** should be treated as embedded control-plane functionality inside Mammoth
-
-Because of that, security issues in this repository are not just backend bugs. They can affect policy enforcement, workflow safety, approval correctness, session integrity, auditability, and future org-boundary guarantees.
+---
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.3.x   | :white_check_mark: |
-| < 0.3   | :x:                |
+| Version | Supported |
+|---------|-----------|
+| 0.9.x | ✅ Latest |
+| < 0.9 | ❌ End-of-life |
 
-AICP is pre-1.0 software. Only the latest minor version receives security updates.
+Only the latest minor version receives security updates.
+
+---
 
 ## Reporting a Vulnerability
 
-**Do not open a public issue** for security vulnerabilities.
+**Do NOT open a public issue for security vulnerabilities.**
 
-Email: **[security@aicp.ai](mailto:security@aicp.ai)** (or use GitHub's [private vulnerability reporting](https://github.com/Theory903/AICP/security/advisories/new))
+Email: [security@aicp.ai](mailto:security@aicp.ai)
+
+Or use GitHub's [private vulnerability reporting](https://github.com/Theory903/AICP/security/advisories/new)
 
 Include:
-- A description of the vulnerability
-- Steps to reproduce (or a minimal proof-of-concept)
-- The affected component (runtime, CLI, adapter, spec)
-- Your assessment of severity (low/medium/high/critical)
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Any known fixes
 
-You will receive an acknowledgment within **48 hours**. We aim to triage and respond with a remediation plan within **7 days**.
+---
+
+## Security Features
+
+AICP provides these security mechanisms:
+
+| Feature | Purpose |
+|---------|---------|
+| **SSRF Protection** | Block private IPs, DNS rebinding |
+| **DEK Encryption** | Per-credential AES-256-GCM encryption |
+| **Policy Engine** | Allow/deny/ask/limit before execution |
+| **Approval Lifecycle** | Human-in-the-loop for risky actions |
+| **Trust Tiers** | 0 (anonymous) to 4 (fully autonomous) |
+| **Audit Trail** | Append-only, replayable, correlation IDs |
+| **Plugin Sandbox** | Isolated execution for third-party plugins |
+| **Session Isolation** | Resumable, multi-tenant sessions |
+
+---
+
+## Security Guidelines
+
+When developing with AICP:
+
+1. **Never bypass policy evaluation** for side-effecting capabilities
+2. **Always log audit entries** for every execution
+3. **Use DEK encryption** for any stored credentials
+4. **Enable SSRF protection** for HTTP capabilities
+5. **Require approvals** for high-risk capabilities
+6. **Never suppress type errors** (`as any`, `@ts-ignore`)
+7. **Never swallow exceptions** silently
+
+---
 
 ## Scope
 
-### In Scope
-- Policy bypass (capability executed without policy evaluation)
-- Approval bypass (approval-gated action executed without human approval)
-- Mammoth shell actions that can trigger ungoverned AICP execution
-- Session hijacking or token forgery
-- Injection vulnerabilities in the runtime or CLI
-- Path traversal in file-based persistence
-- SQL injection in SQLite persistence backend
-- Denial of service via malformed input
+This policy covers:
+- AICP Python packages (`packages/core`, `packages/runtime`)
+- Mammoth Rust crates (`apps/mammoth`)
+- Adapters (`adapters/*`)
+- SDKs (`sdks/*`)
 
-### Out of Scope
-- Vulnerabilities in example applications
-- Issues in empty adapter directories (no code to exploit)
-- Pre-existing LSP/Pydantic type errors (benign false positives)
+This does NOT cover:
+- Third-party integrations (report to those projects)
+- Downstream applications using AICP
 
-## Security Architecture
+---
 
-AICP is designed with security as a first-class concern:
-- **Policy-gated execution**: Every capability is policy-evaluated before side effects
-- **Approval lifecycle**: Approval-gated actions block until human resolution
-- **Audit trail**: Every action produces an append-only audit entry
-- **Replayability**: Every action is replayable for forensic analysis
-- **Trust tiers**: Capability access is determined by trust level (0-4)
-- **Fail-closed defaults**: If policy evaluation fails, deny
-
-## Known Limitations (v0.3.0)
-- Session storage is plaintext (encryption planned for v0.9.0)
-- No rate limiting at the API boundary
-- Tenant scoping is partial: session/tenant mismatch checks exist, but database-level isolation and per-tenant execution quotas are not enforced
-- Semantic retrieval uses keyword co-occidence only (no embeddings)
+*Last updated: 2026-04-06*
