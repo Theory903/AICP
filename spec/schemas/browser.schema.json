@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.ai/schemas/browser.schema.json",
+  "title": "Browser",
+  "description": "Browser control configuration for CDP/Playwright automation",
+  "type": "object",
+  "required": ["action"],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["navigate", "snapshot", "click", "type", "screenshot", "evaluate", "wait", "back", "forward", "refresh", "close"]
+    },
+    "url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "selector": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "script": {
+      "type": "string"
+    },
+    "wait_for": {
+      "type": "string"
+    },
+    "headless": {
+      "type": "boolean",
+      "default": true
+    },
+    "viewport": {
+      "type": "object",
+      "properties": {
+        "width": {"type": "integer", "default": 1920},
+        "height": {"type": "integer", "default": 1080}
+      }
+    }
+  }
+}

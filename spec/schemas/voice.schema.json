@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.ai/schemas/voice.schema.json",
+  "title": "Voice",
+  "description": "Voice service configuration for STT/TTS",
+  "type": "object",
+  "required": ["operation"],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "enum": ["transcribe", "synthesize", "stream"]
+    },
+    "audio_data": {
+      "type": "string",
+      "description": "Base64 encoded audio for transcription"
+    },
+    "text": {
+      "type": "string",
+      "description": "Text to synthesize"
+    },
+    "voice_id": {
+      "type": "string",
+      "default": "default"
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["deepgram", "elevenlabs", "openai", "local"],
+      "default": "deepgram"
+    },
+    "language": {
+      "type": "string",
+      "default": "en"
+    }
+  }
+}
