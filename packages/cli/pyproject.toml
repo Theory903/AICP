@@ -28,6 +28,16 @@ all = [
     "aicp-connect-har>=0.3.0",
     "aicp-connect-curl>=0.3.0",
 ]
+dev = [
+    "aicp-core[dev] @ file://../../packages/core",
+    "aicp-runtime @ file://../../packages/runtime",
+    "aicp-connect-fastapi @ file://../../adapters/framework/fastapi",
+    "aicp-connect-openapi @ file://../../adapters/protocol/openapi",
+    "aicp-connect-mcp @ file://../../adapters/protocol/mcp",
+    "aicp-connect-postman @ file://../../adapters/importers/postman",
+    "aicp-connect-har @ file://../../adapters/importers/har",
+    "aicp-connect-curl @ file://../../adapters/importers/curl",
+]
 openapi = ["aicp-connect-openapi>=0.3.0"]
 fastapi = ["aicp-connect-fastapi>=0.3.0"]
 mcp = ["aicp-connect-mcp>=0.3.0"]
