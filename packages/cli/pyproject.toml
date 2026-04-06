@@ -12,18 +12,28 @@ description = "AICP CLI - Command-line interface"
 requires-python = ">=3.10"
 dependencies = [
     "aicp-core>=0.3.0",
-    "aicp-connect-openapi>=0.3.0",
-    "aicp-connect-fastapi>=0.3.0",
-    "aicp-connect-mcp>=0.3.0",
-    "aicp-connect-postman>=0.3.0",
-    "aicp-connect-har>=0.3.0",
-    "aicp-connect-curl>=0.3.0",
     "click>=8.1.0",
     "pyyaml>=6.0",
     "requests>=2.31.0",
     "rich>=13.0.0",
     "uvicorn>=0.30,<1",
 ]
+
+[project.optional-dependencies]
+all = [
+    "aicp-connect-openapi>=0.3.0",
+    "aicp-connect-fastapi>=0.3.0",
+    "aicp-connect-mcp>=0.3.0",
+    "aicp-connect-postman>=0.3.0",
+    "aicp-connect-har>=0.3.0",
+    "aicp-connect-curl>=0.3.0",
+]
+openapi = ["aicp-connect-openapi>=0.3.0"]
+fastapi = ["aicp-connect-fastapi>=0.3.0"]
+mcp = ["aicp-connect-mcp>=0.3.0"]
+postman = ["aicp-connect-postman>=0.3.0"]
+har = ["aicp-connect-har>=0.3.0"]
+curl = ["aicp-connect-curl>=0.3.0"]
 
 [project.scripts]
 aicp = "aicp_cli.main:cli"
