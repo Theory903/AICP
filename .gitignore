@@ -1,5 +1,8 @@
 # Reference repos (studied but not part of AICP)
 ref/
+apps/openclaw/
+apps/openclaude-ref/
+apps/corsair/
 
 # Sensitive internal docs (agent guidance, implementation plans)
 docs/AGENT_SYSTEM_PROMPT.md

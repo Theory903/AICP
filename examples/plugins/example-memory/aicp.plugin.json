@@ -1,0 +1,52 @@
+{
+  "id": "example-memory",
+  "kind": "capability_source",
+  "name": "Example Memory Plugin",
+  "version": "1.0.0",
+  "description": "Example plugin demonstrating AICP plugin architecture patterns",
+  "author": "AICP Team",
+  "license": "Apache-2.0",
+  "tags": ["example", "memory", "tutorial"],
+  "requirements": {
+    "aicp_version_min": "1.0.0",
+    "python_version_min": "3.11"
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "storage_path": {
+        "type": "string",
+        "description": "Path where memories are stored"
+      }
+    },
+    "required": ["storage_path"]
+  },
+  "lifecycle": {
+    "auto_enable": false,
+    "lazy_load": true,
+    "isolation_mode": "sandbox"
+  },
+  "capabilities": [
+    {
+      "name": "memory.store",
+      "kind": "action",
+      "description": "Store a memory"
+    },
+    {
+      "name": "memory.retrieve",
+      "kind": "query",
+      "description": "Retrieve memories"
+    }
+  ],
+  "hooks": [
+    "on_capability_execute_after",
+    "on_learning_event"
+  ],
+  "entry_points": {
+    "main": "example_memory:define_plugin"
+  },
+  "permissions": {
+    "access_level": "minimal",
+    "trust_tier": 1
+  }
+}

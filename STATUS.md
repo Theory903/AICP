@@ -229,17 +229,17 @@ Each phase maps to a specific version. See ROADMAP.md for full details per phase
 
 | Metric | Value |
 |--------|-------|
-| Tests Passing | 773 (Python) + 77 (Rust) = 850+ |
+| Tests Passing | 1018 (Python) + 77 (Rust) = 1095+ |
 | API Endpoints | 30+ |
-| Runtime Services | 8 |
+| Runtime Services | 11 |
 | Persistence Backends | 3 |
 | CLI Commands | 28 |
 | Working Adapters | 6 (+ MCP server) |
-| JSON Schemas | 18 |
+| JSON Schemas | 26 |
 | Compliance Level | 5 (complete) |
 | Modules Fully Implemented | 20 |
 | Enterprise Features | 18 tasks complete |
-| Lines of Code | ~25,000+ |
+| Lines of Code | ~28,000+ |
 
 ---
 
@@ -344,6 +344,30 @@ The current JSON policy schema is the v0.x format. The architecture doc describe
 - Providers: Brave, DuckDuckGo, Exa, Tavily, SearXNG
 - Fallback chain, caching (5-min TTL)
 
+**M9: Browser Automation — COMPLETE**
+- `spec/schemas/browser.schema.json` — JSON Schema for browser automation
+- `packages/runtime/src/aicp_runtime/services/browser.py` — Browser service (276 lines) using Playwright
+- `packages/runtime/tests/services/test_browser.py` — 28 test cases
+- Actions: navigate, snapshot, click, type, screenshot, evaluate, wait, back, forward, refresh
+- Security: SSRF-protected, blocks private IPs (127.x, 10.x, 192.168.x)
+- Multi-context: parallel session support, cookie management
+
+**M10: Heartbeat Service — COMPLETE**
+- `spec/schemas/heartbeat.schema.json` — JSON Schema for heartbeat/leader election
+- `packages/runtime/src/aicp_runtime/services/heartbeat.py` — Heartbeat service (273 lines)
+- `packages/runtime/tests/services/test_heartbeat.py` — 27 test cases
+- Tasks: health_check, cache_warming, session_cleanup, schedule_trigger, metrics_collection
+- Leader election: SQLite-based with failover, 15s timeout
+- Failure handling: configurable thresholds, automatic leadership release
+
+**M11: Voice/STT/TTS — COMPLETE**
+- `spec/schemas/voice.schema.json` — JSON Schema for voice operations
+- `packages/runtime/src/aicp_runtime/services/voice.py` — Voice service (320+ lines)
+- `packages/runtime/tests/services/test_voice.py` — 20 test cases
+- Providers: Deepgram (STT), OpenAI (STT/TTS), ElevenLabs (TTS)
+- Operations: transcribe, synthesize, stream synthesis
+- Real API integration with fallback to graceful errors when libs not installed
+
 New schemas:
 - `ssrf-config.schema.json` — IP ranges, blocked hostnames, allowlists, DNS rebinding
 - `credential.schema.json` — Encrypted credential envelope format
@@ -352,9 +376,12 @@ New schemas:
 - `compaction.schema.json` — Session compaction config
 - `sandbox.schema.json` — Sandbox execution config
 - `search.schema.json` — Multi-provider search config
+- `browser.schema.json` — Browser automation config
+- `heartbeat.schema.json` — Heartbeat/leader election config
+- `voice.schema.json` — Voice/STT/TTS config
 
-Total tests: 941 Python + 77 Rust = 1018+
-Total schemas: 23
+Total tests: 1018 Python + 77 Rust = 1095+
+Total schemas: 26
 
 ---
 

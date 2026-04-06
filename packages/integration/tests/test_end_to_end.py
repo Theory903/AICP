@@ -56,15 +56,18 @@ def test_plugin_manifest_validation():
     from aicp.plugins.manifest import PluginManifest
     
     data = {
+        "id": "test-plugin",
         "name": "test-plugin",
         "version": "1.0.0",
-        "description": "Test plugin"
+        "description": "Test plugin",
+        "author": "test-author",
+        "plugin_type": "provider",
     }
     
-    is_valid, manifest, error = PluginManifest.from_dict(data)
-    assert is_valid is True
-    assert manifest is not None
+    manifest = PluginManifest.model_validate(data)
     assert manifest.name == "test-plugin"
+    assert manifest.version == "1.0.0"
+    assert manifest.author == "test-author"
 
 
 def test_session_storage_save_load():
@@ -88,16 +91,18 @@ def test_session_storage_save_load():
 
 
 def test_hook_registry_trigger():
-    from aicp.plugins.hooks import HookRegistry, HookEvent
+    import asyncio
+    from aicp.plugins.hooks import HookRegistry, HookContext
+    from aicp.plugins.manifest import HookType
     
     registry = HookRegistry()
     triggered = []
     
-    def handler(context):
-        triggered.append(context)
+    def handler(ctx: HookContext) -> None:
+        triggered.append(ctx.payload)
     
-    registry.register(HookEvent.AFTER_QUERY, handler)
-    registry.trigger(HookEvent.AFTER_QUERY, {"query": "test"})
+    registry.register(HookType.POST_CAPABILITY, "test-plugin", handler)
+    asyncio.run(registry.emit(HookType.POST_CAPABILITY, payload={"query": "test"}))
     
     assert len(triggered) == 1
     assert triggered[0]["query"] == "test"

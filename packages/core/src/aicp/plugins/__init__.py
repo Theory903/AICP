@@ -1,78 +1,99 @@
-from typing import Any, Optional
+from __future__ import annotations
+
+from typing import Any
+
 from pydantic import BaseModel, Field
-from enum import Enum
+
+from .hooks import HookContext, HookRegistry, HookResult
+from .loader import PluginLoader
+from .manifest import HookType, PluginDependency, PluginManifest, PluginType
+from .registry import PluginRecord, PluginRegistry, PluginState
+from .sandbox import PluginSandbox, SandboxPolicy
+from .sdk import BaseChannelPlugin, BasePlugin, BaseProviderPlugin, BaseSkillPlugin, BaseToolPlugin
 
 
-class PluginType(str, Enum):
-    """Plugin type enumeration"""
-    COMMAND = "command"
-    SKILL = "skill"
-    MCP = "mcp"
-    TRANSPORT = "transport"
-    SOURCE = "source"
-
+# Backward compat: transport/source plugin support used by graphql, websocket, sse adapters
 
 class PluginMetadata(BaseModel):
-    """Plugin metadata for registration"""
     name: str
     version: str
     plugin_type: PluginType
-    description: Optional[str] = None
-    author: Optional[str] = None
+    description: str | None = None
+    author: str | None = None
     commands: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
     hooks: list[str] = Field(default_factory=list)
     mcp_servers: dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        use_enum_values = True
-
 
 class TransportPlugin(BaseModel):
-    """Transport plugin for protocol adapters"""
     name: str
     adapter_class: str
     config: dict[str, Any] = Field(default_factory=dict)
+    plugin_type: PluginType = PluginType.TRANSPORT
+    tags: list[str] = Field(default_factory=list)
 
 
 class SourcePlugin(BaseModel):
-    """Source plugin for discovery adapters"""
     name: str
     adapter_class: str
     config: dict[str, Any] = Field(default_factory=dict)
 
 
-def register_transport(name: str = None, adapter_class: str = None, config: dict[str, Any] = None):
-    """Register a transport plugin - can be used as decorator or function"""
+def register_transport(
+    name: str | None = None,
+    adapter_class: str | None = None,
+    config: dict[str, Any] | None = None,
+):
     def decorator(cls):
-        return TransportPlugin(name=name or cls.__name__, adapter_class=cls.__name__, config=config or {})
+        return TransportPlugin(
+            name=name or cls.__name__,
+            adapter_class=cls.__name__,
+            config=config or {},
+        )
     if adapter_class is not None:
         return decorator
     return decorator
 
 
-def register_source(name: str = None, adapter_class: str = None, config: dict[str, Any] = None):
-    """Register a source plugin - can be used as decorator or function"""
+def register_source(
+    name: str | None = None,
+    adapter_class: str | None = None,
+    config: dict[str, Any] | None = None,
+):
     def decorator(cls):
-        return SourcePlugin(name=name or cls.__name__, adapter_class=cls.__name__, config=config or {})
+        return SourcePlugin(
+            name=name or cls.__name__,
+            adapter_class=cls.__name__,
+            config=config or {},
+        )
     if adapter_class is not None:
         return decorator
     return decorator
 
-
-from .hooks import HookEvent, HookRegistry
-from .loader import PluginLoader
-from .manifest import PluginManifest
 
 __all__ = [
-    "PluginType",
-    "PluginMetadata",
-    "TransportPlugin",
-    "SourcePlugin",
-    "register_transport",
-    "register_source",
-    "HookEvent",
+    "BaseChannelPlugin",
+    "BasePlugin",
+    "BaseProviderPlugin",
+    "BaseSkillPlugin",
+    "BaseToolPlugin",
+    "HookContext",
     "HookRegistry",
+    "HookResult",
+    "HookType",
+    "PluginDependency",
     "PluginLoader",
     "PluginManifest",
+    "PluginMetadata",
+    "PluginRecord",
+    "PluginRegistry",
+    "PluginSandbox",
+    "PluginState",
+    "PluginType",
+    "SandboxPolicy",
+    "SourcePlugin",
+    "TransportPlugin",
+    "register_source",
+    "register_transport",
 ]
