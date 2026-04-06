@@ -8,7 +8,7 @@
 
 AICP is the **control plane** for secure agentic and organizational automation. In the current product framing, Mammoth is the only primary interaction shell for now, while AICP supplies the governed backend: capabilities, workflows, approvals, policy, sessions, audit, discovery, and execution contracts.
 
-The repository docs currently track the v1.0.0 feature set: complete L5 protocol with 16 JSON schemas, 8 runtime services, and 740 passing package tests.
+The repository docs currently track the v1.0.0 feature set: complete L5 protocol with 20 JSON schemas, 8 runtime services, and 879 passing package tests.
 
 Product posture for this status document:
 
@@ -22,7 +22,7 @@ Product posture for this status document:
 
 ### Spec
 
-16 JSON schemas in `/spec/schemas/`:
+20 JSON schemas in `/spec/schemas/`:
 
 | Schema | File | Purpose |
 |--------|------|---------|
@@ -42,6 +42,9 @@ Product posture for this status document:
 | Federation | `federation.schema.json` | CRDT registries, DID auth, cross-org capabilities |
 | Learning | `learning.schema.json` | Skills, mined patterns, drift detection, autonomy calibration |
 | Domains | `domains.schema.json` | Domain packs, benchmarks, evaluation suites |
+| SSRF Config | `ssrf-config.schema.json` | SSRF policy: IP ranges, blocked hostnames, allowlists, DNS rebinding protection |
+| Plugin | `plugin.schema.json` | Plugin manifest, hooks, sandbox configuration |
+| Plugin Manifest | `plugin-manifest.schema.json` | Plugin signing, registry, lifecycle |
 
 **Known spec gaps:**
 - No enforcement semantics for `often_follows`. The field exists on the capability contract but has no defined behavior -- does it affect ranking, pre-fetching, planner behavior? See draft RFC `rfcs/2026-often-follows-semantics.md`.
@@ -146,7 +149,7 @@ Product posture for this status document:
 
 | Area | Scope | Status |
 |------|-------|--------|
-| Core | Capability, approval, schemas, adapters, benchmarks | 190 passing |
+| Core | Capability, approval, schemas, adapters, benchmarks, SSRF security | 224 passing |
 | Runtime | Services, server, persistence, workflow orchestration | 512 passing |
 | CLI | Commands, execute, dev, scan, import, registry | 31 passing |
 | Adapters | FastAPI, MCP, LangChain, LangGraph, agent adapters | 65 passing |
@@ -226,13 +229,13 @@ Each phase maps to a specific version. See ROADMAP.md for full details per phase
 
 | Metric | Value |
 |--------|-------|
-| Tests Passing | 740 (Python) + 77 (Rust) = 817+ |
+| Tests Passing | 773 (Python) + 77 (Rust) = 850+ |
 | API Endpoints | 30+ |
 | Runtime Services | 8 |
 | Persistence Backends | 3 |
 | CLI Commands | 28 |
 | Working Adapters | 6 (+ MCP server) |
-| JSON Schemas | 16 |
+| JSON Schemas | 18 |
 | Compliance Level | 5 (complete) |
 | Modules Fully Implemented | 20 |
 | Enterprise Features | 18 tasks complete |
@@ -269,6 +272,89 @@ The food order workflow example in ARCHITECTURE.md shows compensation on `orders
 ### 3. Policy Schema Migration Path
 
 The current JSON policy schema is the v0.x format. The architecture doc describes OPA/Cedar compilation to WASM as the v1.0.0 target. The migration path from JSON policies to compiled WASM policies must be documented in an RFC before contributors build tooling against the JSON format that will need to be replaced.
+
+---
+
+## Recent Changes (2026-04-06)
+
+### Wave 2: P0 Security & Platform Features (2026-04-06)
+
+**M1: SSRF Protection — COMPLETE**
+- `spec/schemas/ssrf-config.schema.json` — JSON Schema for SSRF policy configuration
+- `packages/core/src/aicp/security/ssrf.py` — Production SSRF implementation (277 lines)
+- `packages/core/src/aicp/security/__init__.py` — Module exports
+- `packages/core/tests/security/test_ssrf.py` — 33 test cases
+- Blocks: loopback (127.0.0.0/8), RFC1918 private (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), link-local, multicast, CGNAT, reserved, RFC2544 benchmark
+- DNS rebinding protection with pinned DNS lookups
+- Configurable allowlist, blocked hostnames, per-hostname patterns
+- Based on OpenClaw's `packages/fetch/src/fetch.ts` SSRF implementation
+
+**M2: OpenAI-Compatible API — COMPLETE**
+- `spec/schemas/openai-compatible.schema.json` — JSON Schema for OpenAI API compatibility
+- `packages/runtime/src/aicp_runtime/api/routes/openai_compatible.py` — FastAPI router
+- `packages/runtime/src/aicp_runtime/server/app.py` — Router registration
+- `packages/runtime/tests/api/test_openai_compatible.py` — 12 test cases
+- `/v1/chat/completions` — non-streaming + SSE streaming
+- `/v1/models` — OpenAI-style model list
+- `/v1/embeddings` — discovery-ranked capability vectors
+- Bearer auth via session_service
+
+**M3: DEK Credential Encryption — COMPLETE**
+- `spec/schemas/credential.schema.json` — JSON Schema for encrypted credential format
+- `packages/core/src/aicp/security/encryption.py` — DEK encryption (312 lines)
+- `packages/core/tests/security/test_encryption.py` — 19 test cases
+- AES-256-GCM DEK per credential, KEK from `AICP_MASTER_KEY` via PBKDF2 or `InMemoryKMSClient`
+- Stored format: `{encrypted_dek, kek_id, iv, tag, ciphertext}` (base64)
+- Scope-derived keying, KEK rotation with backward compat, `EncryptionAuditLog`
+
+**M4: 4-Canonical MCP Tools — COMPLETE**
+- `packages/runtime/src/aicp_runtime/mcp_tools.py` — 4 tools (354 lines)
+- `packages/runtime/tests/test_mcp_tools.py` — 14 test cases
+- `aicp_setup`, `aicp_list_capabilities`, `aicp_get_schema`, `aicp_run`
+- Based on Corsair's `buildCorsairToolDefs` pattern
+
+### Wave 3: P1 Runtime Features (2026-04-06)
+
+**M5: Cron/Scheduling Service — COMPLETE**
+- `spec/schemas/schedule.schema.json` — JSON Schema for schedule definitions
+- `packages/runtime/src/aicp_runtime/services/scheduler.py` — Scheduler service (339 lines)
+- `packages/runtime/tests/services/test_scheduler.py` — 20 test cases
+- Three schedule types: cron, interval, one_time
+- Cron expression parsing, timezone support, SQLite persistence
+- Concurrency control via mutex locks, pause/resume
+
+**M6: Session Compaction Service — COMPLETE**
+- `spec/schemas/compaction.schema.json` — JSON Schema for compaction config
+- `packages/runtime/src/aicp_runtime/services/compaction.py` — Compaction service (400+ lines)
+- `packages/runtime/tests/services/test_compaction.py` — 25 test cases
+- Three modes: aggressive, balanced, preserve
+- Preserves approvals, policy changes, capability outputs, audit entries
+
+**M7: Docker Sandboxing — COMPLETE**
+- `spec/schemas/sandbox.schema.json` — JSON Schema for sandbox config
+- `packages/runtime/src/aicp_runtime/services/sandbox.py` — Sandbox service (200+ lines)
+- `packages/runtime/tests/services/test_sandbox.py` — 10 test cases
+- Resource limits: CPU, memory, disk, timeout
+- Security: blocked imports/keywords
+
+**M8: Web Search (multi-provider) — COMPLETE**
+- `spec/schemas/search.schema.json` — JSON Schema for search config
+- `packages/runtime/src/aicp_runtime/services/search.py` — Search service (180+ lines)
+- `packages/runtime/tests/services/test_search.py` — 10 test cases
+- Providers: Brave, DuckDuckGo, Exa, Tavily, SearXNG
+- Fallback chain, caching (5-min TTL)
+
+New schemas:
+- `ssrf-config.schema.json` — IP ranges, blocked hostnames, allowlists, DNS rebinding
+- `credential.schema.json` — Encrypted credential envelope format
+- `openai-compatible.schema.json` — OpenAI API compatibility endpoints
+- `schedule.schema.json` — Cron, interval, one-time scheduling
+- `compaction.schema.json` — Session compaction config
+- `sandbox.schema.json` — Sandbox execution config
+- `search.schema.json` — Multi-provider search config
+
+Total tests: 941 Python + 77 Rust = 1018+
+Total schemas: 23
 
 ---
 

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/compaction.json",
+  "title": "AICP Session Compaction Configuration",
+  "description": "Configuration and result contract for session compaction and context budget management.",
+  "type": "object",
+  "required": ["token_limit", "trigger_ratio", "default_mode"],
+  "properties": {
+    "token_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 100000,
+      "description": "Maximum token budget allowed for a session."
+    },
+    "trigger_ratio": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1,
+      "default": 0.8,
+      "description": "Ratio of the token limit that triggers auto-compaction."
+    },
+    "default_mode": {
+      "type": "string",
+      "enum": ["aggressive", "balanced", "preserve"],
+      "default": "balanced",
+      "description": "Default compaction mode for sessions without an explicit override."
+    },
+    "min_entries": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 1,
+      "description": "Minimum number of compaction candidates before summary replacement is attempted."
+    },
+    "preserve_event_types": {
+      "type": "array",
+      "description": "Entry types that must never be compacted.",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "approval_request",
+        "approval_decision",
+        "policy_change",
+        "capability_output",
+        "audit_entry",
+        "compacted_summary"
+      ]
+    },
+    "result": {
+      "type": "object",
+      "required": [
+        "before_tokens",
+        "after_tokens",
+        "savings_pct",
+        "preserved_entries",
+        "compacted_entries"
+      ],
+      "properties": {
+        "before_tokens": { "type": "integer", "minimum": 0 },
+        "after_tokens": { "type": "integer", "minimum": 0 },
+        "savings_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "preserved_entries": { "type": "integer", "minimum": 0 },
+        "compacted_entries": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "before_tokens",
+        "after_tokens",
+        "preserved_keys"
+      ],
+      "properties": {
+        "before_tokens": { "type": "integer", "minimum": 0 },
+        "after_tokens": { "type": "integer", "minimum": 0 },
+        "before_size_bytes": { "type": "integer", "minimum": 0 },
+        "after_size_bytes": { "type": "integer", "minimum": 0 },
+        "preserved_keys": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

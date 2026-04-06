@@ -31,6 +31,17 @@ This directory contains the **JSON Schema** definitions that define the AICP pro
 | [approval-request.schema.json](./schemas/approval-request.schema.json) | Human approval request | ✅ Stable |
 | [approval-decision.schema.json](./schemas/approval-decision.schema.json) | Human approval decision | ✅ Stable |
 | [audit-entry.schema.json](./schemas/audit-entry.schema.json) | Immutable audit journal entry | ✅ Stable |
+| [session.schema.json](./schemas/session.schema.json) | Session identity, trust tier, state | ✅ Stable |
+| [perception.schema.json](./schemas/perception.schema.json) | a11y tree, DOM snapshot, signals | ✅ Stable |
+| [web-compatibility.schema.json](./schemas/web-compatibility.schema.json) | Web actions, forms, page state | ✅ Stable |
+| [federation.schema.json](./schemas/federation.schema.json) | CRDT registries, DID auth | ✅ Stable |
+| [learning.schema.json](./schemas/learning.schema.json) | Skills, drift detection | ✅ Stable |
+| [domains.schema.json](./schemas/domains.schema.json) | Domain packs, benchmarks | ✅ Stable |
+| [ssrf-config.schema.json](./schemas/ssrf-config.schema.json) | SSRF policy: IP ranges, DNS rebinding | ✅ Stable |
+| [credential.schema.json](./schemas/credential.schema.json) | Encrypted credential envelope | ✅ Stable |
+| [plugin.schema.json](./schemas/plugin.schema.json) | Plugin manifest and hooks | ✅ Stable |
+| [plugin-manifest.schema.json](./schemas/plugin-manifest.schema.json) | Plugin signing, registry, lifecycle | ✅ Stable |
+| [openai-compatible.schema.json](./schemas/openai-compatible.schema.json) | OpenAI API compatibility layer | ✅ Stable |
 
 ---
 

@@ -20,6 +20,7 @@ from aicp_runtime.api.routes.discover import build_discovery_router
 from aicp_runtime.api.routes.execute import build_execution_router
 from aicp_runtime.api.routes.history import build_history_router
 from aicp_runtime.api.routes.learning import build_learning_router
+from aicp_runtime.api.routes.openai_compatible import build_openai_compatible_router
 from aicp_runtime.api.routes.providers import build_provider_health_router
 from aicp_runtime.api.routes.v1 import build_v1_router
 from aicp_runtime.api.routes.workflows import build_workflows_router
@@ -221,6 +222,13 @@ def _register_routes(app: FastAPI, services: RuntimeServices) -> None:
     app.include_router(build_approvals_router(services.approval_service))
     app.include_router(build_code_intelligence_router(services.code_intelligence_service))
     app.include_router(build_learning_router(services.learning_service))
+    app.include_router(
+        build_openai_compatible_router(
+            services.execution_service,
+            services.discovery_service,
+            services.session_service,
+        )
+    )
     app.include_router(build_provider_health_router(services.provider_health_service))
     app.include_router(
         build_v1_router(

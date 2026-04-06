@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.ai/schemas/schedule.schema.json",
+  "title": "Schedule",
+  "description": "Schedule configuration for cron, interval, and one-time scheduling",
+  "type": "object",
+  "required": ["schedule_id", "schedule_type", "name", "capability_name", "enabled"],
+  "properties": {
+    "schedule_id": {
+      "type": "string",
+      "pattern": "^sched_[a-zA-Z0-9]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "schedule_type": {
+      "type": "string",
+      "enum": ["cron", "interval", "one_time"]
+    },
+    "capability_name": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_.]+$"
+    },
+    "capability_input": {
+      "type": "object"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "cron_expression": {
+      "type": "string",
+      "description": "Cron expression (min hr day mo dow)"
+    },
+    "interval_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Interval in seconds for interval type"
+    },
+    "one_time_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp for one-time execution"
+    },
+    "timezone": {
+      "type": "string",
+      "default": "UTC",
+      "description": "IANA timezone"
+    },
+    "missed_execution_policy": {
+      "type": "string",
+      "enum": ["skip", "catch_up", "alert"],
+      "default": "skip"
+    },
+    "state": {
+      "type": "string",
+      "enum": ["pending", "running", "paused", "completed", "failed"],
+      "default": "pending"
+    },
+    "next_run": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_run": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_result": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "string"},
+        "execution_id": {"type": "string"},
+        "error": {"type": "string"}
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"schedule_type": {"const": "cron"}}},
+      "then": {"required": ["cron_expression"]}
+    },
+    {
+      "if": {"properties": {"schedule_type": {"const": "interval"}}},
+      "then": {"required": ["interval_seconds"]}
+    },
+    {
+      "if": {"properties": {"schedule_type": {"const": "one_time"}}},
+      "then": {"required": ["one_time_timestamp"]}
+    }
+  ]
+}

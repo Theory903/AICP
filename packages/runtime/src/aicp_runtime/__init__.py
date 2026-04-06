@@ -8,6 +8,7 @@ from aicp_runtime.persistence import (
 )
 from aicp_runtime.services.discovery import DiscoveryService
 from aicp_runtime.services.execution import ExecutionService
+from aicp_runtime.services.compaction import CompactionService
 from aicp_runtime.services.workflows import WorkflowService
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "SqliteRuntimeStore",
     "DiscoveryService",
     "ExecutionService",
+    "CompactionService",
     "WorkflowService",
 ]

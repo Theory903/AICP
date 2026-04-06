@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aicp.ai/spec/schemas/ssrf-config.schema.json",
+  "title": "SSRF Protection Configuration",
+  "description": "Configuration for Server-Side Request Forgery protection in AICP capability executions.",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "description": "Enable or disable SSRF protection globally.",
+      "default": true
+    },
+    "allow_private_network": {
+      "type": "boolean",
+      "description": "Allow requests to private IP ranges (RFC 1918). Defaults to false for security.",
+      "default": false
+    },
+    "dangerously_allow_private_network": {
+      "type": "boolean",
+      "description": "DANGEROUS: Allow requests to private IP ranges without additional checks. Use with extreme caution.",
+      "default": false
+    },
+    "allow_rfc2544_benchmark_range": {
+      "type": "boolean",
+      "description": "Allow the RFC 2544 benchmark range (198.18.0.0/15). Typically used for performance testing.",
+      "default": false
+    },
+    "blocked_hostnames": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "List of hostnames to block. Supports exact matches and wildcard suffixes (e.g., '*.local').",
+      "default": ["localhost", "metadata.google.internal"]
+    },
+    "hostname_allowlist": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Hostnames to bypass SSRF checks. Supports exact matches and wildcard suffixes (e.g., '*.internal.corp')."
+    },
+    "dns_rebinding_protection": {
+      "type": "boolean",
+      "description": "Resolve DNS and verify the resolved IP is safe before allowing the request.",
+      "default": true
+    },
+    "max_dns_cache_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum time to cache DNS resolution results for SSRF checks. 0 means no caching.",
+      "default": 300
+    }
+  },
+  "default": {
+    "enabled": true,
+    "allow_private_network": false,
+    "dangerously_allow_private_network": false,
+    "allow_rfc2544_benchmark_range": false,
+    "blocked_hostnames": ["localhost", "metadata.google.internal"],
+    "hostname_allowlist": [],
+    "dns_rebinding_protection": true,
+    "max_dns_cache_seconds": 300
+  },
+  "additionalProperties": false
+}

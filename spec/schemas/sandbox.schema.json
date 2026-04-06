@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.ai/schemas/sandbox.schema.json",
+  "title": "Sandbox",
+  "description": "Sandbox configuration for safe code execution",
+  "type": "object",
+  "required": ["operation_type"],
+  "properties": {
+    "operation_type": {
+      "type": "string",
+      "enum": ["code_execution", "regex", "eval", "dynamic_import"]
+    },
+    "language": {
+      "type": "string",
+      "enum": ["python", "javascript"],
+      "default": "python"
+    },
+    "code": {
+      "type": "string"
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "default": 30000,
+      "minimum": 1000,
+      "maximum": 60000
+    },
+    "memory_limit_mb": {
+      "type": "integer",
+      "default": 256,
+      "minimum": 64,
+      "maximum": 1024
+    },
+    "cpu_limit": {
+      "type": "number",
+      "default": 0.5,
+      "minimum": 0.1,
+      "maximum": 2.0
+    },
+    "disk_limit_mb": {
+      "type": "integer",
+      "default": 50,
+      "minimum": 10,
+      "maximum": 200
+    },
+    "network_enabled": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
