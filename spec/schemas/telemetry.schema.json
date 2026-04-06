@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.ai/schemas/telemetry.schema.json",
+  "title": "Telemetry",
+  "description": "OpenTelemetry configuration for observability",
+  "type": "object",
+  "required": ["enabled"],
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "service_name": {
+      "type": "string",
+      "default": "aicp"
+    },
+    "exporter": {
+      "type": "string",
+      "enum": ["console", "otlp", "jaeger", "zipkin", "prometheus"],
+      "default": "console"
+    },
+    "endpoint": {
+      "type": "string",
+      "format": "uri"
+    },
+    "sample_rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 1.0
+    },
+    "traces": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "default": true},
+        "attributes": {"type": "object"}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "default": true},
+        "histogram_buckets": {"type": "array", "items": {"type": "number"}}
+      }
+    },
+    "logs": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "default": true},
+        "level": {"type": "string", "enum": ["debug", "info", "warn", "error"]}
+      }
+    }
+  }
+}
