@@ -1,0 +1,5 @@
+{
+  "_comment": "Empty steps array violates minItems: 1",
+  "name": "empty_flow",
+  "steps": []
+}

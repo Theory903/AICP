@@ -1,0 +1,5 @@
+{
+  "name": "payments.transfer",
+  "description": "Transfer funds between accounts",
+  "kind": "action"
+}

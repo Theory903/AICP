@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aicp.ai/schemas/tts-capability.schema.json",
+  "title": "TTS Capability",
+  "description": "Text-to-Speech capability definition for AICP",
+  "type": "object",
+  "required": ["name", "provider", "model"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^tts\\.",
+      "description": "Capability name must start with 'tts.'"
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["coqui_xtts", "qwen3_tts", "sooktam2", "openai", "elevenlabs"],
+      "description": "TTS provider"
+    },
+    "model": {
+      "type": "string",
+      "description": "Model identifier"
+    },
+    "config": {
+      "type": "object",
+      "description": "Provider-specific configuration"
+    }
+  }
+}

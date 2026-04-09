@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/skill.json",
+  "title": "AICP Agent Skill",
+  "description": "Schema for agent skills that provide specialized instructions to AI agents.",
+  "type": "object",
+  "required": ["name", "description"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Unique identifier (lowercase, hyphens)"
+    },
+    "description": {
+      "type": "string",
+      "description": "When to use this skill and what it provides"
+    },
+    "content": {
+      "type": "string",
+      "description": "The skill instructions in markdown format"
+    },
+    "path": {
+      "type": "string",
+      "description": "File path to the skill definition"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["creative", "technical", "enterprise", "document", "design", "development"],
+      "description": "Skill category"
+    },
+    "triggers": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Keywords or phrases that activate this skill"
+    },
+    "requires_tools": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tool capabilities required by this skill"
+    }
+  }
+}

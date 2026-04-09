@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/knowledge-work-plugin.json",
+  "title": "AICP Knowledge Work Plugin",
+  "description": "Schema for Anthropics-style knowledge work plugins with skills and MCP connectors.",
+  "type": "object",
+  "required": ["name", "skills"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Plugin identifier (e.g., 'sales', 'productivity', 'finance')"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this plugin helps with"
+    },
+    "skills": {
+      "type": "array",
+      "items": { "$ref": "skill.json" },
+      "description": "Skills bundled with this plugin"
+    },
+    "connectors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["command"],
+        "properties": {
+          "command": { "type": "string" },
+          "args": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      },
+      "description": "MCP server connectors"
+    },
+    "slash_commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "script": { "type": "string" }
+        }
+      },
+      "description": "Slash commands exposed by this plugin"
+    }
+  }
+}

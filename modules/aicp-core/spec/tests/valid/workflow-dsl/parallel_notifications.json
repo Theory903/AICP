@@ -1,0 +1,35 @@
+{
+  "name": "notify_all_channels",
+  "description": "Send notifications in parallel across email, SMS, and push",
+  "steps": [
+    {
+      "id": "parallel_notify",
+      "type": "parallel",
+      "parallel_failure_policy": "wait_all",
+      "parallel_steps": [
+        {
+          "id": "email_notify",
+          "type": "capability",
+          "capability_name": "notifications.send_email",
+          "arguments": {"template": "order_confirmed"}
+        },
+        {
+          "id": "sms_notify",
+          "type": "capability",
+          "capability_name": "notifications.send_sms",
+          "arguments": {"template": "order_confirmed"}
+        },
+        {
+          "id": "push_notify",
+          "type": "capability",
+          "capability_name": "notifications.send_push",
+          "arguments": {"template": "order_confirmed"}
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "type": "terminal"
+    }
+  ]
+}

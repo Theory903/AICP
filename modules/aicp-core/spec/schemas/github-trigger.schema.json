@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/github-trigger.json",
+  "title": "AICP GitHub Workflow Trigger",
+  "description": "Schema for GitHub Actions workflow trigger configuration.",
+  "type": "object",
+  "properties": {
+    "on_pr": {
+      "type": "boolean",
+      "default": true,
+      "description": "Trigger on pull request events"
+    },
+    "on_issue": {
+      "type": "boolean",
+      "default": true,
+      "description": "Trigger on issue events"
+    },
+    "on_mention": {
+      "type": "boolean",
+      "default": true,
+      "description": "Trigger on @mentions in comments"
+    },
+    "on_schedule": {
+      "type": "string",
+      "pattern": "^([0-9*]+ ){4}[0-9*]+$",
+      "description": "Cron expression for scheduled triggers"
+    },
+    "paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "File paths that trigger the workflow"
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Branches that trigger the workflow"
+    },
+    "pr_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["opened", "synchronize", "reopened", "closed", "labeled"]
+      },
+      "default": ["opened", "synchronize", "reopened"],
+      "description": "PR event types"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/github-action.json",
+  "title": "AICP GitHub Action Configuration",
+  "description": "Configuration schema for Claude Code GitHub Action integration.",
+  "type": "object",
+  "required": ["mode"],
+  "properties": {
+    "prompt": {
+      "type": "string",
+      "description": "The prompt/instruction for Claude Code"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["auto", "review", "implement", "question"],
+      "description": "Execution mode: auto, review, implement, or question"
+    },
+    "claude_args": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Additional CLI arguments for Claude Code"
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["anthropic", "aws-bedrock", "google-vertex", "azure"],
+      "default": "anthropic",
+      "description": "AI provider for Claude API"
+    },
+    "mcp_servers": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "MCP server configurations to enable"
+    },
+    "max_iterations": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 100,
+      "description": "Maximum iterations before stopping"
+    },
+    "checkout_repo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to checkout the repository"
+    }
+  }
+}

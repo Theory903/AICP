@@ -1,0 +1,11 @@
+{
+  "name": "rate_limit_api",
+  "description": "Rate limit API calls",
+  "effect": "limit",
+  "subject": {
+    "capability_name": "api.*"
+  },
+  "condition": {
+    "max_rate_per_minute": 100
+  }
+}

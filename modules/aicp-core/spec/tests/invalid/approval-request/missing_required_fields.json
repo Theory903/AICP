@@ -1,0 +1,6 @@
+{
+  "_comment": "Missing required 'requester' and 'requested_at' fields",
+  "id": "req_incomplete",
+  "capability_name": "payments.transfer",
+  "status": "pending"
+}

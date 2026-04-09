@@ -1,0 +1,31 @@
+{
+  "name": "users.list",
+  "description": "List all users with optional filtering",
+  "kind": "query",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "limit": {"type": "integer", "default": 100},
+      "offset": {"type": "integer", "default": 0},
+      "role": {"type": "string", "enum": ["admin", "user", "guest"]}
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "users": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {"type": "string"},
+            "name": {"type": "string"},
+            "email": {"type": "string", "format": "email"}
+          }
+        }
+      },
+      "total": {"type": "integer"}
+    }
+  },
+  "tags": ["users", "read"]
+}

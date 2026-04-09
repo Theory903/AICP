@@ -1,0 +1,364 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/workflow-dsl.json",
+  "title": "AICP Workflow DSL",
+  "description": "Human-authored workflow definition. Parsed into a WorkflowState by the AICP runtime. Supports sequential, parallel, event-driven, and branching flows.",
+  "type": "object",
+  "required": ["name", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display name for this workflow"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this workflow does"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+      "description": "Semantic version of this workflow definition (e.g. 1.0.0)"
+    },
+    "context": {
+      "type": "object",
+      "description": "Initial context values available to all steps via ${var} references"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Arbitrary metadata attached to the workflow"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" },
+      "description": "Ordered list of steps to execute. Sequential by default; use parallel type for concurrent execution."
+    },
+    "on_failure": {
+      "type": "string",
+      "description": "Global failure handler: step ID to jump to if any step fails and has no local on_failure"
+    },
+    "on_complete": {
+      "type": "string",
+      "description": "Step ID to jump to when all steps have completed successfully (overrides natural terminal)"
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "description": "A single workflow step. The type field determines which other fields apply.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier for this step within the workflow"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["capability", "approval", "wait_event", "branch", "parallel", "loop", "subflow", "terminal", "human_task", "transform"],
+          "default": "capability",
+          "description": "Step type. Defaults to 'capability' when omitted."
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional human-readable display name for this step"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of what this step does"
+        },
+
+        "capability_name": {
+          "type": "string",
+          "description": "[capability] The registered capability to invoke"
+        },
+        "arguments": {
+          "type": "object",
+          "description": "[capability] Static arguments passed to the capability. Values may use ${var} context interpolation."
+        },
+        "input_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "[capability] Map workflow context variables to capability input keys. e.g. {order_id: context.order_id}"
+        },
+        "output_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "[capability] Map capability output keys back to workflow context. e.g. {result: steps.confirm.result}"
+        },
+
+        "guard": {
+          "$ref": "#/$defs/guard",
+          "description": "Precondition evaluated before this step runs"
+        },
+        "retry_policy": {
+          "$ref": "#/$defs/retry_policy",
+          "description": "Retry behavior on transient failures"
+        },
+        "approval_policy": {
+          "$ref": "#/$defs/approval_policy",
+          "description": "Approval gate configuration"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Max time in milliseconds before this step times out"
+        },
+
+        "on_success": {
+          "type": "string",
+          "description": "Step ID to jump to on success. Defaults to the next sequential step."
+        },
+        "on_failure": {
+          "type": "string",
+          "description": "Step ID to jump to on failure. Overrides workflow-level on_failure."
+        },
+        "on_timeout": {
+          "type": "string",
+          "description": "Step ID to jump to when this step times out"
+        },
+        "on_approved": {
+          "type": "string",
+          "description": "[approval] Step ID to jump to after approval is granted"
+        },
+        "on_rejected": {
+          "type": "string",
+          "description": "[approval] Step ID to jump to after approval is rejected"
+        },
+
+        "compensation": {
+          "$ref": "#/$defs/compensation",
+          "description": "Rollback action to undo this step on downstream failure (saga pattern)"
+        },
+
+        "wait_for_event": {
+          "type": "string",
+          "description": "[wait_event] Name of the external event to wait for before proceeding"
+        },
+        "event_filter": {
+          "type": "object",
+          "description": "[wait_event] Optional key-value filter applied to incoming event payloads"
+        },
+
+        "branch_conditions": {
+          "type": "array",
+          "description": "[branch] Ordered list of conditions. First matching branch is taken.",
+          "items": { "$ref": "#/$defs/branch_condition" }
+        },
+        "default_branch": {
+          "type": "string",
+          "description": "[branch] Step ID to use when no branch_conditions match"
+        },
+
+        "parallel_steps": {
+          "type": "array",
+          "description": "[parallel] Steps to run concurrently. All must complete before proceeding.",
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "parallel_failure_policy": {
+          "type": "string",
+          "enum": ["fail_fast", "wait_all"],
+          "default": "fail_fast",
+          "description": "[parallel] fail_fast: cancel siblings on first failure. wait_all: run all, collect errors."
+        },
+
+        "loop_condition": {
+          "$ref": "#/$defs/loop_condition",
+          "description": "[loop] Controls how loop iterations work"
+        },
+        "loop_body": {
+          "type": "array",
+          "description": "[loop] Steps to execute per iteration",
+          "items": { "$ref": "#/$defs/step" }
+        },
+
+        "subflow_id": {
+          "type": "string",
+          "description": "[subflow] ID of a registered sub-workflow to invoke"
+        },
+        "subflow_input_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "[subflow] Map parent context variables to sub-workflow context"
+        },
+        "subflow_output_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "[subflow] Map sub-workflow output back to parent context"
+        },
+
+        "transform_expression": {
+          "type": "string",
+          "description": "[transform] JSONPath or simple expression to reshape context data"
+        },
+        "transform_target": {
+          "type": "string",
+          "description": "[transform] Context key to write the transform result into"
+        },
+
+        "message": {
+          "type": "string",
+          "description": "[human_task / approval] Message shown to the human reviewer"
+        },
+        "assigned_to": {
+          "type": "string",
+          "description": "[human_task] Role or user identifier for task assignment"
+        }
+      }
+    },
+
+    "guard": {
+      "type": "object",
+      "required": ["condition"],
+      "additionalProperties": false,
+      "description": "Precondition evaluated before a step runs",
+      "properties": {
+        "condition": {
+          "type": "string",
+          "description": "Boolean expression using context variables (e.g. context.items.length > 0)"
+        },
+        "on_false": {
+          "type": "string",
+          "enum": ["skip", "fail", "branch"],
+          "default": "skip",
+          "description": "What to do when condition is false: skip the step, fail the workflow, or branch"
+        },
+        "branch_target": {
+          "type": "string",
+          "description": "Step ID to branch to when on_false is 'branch'"
+        }
+      }
+    },
+
+    "retry_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Retry configuration for transient failures",
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Maximum number of total attempts (including the first)"
+        },
+        "backoff": {
+          "type": "string",
+          "enum": ["none", "fixed", "exponential"],
+          "default": "none",
+          "description": "Delay strategy between retries"
+        },
+        "delay_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Base delay in milliseconds for fixed/exponential backoff"
+        },
+        "max_delay_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cap for exponential backoff delays"
+        },
+        "retry_on": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Error codes that are retryable. If empty, all failures are retried."
+        }
+      }
+    },
+
+    "approval_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Approval gate settings for a step",
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether approval is unconditionally required"
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Risk score threshold above which approval is required (0.0–1.0)"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role or user group that can approve"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum time to wait for approval before auto-rejecting"
+        },
+        "auto_approve_below_threshold": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically approve if risk score is below threshold"
+        }
+      }
+    },
+
+    "compensation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Compensation (rollback) action for saga-style workflows",
+      "properties": {
+        "capability_name": {
+          "type": "string",
+          "description": "Capability to call for rollback"
+        },
+        "arguments": {
+          "type": "object",
+          "description": "Static arguments for the rollback capability"
+        },
+        "input_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Map context variables to rollback capability inputs"
+        }
+      }
+    },
+
+    "branch_condition": {
+      "type": "object",
+      "required": ["condition", "then_step_id"],
+      "additionalProperties": false,
+      "description": "A single conditional branch",
+      "properties": {
+        "condition": {
+          "type": "string",
+          "description": "Boolean expression using context variables"
+        },
+        "then_step_id": {
+          "type": "string",
+          "description": "Step ID to jump to when condition is true"
+        }
+      }
+    },
+
+    "loop_condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Loop iteration control",
+      "properties": {
+        "exit_condition": {
+          "type": "string",
+          "description": "Loop exits when this expression evaluates to true"
+        },
+        "max_iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Hard cap on loop iterations"
+        },
+        "items_variable": {
+          "type": "string",
+          "description": "Context variable holding a list to iterate over (for-each style)"
+        }
+      }
+    }
+  }
+}

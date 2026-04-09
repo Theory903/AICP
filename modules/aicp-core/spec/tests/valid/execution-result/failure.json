@@ -1,0 +1,13 @@
+{
+  "status": "failure",
+  "error": "Insufficient funds",
+  "error_code": "INSUFFICIENT_FUNDS",
+  "execution_time_ms": 23.1,
+  "next": {
+    "action": "retry",
+    "capability_name": "payments.fund",
+    "hint": "Add funds to account and retry"
+  },
+  "can_continue": true,
+  "continuation_hint": "Add funds to account and retry"
+}

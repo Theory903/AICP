@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/approval-request.json",
+  "title": "AICP Approval Request",
+  "description": "Request for human approval triggered by policy effect 'ask'. Represents a protocol checkpoint that halts execution until approved.",
+  "type": "object",
+  "required": ["id", "capability_name", "requester", "requested_at", "status"],
+  "properties": {
+    "id": {"type": "string"},
+    "capability_name": {"type": "string"},
+    "arguments": {"type": "object"},
+    "requester": {"type": "string"},
+    "requester_context": {"type": "object", "properties": {"session_id": {"type": "string"}, "agent_id": {"type": "string"}, "user_id": {"type": "string"}, "ip_address": {"type": "string"}}},
+    "workflow_id": {"type": "string"},
+    "step_id": {"type": "string"},
+    "policy_matched": {"type": "string"},
+    "urgency": {"type": "string", "enum": ["low", "normal", "high", "urgent"], "default": "normal"},
+    "deadline": {"type": "string", "format": "date-time"},
+    "timeout_seconds": {"type": "integer"},
+    "message": {"type": "string"},
+    "risk_assessment": {"type": "object", "properties": {"level": {"type": "string", "enum": ["low", "medium", "high", "critical"]}, "factors": {"type": "array", "items": {"type": "string"}}}},
+    "status": {"type": "string", "enum": ["pending", "approved", "denied", "delegated", "expired", "cancelled"], "default": "pending"},
+    "metadata": {"type": "object"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  }
+}

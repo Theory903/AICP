@@ -1,0 +1,6 @@
+{
+  "_comment": "Missing required 'name' field",
+  "steps": [
+    {"id": "step1", "type": "capability", "capability_name": "test.action"}
+  ]
+}

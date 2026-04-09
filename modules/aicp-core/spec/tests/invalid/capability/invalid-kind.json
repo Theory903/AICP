@@ -1,0 +1,5 @@
+{
+  "name": "test.action",
+  "description": "Test action",
+  "kind": "invalid_kind"
+}

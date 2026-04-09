@@ -1,0 +1,5 @@
+{
+  "code": "capability_not_found",
+  "message": "The capability 'orders.place' was not found in the registry.",
+  "fix_hint": "Check the capability name spelling and ensure it is registered via POST /v1/capabilities."
+}

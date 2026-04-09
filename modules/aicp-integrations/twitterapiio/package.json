@@ -1,0 +1,40 @@
+{
+  "name": "@aicp/integration-twitterapiio",
+  "version": "0.1.0",
+  "description": "Twitterapiio plugin for AICP",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "dev-source": "./index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc --build --force && tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@aicp/core": ">=0.9.10",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.0.0",
+    "zod": "^3.0.0"
+  },
+  "keywords": [
+    "aicp",
+    "twitterapiio",
+    "plugin"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "files": [
+    "dist"
+  ]
+}

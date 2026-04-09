@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aicp.ai/spec/schemas/domains.schema.json",
+  "title": "Domains",
+  "description": "Domain Packs and Benchmarks - pre-built capability sets and test suites",
+  "type": "object",
+  "definitions": {
+    "domain_category": {
+      "type": "string",
+      "enum": ["ecommerce", "productivity", "communication", "data_analytics", "devops", "security", "finance", "healthcare", "education"]
+    },
+    "benchmark_type": {
+      "type": "string",
+      "enum": ["performance", "reliability", "accuracy", "throughput", "latency"]
+    },
+    "domain_capability": {
+      "type": "object",
+      "required": ["name", "description", "kind", "input_schema", "output_schema"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "kind": { "type": "string" },
+        "input_schema": { "type": "object" },
+        "output_schema": { "type": "object" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "risk_level": { "type": "string", "default": "low" }
+      }
+    },
+    "domain_pack": {
+      "type": "object",
+      "required": ["id", "name", "description", "category", "capabilities"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "$ref": "#/definitions/domain_category" },
+        "version": { "type": "string" },
+        "capabilities": { "type": "array", "items": { "$ref": "#/definitions/domain_capability" } },
+        "dependencies": { "type": "array", "items": { "type": "string" } },
+        "metadata": { "type": "object" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "benchmark": {
+      "type": "object",
+      "required": ["id", "name", "description", "benchmark_type", "metric_name", "unit", "pass_threshold"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "benchmark_type": { "$ref": "#/definitions/benchmark_type" },
+        "metric_name": { "type": "string" },
+        "unit": { "type": "string" },
+        "test_cases": { "type": "array", "items": { "type": "object" } },
+        "pass_threshold": { "type": "number" },
+        "timeout_seconds": { "type": "integer", "default": 60 },
+        "metadata": { "type": "object" }
+      }
+    },
+    "benchmark_suite": {
+      "type": "object",
+      "required": ["id", "name", "description", "benchmarks"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "benchmarks": { "type": "array", "items": { "$ref": "#/definitions/benchmark" } },
+        "version": { "type": "string" }
+      }
+    }
+  }
+}

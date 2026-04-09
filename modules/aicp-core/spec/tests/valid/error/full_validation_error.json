@@ -1,0 +1,13 @@
+{
+  "code": "validation_error",
+  "message": "The field 'amount' must be a positive number.",
+  "fix_hint": "Provide a positive numeric value for 'amount', e.g. 99.99.",
+  "field": "amount",
+  "suggested_value": 99.99,
+  "details": {
+    "received_value": -5,
+    "constraint": "minimum: 0"
+  },
+  "related": ["currency", "payment_method"],
+  "trace_id": "trace_a1b2c3d4"
+}

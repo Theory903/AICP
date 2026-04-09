@@ -1,0 +1,20 @@
+{
+  "id": "audit_d4e5f6g7",
+  "timestamp": "2026-04-03T18:45:12.003Z",
+  "event_type": "policy_decision",
+  "actor": "system",
+  "capability_name": "orders.place",
+  "capability_kind": "action",
+  "execution_id": "exec_a1b2c3d4",
+  "policy_decision": {
+    "policy_name": "default_actions",
+    "effect": "allow",
+    "reason": "Trust tier 2 permits this action",
+    "conditions_matched": {
+      "trust_tier_gte": 2
+    }
+  },
+  "duration_ms": 0.3,
+  "status": "success",
+  "correlation_id": "corr_u1v2w3x4"
+}

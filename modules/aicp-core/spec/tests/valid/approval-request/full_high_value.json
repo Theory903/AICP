@@ -1,0 +1,28 @@
+{
+  "id": "req_002",
+  "capability_name": "payments.transfer",
+  "arguments": {"amount": 9500, "to_account": "merchant_acct_789", "currency": "USD"},
+  "requester": "agent_checkout_01",
+  "requester_context": {
+    "session_id": "sess_abc123",
+    "agent_id": "agent_checkout_01",
+    "user_id": "user_jsmith",
+    "ip_address": "203.0.113.42"
+  },
+  "workflow_id": "wf_checkout_flow",
+  "step_id": "step_charge_payment",
+  "policy_matched": "high_value_transfer_approval",
+  "urgency": "high",
+  "deadline": "2026-04-03T22:00:00Z",
+  "timeout_seconds": 43200,
+  "message": "Transfer of $9,500 requires compliance officer approval",
+  "risk_assessment": {
+    "level": "high",
+    "factors": ["high_value", "new_recipient", "unusual_hour"]
+  },
+  "status": "pending",
+  "requested_at": "2026-04-03T10:00:00Z",
+  "metadata": {"channel": "web", "client_version": "2.1.0"},
+  "created_at": "2026-04-03T10:00:00Z",
+  "updated_at": "2026-04-03T10:00:00Z"
+}

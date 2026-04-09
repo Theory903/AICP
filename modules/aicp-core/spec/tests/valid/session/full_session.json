@@ -1,0 +1,98 @@
+{
+  "id": "sess_full001",
+  "status": "active",
+  "trust_tier": 2,
+  "agent_id": "agent_planner_01",
+  "user_id": "user_jsmith",
+  "created_at": "2026-04-03T10:00:00Z",
+  "updated_at": "2026-04-03T10:05:00Z",
+  "expires_at": "2026-04-03T22:00:00Z",
+  "goal": "Place a food order for the user and track delivery",
+  "context": {
+    "locale": "en-US",
+    "timezone": "America/New_York",
+    "active_cart_id": "cart_x7r8s9t0"
+  },
+  "memory": {
+    "working": {
+      "current_step": "checkout",
+      "cart_total": 42.50
+    },
+    "episodic": [
+      {
+        "event": "session_started",
+        "timestamp": "2026-04-03T10:00:00Z",
+        "data": { "goal": "Place food order" }
+      },
+      {
+        "event": "capability_executed",
+        "timestamp": "2026-04-03T10:02:00Z",
+        "data": { "capability": "cart.add_item", "result": "success" }
+      }
+    ],
+    "semantic": {
+      "user_dietary_restrictions": ["gluten-free"],
+      "preferred_restaurant": "Tacos El Rey"
+    },
+    "procedural": [
+      {
+        "pattern": "cart.add_item -> checkout.start -> payments.charge -> order.track",
+        "confidence": 0.92
+      }
+    ],
+    "meta": {
+      "token_budget_remaining": 48000,
+      "capability_coverage": ["cart.*", "checkout.*", "payments.*", "order.*"],
+      "preference_weights": {
+        "speed": 0.8,
+        "cost": 0.5
+      }
+    }
+  },
+  "active_workflow_id": "wf_food_order_001",
+  "pending_approval_ids": [],
+  "execution_history": ["exec_a1b2c3", "exec_d4e5f6"],
+  "allowed_next_actions": [
+    {
+      "kind": "capability",
+      "name": "checkout.confirm",
+      "reason": "Cart is ready for checkout",
+      "requires_approval": false,
+      "confidence": 0.95
+    }
+  ],
+  "planner_output": {
+    "goal": "Place a food order for the user and track delivery",
+    "plan_id": "plan_001",
+    "steps": [
+      {
+        "step_id": "step_1",
+        "capability_name": "cart.add_item",
+        "arguments": { "item_id": "tacos_plate", "qty": 2 },
+        "depends_on": [],
+        "rationale": "Add selected items to cart"
+      },
+      {
+        "step_id": "step_2",
+        "capability_name": "checkout.confirm",
+        "arguments": {},
+        "depends_on": ["step_1"],
+        "rationale": "Confirm order totals and delivery address"
+      },
+      {
+        "step_id": "step_3",
+        "capability_name": "payments.charge",
+        "arguments": { "amount": 42.50 },
+        "depends_on": ["step_2"],
+        "rationale": "Charge the user's payment method"
+      }
+    ],
+    "generated_at": "2026-04-03T10:00:30Z"
+  },
+  "judge_verdict": {
+    "verdict": "approved",
+    "score": 0.91,
+    "rationale": "Plan is coherent, steps are in correct order, no policy violations detected",
+    "evaluated_at": "2026-04-03T10:00:45Z"
+  }
+}

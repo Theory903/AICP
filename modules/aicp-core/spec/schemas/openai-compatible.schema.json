@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/openai-compatible.json",
+  "title": "AICP OpenAI-Compatible API",
+  "description": "OpenAI-compatible HTTP surface that maps chat completions, models, and embeddings requests to AICP runtime services.",
+  "type": "object",
+  "required": ["endpoints"],
+  "properties": {
+    "endpoints": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["path", "method", "auth", "request", "response"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "enum": ["/v1/chat/completions", "/v1/models", "/v1/embeddings"]
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST"]
+          },
+          "auth": {
+            "type": "object",
+            "required": ["scheme", "session_lookup"],
+            "properties": {
+              "scheme": {
+                "type": "string",
+                "const": "bearer"
+              },
+              "session_lookup": {
+                "type": "string",
+                "const": "session_service.get_session(token)"
+              }
+            },
+            "additionalProperties": false
+          },
+          "request": {
+            "type": "object",
+            "properties": {
+              "model": { "type": "string", "minLength": 1 },
+              "messages": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["role", "content"],
+                  "properties": {
+                    "role": { "type": "string", "minLength": 1 },
+                    "content": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "stream": { "type": "boolean" },
+              "input": {
+                "oneOf": [
+                  { "type": "string", "minLength": 1 },
+                  {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "type": "string", "minLength": 1 }
+                  }
+                ]
+              }
+            },
+            "additionalProperties": true
+          },
+          "response": {
+            "type": "object",
+            "required": ["object"],
+            "properties": {
+              "object": { "type": "string" },
+              "data": {},
+              "choices": {
+                "type": "array",
+                "items": { "type": "object" }
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "prompt_tokens": { "type": "integer", "minimum": 0 },
+                  "completion_tokens": { "type": "integer", "minimum": 0 },
+                  "total_tokens": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          },
+          "streaming": {
+            "type": "object",
+            "properties": {
+              "content_type": {
+                "type": "string",
+                "const": "text/event-stream"
+              },
+              "format": {
+                "type": "string",
+                "const": "data: {...}\\n\\n"
+              },
+              "done_sentinel": {
+                "type": "string",
+                "const": "data: [DONE]\\n\\n"
+              }
+            },
+            "additionalProperties": false
+          },
+          "backing_service": {
+            "type": "string",
+            "enum": [
+              "execution_service.execute",
+              "discovery_service.discover",
+              "discovery_service.rank_capabilities"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

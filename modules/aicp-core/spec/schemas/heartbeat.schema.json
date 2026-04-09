@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.ai/schemas/heartbeat.schema.json",
+  "title": "Heartbeat",
+  "description": "Heartbeat service configuration for periodic tasks",
+  "type": "object",
+  "required": ["task_name", "interval_seconds"],
+  "properties": {
+    "task_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "interval_seconds": {
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 3600
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "failure_threshold": {
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "instance_id": {
+      "type": "string"
+    }
+  }
+}

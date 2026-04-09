@@ -1,0 +1,12 @@
+{
+  "name": "require_confirmation",
+  "description": "Require confirmation for high-value transfers",
+  "effect": "ask",
+  "subject": {
+    "capability_name": "payments.transfer"
+  },
+  "condition": {
+    "require_confirmation": true
+  },
+  "priority": 10
+}

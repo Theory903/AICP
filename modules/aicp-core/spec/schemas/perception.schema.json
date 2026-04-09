@@ -1,0 +1,300 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aicp.ai/spec/schemas/perception.schema.json",
+  "title": "Perception",
+  "description": "Perception and Signal Layer - a11y tree, DOM observation, screenshots, behavioral signals",
+  "type": "object",
+  "required": ["signal_type", "timestamp", "source", "payload"],
+  "properties": {
+    "signal_type": {
+      "$id": "#/properties/signal_type",
+      "type": "string",
+      "enum": [
+        "accessibility_tree",
+        "dom_snapshot",
+        "screenshot",
+        "user_interaction",
+        "state_change",
+        "element_focus"
+      ],
+      "description": "Types of perception signals"
+    },
+    "timestamp": {
+      "$id": "#/properties/timestamp",
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp"
+    },
+    "source": {
+      "$id": "#/properties/source",
+      "type": "string",
+      "description": "URL or identifier of the source"
+    },
+    "payload": {
+      "$id": "#/properties/payload",
+      "type": "object",
+      "description": "Signal payload data"
+    },
+    "confidence": {
+      "$id": "#/properties/confidence",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 1,
+      "description": "Confidence score for the signal"
+    },
+    "metadata": {
+      "$id": "#/properties/metadata",
+      "type": "object",
+      "description": "Additional metadata"
+    }
+  },
+  "definitions": {
+    "element_role": {
+      "type": "string",
+      "enum": [
+        "button",
+        "link",
+        "input",
+        "textbox",
+        "checkbox",
+        "radio",
+        "combobox",
+        "menu",
+        "menuitem",
+        "tab",
+        "tabpanel",
+        "dialog",
+        "alert",
+        "form",
+        "landmark",
+        "heading",
+        "image",
+        "text",
+        "unknown"
+      ]
+    },
+    "a11y_element": {
+      "type": "object",
+      "required": ["id", "role"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/definitions/element_role"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "value": {
+          "type": ["string", "null"]
+        },
+        "description": {
+          "type": ["string", "null"]
+        },
+        "disabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "focused": {
+          "type": "boolean",
+          "default": false
+        },
+        "checked": {
+          "type": ["boolean", "null"]
+        },
+        "expanded": {
+          "type": ["boolean", "null"]
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "invalid": {
+          "type": ["boolean", "null"]
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/a11y_element"
+          }
+        },
+        "parent_id": {
+          "type": ["string", "null"]
+        },
+        "properties": {
+          "type": "object"
+        }
+      }
+    },
+    "accessibility_tree": {
+      "type": "object",
+      "required": ["id", "url", "timestamp", "root"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "title": {
+          "type": ["string", "null"]
+        },
+        "root": {
+          "$ref": "#/definitions/a11y_element"
+        },
+        "element_count": {
+          "type": "integer"
+        },
+        "interactive_elements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "dom_element": {
+      "type": "object",
+      "required": ["id", "tag"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "attributes": {
+          "type": "object"
+        },
+        "text_content": {
+          "type": ["string", "null"]
+        },
+        "inner_html": {
+          "type": ["string", "null"]
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dom_element"
+          }
+        },
+        "xpath": {
+          "type": ["string", "null"]
+        },
+        "css_selector": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "dom_snapshot": {
+      "type": "object",
+      "required": ["id", "url", "timestamp", "root"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "root": {
+          "$ref": "#/definitions/dom_element"
+        },
+        "title": {
+          "type": ["string", "null"]
+        },
+        "forms": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "buttons": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "interaction_type": {
+      "type": "string",
+      "enum": [
+        "click",
+        "double_click",
+        "type",
+        "hover",
+        "focus",
+        "blur",
+        "scroll",
+        "submit",
+        "select",
+        "drag",
+        "drop"
+      ]
+    },
+    "user_interaction": {
+      "type": "object",
+      "required": ["id", "interaction_type", "timestamp"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "interaction_type": {
+          "$ref": "#/definitions/interaction_type"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "element_id": {
+          "type": ["string", "null"]
+        },
+        "element_role": {
+          "type": ["string", "null"]
+        },
+        "element_name": {
+          "type": ["string", "null"]
+        },
+        "x": {
+          "type": ["number", "null"]
+        },
+        "y": {
+          "type": ["number", "null"]
+        },
+        "key": {
+          "type": ["string", "null"]
+        },
+        "value": {
+          "type": ["string", "null"]
+        },
+        "target_url": {
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}

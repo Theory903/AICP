@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aicp.ai/spec/schemas/web-compatibility.schema.json",
+  "title": "Web Compatibility",
+  "description": "Human Web Compatibility - browser automation, form filling, accessibility-aware interactions",
+  "type": "object",
+  "definitions": {
+    "interaction_target": {
+      "type": "string",
+      "enum": ["element_id", "css_selector", "xpath", "accessibility_role", "text", "label"]
+    },
+    "web_action_type": {
+      "type": "string",
+      "enum": ["navigate", "click", "type", "select", "check", "uncheck", "submit", "hover", "scroll", "wait", "wait_for_selector", "wait_for_navigation", "wait_for_text", "screenshot", "evaluate"]
+    },
+    "web_action": {
+      "type": "object",
+      "required": ["id", "action_type"],
+      "properties": {
+        "id": { "type": "string" },
+        "action_type": { "$ref": "#/definitions/web_action_type" },
+        "target": { "type": ["string", "null"] },
+        "target_type": { "$ref": "#/definitions/interaction_target" },
+        "value": { "type": ["string", "null"] },
+        "options": { "type": "object" },
+        "timeout_ms": { "type": "integer", "default": 30000 },
+        "description": { "type": ["string", "null"] }
+      }
+    },
+    "web_interaction": {
+      "type": "object",
+      "required": ["id", "url", "actions"],
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "actions": { "type": "array", "items": { "$ref": "#/definitions/web_action" } },
+        "viewport": { "type": ["object", "null"] },
+        "user_agent": { "type": ["string", "null"] },
+        "metadata": { "type": "object" }
+      }
+    },
+    "form_field": {
+      "type": "object",
+      "required": ["name", "field_type"],
+      "properties": {
+        "name": { "type": "string" },
+        "field_type": { "type": "string" },
+        "label": { "type": ["string", "null"] },
+        "selector": { "type": ["string", "null"] },
+        "xpath": { "type": ["string", "null"] },
+        "a11y_role": { "type": ["string", "null"] },
+        "required": { "type": "boolean", "default": false },
+        "pattern": { "type": ["string", "null"] },
+        "min_length": { "type": ["integer", "null"] },
+        "max_length": { "type": ["integer", "null"] },
+        "options": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "form_definition": {
+      "type": "object",
+      "required": ["id", "url_pattern", "name", "fields"],
+      "properties": {
+        "id": { "type": "string" },
+        "url_pattern": { "type": "string" },
+        "name": { "type": "string" },
+        "fields": { "type": "array", "items": { "$ref": "#/definitions/form_field" } },
+        "submit_button_selector": { "type": ["string", "null"] },
+        "submit_strategy": { "type": "string", "enum": ["click", "enter", "script"] },
+        "success_indicators": { "type": "array", "items": { "type": "string" } },
+        "error_indicators": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "page_state": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "title": { "type": ["string", "null"] },
+        "accessibility_tree": { "type": ["object", "null"] },
+        "dom_snapshot": { "type": ["object", "null"] },
+        "visible_text": { "type": ["string", "null"] },
+        "forms": { "type": "array", "items": { "$ref": "#/definitions/form_definition" } },
+        "interactive_elements": { "type": "array", "items": { "type": "object" } },
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

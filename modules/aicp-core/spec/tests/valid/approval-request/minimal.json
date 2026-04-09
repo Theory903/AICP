@@ -1,0 +1,8 @@
+{
+  "id": "req_001",
+  "capability_name": "payments.transfer",
+  "requester": "agent_checkout_01",
+  "requested_at": "2026-04-03T10:00:00Z",
+  "status": "pending",
+  "urgency": "normal"
+}

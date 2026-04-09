@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.ai/schemas/dream.schema.json",
+  "title": "Dream",
+  "description": "Dream consolidation service configuration for memory optimization",
+  "type": "object",
+  "required": ["operation"],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "enum": ["consolidate", "prune", "merge", "analyze"]
+    },
+    "memory_type": {
+      "type": "string",
+      "enum": ["working", "episodic", "semantic", "skill", "environmental", "all"],
+      "default": "all"
+    },
+    "consolidation_mode": {
+      "type": "string",
+      "enum": ["aggressive", "balanced", "conservative"],
+      "default": "balanced"
+    },
+    "max_tokens": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 100000,
+      "default": 50000
+    },
+    "retention_policy": {
+      "type": "object",
+      "properties": {
+        "importance_threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "recency_weight": {"type": "number", "minimum": 0, "maximum": 1},
+        "decay_rate": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "invalid_policy",
+  "description": "Missing effect field",
+  "subject": {
+    "capability_name": "test.action"
+  }
+}

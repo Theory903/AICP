@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "composite": true,
+    "incremental": true,
+    "paths": {
+      "@aicp/integration-core": ["./aicp-integrations/corsair/dist/index.d.ts"],
+      "@aicp/integration-core/core": ["./aicp-integrations/corsair/dist/core.d.ts"],
+      "@aicp/integration-core/http": ["./aicp-integrations/corsair/dist/http.d.ts"],
+      "@aicp/integration-core/db": ["./aicp-integrations/corsair/dist/db.d.ts"],
+      "@aicp/integration-core/orm": ["./aicp-integrations/corsair/dist/orm.d.ts"],
+      "@aicp/integration-core/setup": ["./aicp-integrations/corsair/dist/setup.d.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

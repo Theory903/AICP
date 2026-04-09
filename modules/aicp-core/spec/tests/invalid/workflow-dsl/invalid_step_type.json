@@ -1,0 +1,7 @@
+{
+  "_comment": "Invalid step type not in enum",
+  "name": "bad_type_flow",
+  "steps": [
+    {"id": "step1", "type": "invalid_type", "capability_name": "test.action"}
+  ]
+}

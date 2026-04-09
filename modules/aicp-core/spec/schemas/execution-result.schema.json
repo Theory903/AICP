@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/execution-result.json",
+  "title": "AICP Execution Result",
+  "description": "Normalized result of capability execution with agent guidance.",
+  "type": "object",
+  "required": ["status", "next"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "timeout", "rate_limited", "unavailable"],
+      "description": "Status of the execution"
+    },
+    "execution_mode": {
+      "type": "string",
+      "enum": ["sync", "async", "approval_blocked", "event_wait", "streaming"],
+      "default": "sync",
+      "description": "Execution semantics: sync (immediate result), async (background job), approval_blocked (waiting for human decision), event_wait (waiting for external event), streaming (progressive output)"
+    },
+    "data": {
+      "description": "The result data from the execution"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if execution failed"
+    },
+    "error_detail": {
+      "type": "object",
+      "description": "Structured error envelope for agent consumption",
+      "properties": {
+        "code": { "type": "string", "description": "Machine-readable error code" },
+        "category": { "type": "string", "enum": ["business_rule", "validation", "connectivity", "authorization", "internal", "timeout"], "description": "Error category for routing" },
+        "retryable": { "type": "boolean", "description": "Whether the error is safe to retry" },
+        "human_message": { "type": "string", "description": "User-facing error message" },
+        "agent_hint": { "type": "string", "description": "Agent guidance for recovery" },
+        "correlation_id": { "type": "string", "description": "Audit correlation ID for tracing" }
+      }
+    },
+    "error_code": {
+      "type": "string",
+      "description": "Machine-readable error code"
+    },
+    "execution_time_ms": {
+      "type": "number",
+      "description": "Execution time in milliseconds"
+    },
+    "next": {
+      "type": "object",
+      "description": "Agent guidance - what to do next (REQUIRED for AI-ease)",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["continue", "confirm", "retry", "cancel", "complete", "wait", "list", "inspect", "await_approval", "attach_session", "reauthenticate", "retry_with_fixes", "stop"],
+          "description": "Recommended next action"
+        },
+        "capability": {
+          "type": "string",
+          "description": "Next capability to call (if applicable)"
+        },
+        "arguments": {
+          "type": "object",
+          "description": "Suggested arguments for next capability"
+        },
+        "hint": {
+          "type": "string",
+          "description": "Human-readable hint for next step"
+        },
+        "message": {
+          "type": "string",
+          "description": "Message to display to user"
+        },
+        "workflow_id": {
+          "type": "string",
+          "description": "Workflow ID for continuation"
+        },
+        "poll_after_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Suggested delay before polling again"
+        },
+        "poll_url": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "Endpoint URL that can be polled for async job progress"
+        }
+      }
+    },
+    "rendered": {
+      "type": "string",
+      "description": "Pre-rendered display string"
+    },
+    "format_hint": {
+      "type": "string",
+      "enum": ["text", "json", "table", "code", "image"],
+      "description": "Hint for how to format the output"
+    },
+    "can_continue": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether execution can continue"
+    },
+    "continuation_hint": {
+      "type": "string",
+      "description": "Hint for continuation"
+    },
+    "allowed_next_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["capability", "workflow_step", "approval", "session_action"],
+            "description": "Type of next action"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the capability, step, or action"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why this action is suggested"
+          },
+          "requires_approval": {
+            "type": "boolean",
+            "description": "Whether this action requires human approval"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence score for this suggestion"
+          }
+        },
+        "required": ["kind", "name"]
+      },
+      "description": "Structured list of allowed next actions for agent planning"
+    },
+    "audit_correlation_id": {
+      "type": "string",
+      "description": "Correlation ID linking this execution to audit trail"
+    }
+  }
+}

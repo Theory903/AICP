@@ -1,0 +1,32 @@
+{
+  "name": "saga_order_flow",
+  "description": "Saga pattern: each step has a compensation action for rollback",
+  "steps": [
+    {
+      "id": "reserve_inventory",
+      "type": "capability",
+      "capability_name": "inventory.reserve",
+      "arguments": {"item_id": "pizza_001"},
+      "compensation": {
+        "capability_name": "inventory.release",
+        "input_mapping": {"reservation_id": "steps.reserve_inventory.reservation_id"}
+      }
+    },
+    {
+      "id": "charge_card",
+      "type": "capability",
+      "capability_name": "payments.charge",
+      "compensation": {
+        "capability_name": "payments.refund",
+        "input_mapping": {"charge_id": "steps.charge_card.charge_id"}
+      }
+    },
+    {
+      "id": "dispatch_order",
+      "type": "capability",
+      "capability_name": "fulfillment.dispatch"
+    }
+  ],
+  "on_failure": "saga_rollback",
+  "metadata": {"pattern": "saga", "version": "1"}
+}

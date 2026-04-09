@@ -1,0 +1,12 @@
+{
+  "status": "success",
+  "data": {
+    "transaction_id": "tx_123",
+    "amount": 100.00
+  },
+  "execution_time_ms": 45.2,
+  "next": {
+    "action": "complete"
+  },
+  "can_continue": false
+}

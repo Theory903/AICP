@@ -1,0 +1,22 @@
+{
+  "name": "order.checkout",
+  "description": "Complete checkout process with payment and shipping",
+  "kind": "workflow",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "cart_id": {"type": "string"},
+      "shipping_address": {"type": "object"},
+      "payment_method": {"type": "string"}
+    },
+    "required": ["cart_id", "payment_method"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "order_id": {"type": "string"},
+      "status": {"type": "string"}
+    }
+  },
+  "tags": ["ecommerce", "workflow"]
+}

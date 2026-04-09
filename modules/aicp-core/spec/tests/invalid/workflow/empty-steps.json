@@ -1,0 +1,5 @@
+{
+  "name": "empty_workflow",
+  "description": "Workflow with no steps",
+  "steps": []
+}

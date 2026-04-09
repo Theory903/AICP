@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.ai/schemas/media.schema.json",
+  "title": "Media",
+  "description": "Image/video generation service configuration",
+  "type": "object",
+  "required": ["operation"],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "enum": ["generate_image", "generate_video", "upscale", "variate"]
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "negative_prompt": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["fal", "replicate", "openai", "local"],
+      "default": "fal"
+    },
+    "model": {
+      "type": "string"
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 256,
+      "maximum": 2048,
+      "default": 1024
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 256,
+      "maximum": 2048,
+      "default": 1024
+    },
+    "num_images": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4,
+      "default": 1
+    },
+    "guidance_scale": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 20,
+      "default": 7.5
+    },
+    "num_inference_steps": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 50
+    },
+    "seed": {
+      "type": "integer"
+    }
+  }
+}

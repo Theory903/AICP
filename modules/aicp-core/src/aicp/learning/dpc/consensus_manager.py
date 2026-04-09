@@ -1,0 +1,930 @@
+"""
+Consensus Manager - Phase 4.3
+
+Manages knowledge commit voting with required dissent to prevent groupthink.
+Coordinates multi-party approval with devil's advocate mechanism.
+"""
+
+import asyncio
+import logging
+import random
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from dpc_protocol.knowledge_commit import CommitVote, KnowledgeCommit, KnowledgeCommitProposal
+from dpc_protocol.pcm_core import PCMCore
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class VotingSession:
+    """Active voting session for a commit proposal"""
+    proposal: KnowledgeCommitProposal
+    votes: dict[str, CommitVote] = None  # node_id -> vote
+    required_dissenter: str | None = None
+    deadline: datetime | None = None
+    status: str = "voting"  # voting, approved, rejected, timeout
+
+    def __post_init__(self):
+        if self.votes is None:
+            self.votes = {}
+
+
+class ConsensusManager:
+    """Manages consensus voting for knowledge commits
+
+    Features:
+    - Multi-party voting with configurable thresholds
+    - Required dissent mechanism (anti-groupthink)
+    - Devil's advocate assignment
+    - Vote deadline management
+    - Automatic commit application on approval
+    """
+
+    def __init__(
+        self,
+        node_id: str,
+        pcm_core: PCMCore,
+        vote_timeout_minutes: int = 10,
+        consensus_threshold: float = 0.75  # 75% approval required
+    ):
+        """Initialize consensus manager
+
+        Args:
+            node_id: This node's identifier
+            pcm_core: PCMCore instance for applying commits
+            vote_timeout_minutes: Minutes until vote deadline
+            consensus_threshold: Fraction of votes needed to approve (0.0-1.0)
+        """
+        self.node_id = node_id
+        self.pcm_core = pcm_core
+        self.vote_timeout_minutes = vote_timeout_minutes
+        self.consensus_threshold = consensus_threshold
+
+        # Active sessions
+        self.sessions: dict[str, VotingSession] = {}  # proposal_id -> session
+
+        # Callbacks for notifications
+        self.on_proposal_received: Callable | None = None
+        self.on_vote_received: Callable | None = None
+        self.on_commit_approved: Callable | None = None
+        self.on_commit_rejected: Callable | None = None
+        self.on_commit_revision_needed: Callable | None = None  # Called when revision requested; arg: (proposal, votes)
+        self.on_commit_applied: Callable | None = None  # Called after commit is applied to personal.json
+        self.on_result_broadcast: Callable | None = None  # Broadcast voting results to participants
+        self.on_commit_signed: Callable | None = None    # Called after apply so service can sign+broadcast COMMIT_SIGNED
+        self.on_commit_ack: Callable | None = None       # Called after apply so service can broadcast COMMIT_ACK
+        self.on_commit_apply_failed: Callable | None = None  # Called when _apply_commit fails (disk error etc); arg: (commit, error_msg)
+
+        # Tracks which nodes confirmed successful apply per commit_id (Gap 3 observability)
+        self.commit_acks: dict[str, set] = {}  # commit_id -> set of node_ids that sent COMMIT_ACK
+
+    async def propose_commit(
+        self,
+        proposal: KnowledgeCommitProposal,
+        broadcast_func: Callable
+    ) -> VotingSession:
+        """Start voting on a new commit proposal
+
+        Args:
+            proposal: KnowledgeCommitProposal to vote on
+            broadcast_func: Async function to broadcast proposal to peers
+
+        Returns:
+            VotingSession object
+        """
+        # Assign required dissenter if 3+ participants (anti-groupthink)
+        if len(proposal.participants) >= 3:
+            # Randomly assign one person as devil's advocate
+            proposal.required_dissenter = random.choice(proposal.participants)
+
+        # Anchor parent commit to proposer's current HEAD so all nodes hash identically.
+        # Without this, each node sets parent_commit_id from its own local state at apply
+        # time, causing divergent commit_id values for the same logical commit.
+        if proposal.parent_commit_id is None:
+            try:
+                context = self.pcm_core.load_context()
+                proposal.parent_commit_id = context.last_commit_id
+            except Exception:
+                pass  # Leave as None for the first-ever commit
+
+        # Set deadline
+        deadline = datetime.now(timezone.utc) + timedelta(minutes=self.vote_timeout_minutes)
+        proposal.vote_deadline = deadline.isoformat()
+        proposal.status = 'voting'
+
+        # Create session
+        session = VotingSession(
+            proposal=proposal,
+            required_dissenter=proposal.required_dissenter,
+            deadline=deadline
+        )
+
+        self.sessions[proposal.proposal_id] = session
+
+        # Broadcast to participants
+        await broadcast_func({
+            'command': 'PROPOSE_KNOWLEDGE_COMMIT',
+            'payload': proposal.to_dict()
+        })
+
+        # Start deadline timer
+        asyncio.create_task(self._handle_vote_deadline(proposal.proposal_id))
+
+        return session
+
+    async def cast_vote(
+        self,
+        proposal_id: str,
+        vote: str,  # "approve", "reject", "request_changes"
+        comment: str | None = None,
+        broadcast_func: Callable | None = None
+    ) -> bool:
+        """Cast a vote on a proposal
+
+        Args:
+            proposal_id: ID of proposal to vote on
+            vote: Vote choice
+            comment: Optional comment
+            broadcast_func: Optional function to broadcast vote to peers
+
+        Returns:
+            True if vote was cast, False if session not found
+        """
+        if proposal_id not in self.sessions:
+            return False
+
+        session = self.sessions[proposal_id]
+
+        if session.status not in ("voting",):
+            logger.debug("cast_vote: session %s is in status '%s', ignoring late vote",
+                         proposal_id, session.status)
+            return False
+
+        # Check if this voter is required dissenter
+        is_required_dissent = (self.node_id == session.required_dissenter)
+
+        # Create vote object
+        vote_obj = CommitVote(
+            proposal_id=proposal_id,
+            voter_node_id=self.node_id,
+            vote=vote,
+            comment=comment,
+            is_required_dissent=is_required_dissent
+        )
+
+        # Record vote
+        session.votes[self.node_id] = vote_obj
+
+        # Broadcast vote if function provided
+        if broadcast_func:
+            await broadcast_func({
+                'command': 'VOTE_KNOWLEDGE_COMMIT',
+                'payload': asdict(vote_obj)
+            })
+
+        # Check if voting is complete
+        if len(session.votes) == len(session.proposal.participants):
+            await self._finalize_vote(session)
+
+        # Trigger callback
+        if self.on_vote_received:
+            await self.on_vote_received(vote_obj)
+
+        return True
+
+    async def revise_proposal(
+        self,
+        proposal_id: str,
+        updated_summary: str | None,
+        updated_entries: list | None,
+        broadcast_func: Callable
+    ) -> bool:
+        """Restart voting on a revised proposal after a revision_needed outcome.
+
+        Clears all previous votes, resets the deadline, applies content updates,
+        and re-broadcasts PROPOSE_KNOWLEDGE_COMMIT to all participants so they
+        can vote on the revised version.
+
+        On the receiver side, handle_proposal_message already overwrites the
+        existing session when the same proposal_id is received, so no receiver-side
+        changes are required.
+
+        Args:
+            proposal_id: ID of the proposal to revise (must be in revision_needed state)
+            updated_summary: New summary text, or None to keep existing
+            updated_entries: New entries list, or None to keep existing
+            broadcast_func: Async function to broadcast revised proposal to peers
+
+        Returns:
+            True if revision round started, False if session not found or wrong state
+        """
+        if proposal_id not in self.sessions:
+            logger.warning("revise_proposal: unknown proposal %s", proposal_id)
+            return False
+
+        session = self.sessions[proposal_id]
+
+        if session.status != "revision_needed":
+            logger.warning(
+                "revise_proposal: session %s is in status '%s', expected 'revision_needed'",
+                proposal_id, session.status
+            )
+            return False
+
+        # Apply content updates to the proposal
+        if updated_summary is not None:
+            session.proposal.summary = updated_summary
+        if updated_entries is not None:
+            session.proposal.entries = updated_entries
+
+        # Clear all votes for a fresh round
+        session.votes = {}
+
+        # Reset deadline
+        deadline = datetime.now(timezone.utc) + timedelta(minutes=self.vote_timeout_minutes)
+        session.deadline = deadline
+        session.proposal.vote_deadline = deadline.isoformat()
+
+        # Restore voting state
+        session.status = "voting"
+        session.proposal.status = "voting"
+
+        # Re-broadcast the revised proposal (receivers overwrite their existing session)
+        await broadcast_func({
+            'command': 'PROPOSE_KNOWLEDGE_COMMIT',
+            'payload': session.proposal.to_dict()
+        })
+
+        # Start a new deadline timer for this revision round
+        asyncio.create_task(self._handle_vote_deadline(proposal_id))
+
+        logger.info("Restarted voting on revised proposal %s", proposal_id)
+        return True
+
+    async def receive_vote(
+        self,
+        vote: CommitVote
+    ) -> None:
+        """Receive vote from peer
+
+        Args:
+            vote: CommitVote object from peer
+        """
+        proposal_id = vote.proposal_id
+
+        if proposal_id not in self.sessions:
+            logger.warning("Received vote for unknown proposal %s", proposal_id)
+            return
+
+        session = self.sessions[proposal_id]
+
+        if session.status not in ("voting",):
+            logger.debug("receive_vote: session %s is in status '%s', ignoring late vote from %s",
+                         proposal_id, session.status, vote.voter_node_id)
+            return
+
+        # Record vote
+        session.votes[vote.voter_node_id] = vote
+
+        # Check if voting is complete
+        if len(session.votes) == len(session.proposal.participants):
+            await self._finalize_vote(session)
+
+        # Trigger callback
+        if self.on_vote_received:
+            await self.on_vote_received(vote)
+
+    async def _finalize_vote(self, session: VotingSession) -> None:
+        """Finalize voting and determine outcome
+
+        Args:
+            session: VotingSession to finalize
+        """
+        # Guard: prevent double-finalize if called concurrently.
+        # Two valid entry states:
+        #   "voting"  — vote count reached (cast_vote / receive_vote path)
+        #   "timeout" — deadline fired (_handle_vote_deadline sets this before calling us)
+        # Any other status means we're already finalizing or done — skip.
+        if session.status not in ("voting", "timeout"):
+            logger.debug("_finalize_vote called but session %s already in status '%s' — skipping",
+                         session.proposal.proposal_id, session.status)
+            return
+        # Mark as finalizing immediately (before any awaits) to block re-entry from the
+        # other path. No await between this line and the check above — asyncio guarantees
+        # no task switch between consecutive synchronous statements.
+        session.status = "finalizing"
+
+        proposal = session.proposal
+        votes = session.votes
+
+        # Count votes
+        approve_count = sum(1 for v in votes.values() if v.vote == "approve")
+        reject_count = sum(1 for v in votes.values() if v.vote == "reject")
+        change_count = sum(1 for v in votes.values() if v.vote == "request_changes")
+
+        total_votes = len(votes)
+        approval_rate = approve_count / total_votes if total_votes > 0 else 0
+
+        # Determine outcome
+        if approval_rate >= self.consensus_threshold:
+            # Approved!
+            session.status = "approved"
+            proposal.status = "approved"
+
+            # Create finalized commit
+            commit = KnowledgeCommit(
+                summary=proposal.summary,
+                description=f"Approved by {approve_count}/{total_votes} participants",
+                topic=proposal.topic,
+                entries=proposal.entries,
+                conversation_id=proposal.conversation_id,
+                participants=proposal.participants,
+                consensus_type="unanimous" if approval_rate == 1.0 else "majority",
+                approved_by=[nid for nid, v in votes.items() if v.vote == "approve"],
+                rejected_by=[nid for nid, v in votes.items() if v.vote == "reject"],
+                cultural_perspectives_considered=proposal.cultural_perspectives,
+                confidence_score=proposal.avg_confidence,
+                sources_cited=[],  # Could extract from entries
+                dissenting_opinion=proposal.devil_advocate,
+                extraction_model=proposal.extraction_model,  # Track which model extracted this knowledge
+                extraction_host=proposal.extraction_host,  # Track which compute host was used
+                # Use the proposer's HEAD anchored in the proposal so all nodes compute
+                # the same commit_hash (parent_commit_id is part of the hash input).
+                parent_commit_id=proposal.parent_commit_id
+            )
+
+            # Apply commit to local context; only fire success callbacks if write succeeded
+            apply_ok = await self._apply_commit(commit)
+
+            if not apply_ok:
+                # Disk write failed — mark session as failed so peers can detect missing ACK,
+                # but do NOT broadcast success. on_commit_apply_failed already fired inside
+                # _apply_commit to surface the error to the UI.
+                session.status = "apply_failed"
+                return
+
+            # Trigger callback
+            if self.on_commit_approved:
+                await self.on_commit_approved(commit)
+
+        elif reject_count > change_count:
+            # Rejected
+            session.status = "rejected"
+            proposal.status = "rejected"
+
+            if self.on_commit_rejected:
+                await self.on_commit_rejected(proposal, votes)
+
+        else:
+            # Changes requested — fire callback so proposer can revise and call revise_proposal()
+            session.status = "revision_needed"
+            proposal.status = "revised"
+
+            if self.on_commit_revision_needed:
+                await self.on_commit_revision_needed(proposal, votes)
+
+        # Prepare result notification payload
+        result_payload = {
+            "proposal_id": proposal.proposal_id,
+            "topic": proposal.topic,
+            "summary": proposal.summary,
+            "status": session.status,  # "approved", "rejected", "revision_needed", "timeout"
+            "vote_tally": {
+                "approve": approve_count,
+                "reject": reject_count,
+                "request_changes": change_count,
+                "total": total_votes,
+                "threshold": self.consensus_threshold,
+                "approval_rate": approval_rate
+            },
+            "votes": [
+                {
+                    "node_id": v.voter_node_id,
+                    "vote": v.vote,
+                    "comment": v.comment,
+                    "is_required_dissent": v.is_required_dissent,
+                    "timestamp": v.timestamp
+                } for v in votes.values()
+            ],
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+        # Add commit_id if approved
+        if session.status == "approved":
+            result_payload["commit_id"] = commit.commit_id
+
+        # Broadcast result to all participants (if callback registered)
+        if self.on_result_broadcast:
+            await self.on_result_broadcast(result_payload, proposal.participants)
+            logger.info("Broadcasted KNOWLEDGE_COMMIT_RESULT for proposal %s", proposal.proposal_id)
+
+    async def _apply_commit(self, commit: KnowledgeCommit) -> bool:
+        """Apply approved commit to local PCM with cryptographic integrity
+
+        Args:
+            commit: KnowledgeCommit to apply
+
+        Returns:
+            True if commit was successfully written to disk, False on any error.
+        """
+        try:
+            import hashlib
+
+            from cryptography.hazmat.primitives import serialization
+            from dpc_protocol.crypto import load_identity
+
+            # Load current context
+            context = self.pcm_core.load_context()
+
+            # 1. parent_commit_id is already set from the proposal (anchored by the proposer
+            # at propose time so all nodes compute the same commit_hash). Only fall back to
+            # local context.last_commit_id if the proposal pre-dates this fix.
+            if commit.parent_commit_id is None:
+                commit.parent_commit_id = context.last_commit_id
+
+            # 2. Compute hash-based commit ID
+            commit.compute_hash()  # Sets commit_hash and commit_id
+
+            logger.info("Created commit %s (hash: %s...)", commit.commit_id, commit.commit_hash[:16])
+
+            # 3. Sign commit with our private key
+            node_id, key_path, cert_path = load_identity()
+
+            with open(key_path, 'rb') as f:
+                private_key = serialization.load_pem_private_key(
+                    f.read(),
+                    password=None
+                )
+
+            commit.sign(node_id, private_key)
+
+            logger.info("Signed commit with %s", node_id)
+
+            # 4. Add or update topic
+            topic_name = commit.topic
+
+            if topic_name in context.knowledge:
+                # Update existing topic
+                topic = context.knowledge[topic_name]
+                topic.entries.extend(commit.entries)
+                topic.version += 1
+                topic.last_modified = datetime.now(timezone.utc).isoformat()
+            else:
+                # Create new topic
+                from dpc_protocol.pcm_core import Topic
+                context.knowledge[topic_name] = Topic(
+                    summary=commit.summary,
+                    entries=commit.entries,
+                    version=1
+                )
+
+            topic = context.knowledge[topic_name]
+
+            # 5. Update context metadata
+            context.version += 1
+            context.last_commit_id = commit.commit_id
+            context.last_commit_message = commit.summary
+            context.last_commit_timestamp = commit.timestamp
+
+            # 6. Add to commit history with cryptographic fields and parent tracking
+            context.commit_history.append({
+                'commit_id': commit.commit_id,
+                'commit_hash': commit.commit_hash,
+                'parent_commit_id': commit.parent_commit_id,  # Track commit ancestry
+                'timestamp': commit.timestamp,
+                'message': commit.summary,
+                'participants': commit.participants,
+                'consensus': commit.consensus_type,
+                'approved_by': commit.approved_by,
+                'signatures': commit.signatures
+            })
+
+            # 7. Create versioned markdown file with frontmatter
+            from dpc_protocol.markdown_manager import MarkdownKnowledgeManager
+
+            markdown_manager = MarkdownKnowledgeManager()
+
+            # Compute content hash for markdown
+            markdown_content = markdown_manager.topic_to_markdown_content(topic)
+            content_hash = hashlib.sha256(markdown_content.encode('utf-8')).hexdigest()[:16]
+
+            # Compute canonical_json (the exact bytes used to produce commit_hash).
+            # Stored in frontmatter so any node can independently re-derive the hash
+            # and detect tampering without needing RSA peer certificates.
+            import base64 as _b64
+
+            from dpc_protocol.commit_integrity import compute_canonical_json
+            canonical_json_b64 = _b64.b64encode(
+                compute_canonical_json(commit).encode('utf-8')
+            ).decode('ascii')
+
+            # Create markdown with frontmatter
+            safe_topic_name = markdown_manager.sanitize_filename(topic_name)
+            markdown_filename = f"{safe_topic_name}_{commit.commit_id}.md"
+            markdown_path = markdown_manager.knowledge_dir / markdown_filename
+
+            frontmatter = {
+                'topic': topic_name,
+                'commit_id': commit.commit_id,
+                'commit_hash': commit.commit_hash,
+                'parent_commit': commit.parent_commit_id or "",
+                'content_hash': content_hash,
+                'canonical_json': canonical_json_b64,
+                'timestamp': commit.timestamp,
+                'version': topic.version,
+                'author': node_id,
+                'participants': commit.participants,
+                'approved_by': commit.approved_by,
+                'rejected_by': commit.rejected_by,
+                'consensus': commit.consensus_type,
+                'confidence_score': commit.confidence_score,
+                'signatures': commit.signatures,
+                'cultural_perspectives': commit.cultural_perspectives_considered,
+                'extraction_model': commit.extraction_model or "unknown",
+                'extraction_host': commit.extraction_host or "unknown"
+            }
+
+            markdown_manager.write_markdown_with_frontmatter(
+                markdown_path,
+                frontmatter,
+                markdown_content
+            )
+
+            # Update topic reference
+            topic.markdown_file = f"knowledge/{markdown_filename}"
+            topic.commit_id = commit.commit_id
+            topic.entries = []  # Clear entries (markdown is source of truth)
+
+            # 8. Save context
+            self.pcm_core.save_context(context)
+
+            logger.info("Applied commit: %s", commit.commit_id)
+            logger.info("   Topic: %s", topic_name)
+            logger.info("   Markdown: %s", markdown_filename)
+            logger.info("   Signatures: %d", len(commit.signatures))
+
+            # 9. Notify callback (for reloading p2p_manager.local_context and broadcasting CONTEXT_UPDATED)
+            if self.on_commit_applied:
+                await self.on_commit_applied(commit)
+
+            # 10. Let service sign our own copy and broadcast COMMIT_SIGNED to peers
+            if self.on_commit_signed:
+                await self.on_commit_signed(commit)
+
+            # 11. Broadcast COMMIT_ACK so peers know we successfully applied the commit
+            if self.on_commit_ack:
+                await self.on_commit_ack(commit)
+
+            return True
+
+        except Exception as e:
+            logger.error("Error applying commit: %s", e, exc_info=True)
+            if self.on_commit_apply_failed:
+                await self.on_commit_apply_failed(commit, str(e))
+            return False
+
+    async def record_commit_signature(
+        self,
+        commit_id: str,
+        commit_hash: str,
+        signer_node_id: str,
+        signature_b64: str
+    ) -> bool:
+        """Record a peer's signature for an already-applied commit.
+
+        Verifies the signature, then updates the markdown frontmatter so the
+        file accumulates multi-party signatures over time.
+
+        Args:
+            commit_id: Commit the signature covers.
+            commit_hash: Hash the signature was made over (must match frontmatter).
+            signer_node_id: Node that produced the signature.
+            signature_b64: Base64-encoded RSA-PSS signature.
+
+        Returns:
+            True if signature was valid and stored, False otherwise.
+        """
+        from dpc_protocol.commit_integrity import CommitSigner
+        from dpc_protocol.markdown_manager import MarkdownKnowledgeManager
+
+        # Verify signature before touching the file.
+        # None = peer cert not cached (unverifiable); False = signature invalid (reject).
+        sig_result = CommitSigner.verify_signature(signer_node_id, commit_hash, signature_b64)
+        if sig_result is False:
+            logger.warning(
+                "Rejected invalid COMMIT_SIGNED from %s for commit %s",
+                signer_node_id, commit_id[:12]
+            )
+            return False
+        if sig_result is None:
+            logger.info(
+                "Storing unverified COMMIT_SIGNED from %s for commit %s (peer cert not cached)",
+                signer_node_id, commit_id[:12]
+            )
+
+        # Locate the markdown file (filename: {topic}_{commit_id}.md)
+        markdown_manager = MarkdownKnowledgeManager()
+        candidates = list(markdown_manager.knowledge_dir.glob(f"*_{commit_id}.md"))
+        if not candidates:
+            logger.debug("record_commit_signature: no markdown file found for commit %s", commit_id[:12])
+            return False
+
+        markdown_path = candidates[0]
+
+        try:
+            frontmatter, content = markdown_manager.parse_markdown_with_frontmatter(markdown_path)
+
+            # Confirm commit_hash matches what's in the file
+            stored_hash = frontmatter.get('commit_hash', '')
+            if stored_hash and stored_hash != commit_hash:
+                logger.warning(
+                    "record_commit_signature: commit_hash mismatch for %s (stored=%s, received=%s)",
+                    commit_id[:12], stored_hash[:12], commit_hash[:12]
+                )
+                return False
+
+            # Add signature (skip if already recorded)
+            signatures = frontmatter.get('signatures', {})
+            if signer_node_id in signatures:
+                return True  # already have it
+
+            signatures[signer_node_id] = signature_b64
+            frontmatter['signatures'] = signatures
+
+            markdown_manager.write_markdown_with_frontmatter(markdown_path, frontmatter, content)
+            logger.info(
+                "Recorded signature from %s for commit %s (%d total)",
+                signer_node_id, commit_id[:12], len(signatures)
+            )
+            return True
+
+        except Exception as e:
+            logger.error("record_commit_signature error for %s: %s", commit_id[:12], e, exc_info=True)
+            return False
+
+    def record_commit_ack(self, commit_id: str, ack_node_id: str, participants: list[str]) -> None:
+        """Track that a participant successfully applied a commit (Gap 3 observability).
+
+        Args:
+            commit_id: The commit that was applied.
+            ack_node_id: Node ID reporting success.
+            participants: Expected set of participating nodes (for completion check).
+        """
+        if commit_id not in self.commit_acks:
+            self.commit_acks[commit_id] = set()
+
+        self.commit_acks[commit_id].add(ack_node_id)
+        acked = self.commit_acks[commit_id]
+        expected = set(participants)
+
+        logger.info(
+            "COMMIT_ACK from %s for commit %s (%d/%d participants confirmed)",
+            ack_node_id[:20], commit_id[:12], len(acked), len(expected)
+        )
+
+        if expected and expected.issubset(acked):
+            logger.info(
+                "All %d participants confirmed commit %s — convergence complete",
+                len(expected), commit_id[:12]
+            )
+            # Prune old ack set to avoid unbounded memory growth
+            if len(self.commit_acks) > 200:
+                oldest = next(iter(self.commit_acks))
+                del self.commit_acks[oldest]
+
+    async def _handle_vote_deadline(self, proposal_id: str) -> None:
+        """Handle vote deadline timeout
+
+        Args:
+            proposal_id: Proposal to check
+        """
+        # Wait until deadline
+        if proposal_id not in self.sessions:
+            return
+
+        session = self.sessions[proposal_id]
+        if session.deadline:
+            now = datetime.now(timezone.utc)
+            if session.deadline > now:
+                wait_seconds = (session.deadline - now).total_seconds()
+                await asyncio.sleep(wait_seconds)
+
+        # Check if still voting
+        if proposal_id in self.sessions:
+            session = self.sessions[proposal_id]
+            if session.status == "voting":
+                # Timeout - finalize with current votes
+                session.status = "timeout"
+                await self._finalize_vote(session)
+
+    def get_session(self, proposal_id: str) -> VotingSession | None:
+        """Get voting session by proposal ID
+
+        Args:
+            proposal_id: Proposal ID
+
+        Returns:
+            VotingSession or None
+        """
+        return self.sessions.get(proposal_id)
+
+    def get_active_sessions(self) -> list[VotingSession]:
+        """Get all active voting sessions
+
+        Returns:
+            List of VotingSession objects
+        """
+        return [s for s in self.sessions.values() if s.status == "voting"]
+
+    def clear_old_sessions(self, max_age_hours: int = 24) -> int:
+        """Clear old completed sessions
+
+        Args:
+            max_age_hours: Max age in hours
+
+        Returns:
+            Number of sessions cleared
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+        to_remove = []
+
+        for pid, session in self.sessions.items():
+            if session.deadline and session.deadline < cutoff:
+                if session.status in ["approved", "rejected", "timeout", "revision_needed"]:
+                    to_remove.append(pid)
+
+        for pid in to_remove:
+            del self.sessions[pid]
+
+        return len(to_remove)
+
+    async def handle_proposal_message(self, sender_node_id: str, payload: dict[str, Any]) -> None:
+        """Handle PROPOSE_KNOWLEDGE_COMMIT message from peer
+
+        Args:
+            sender_node_id: Node ID of the proposer
+            payload: Proposal payload (dict format)
+        """
+        try:
+            # Reconstruct proposal from dict
+            proposal = KnowledgeCommitProposal.from_dict(payload)
+
+            # Create voting session
+            session = VotingSession(
+                proposal=proposal,
+                required_dissenter=proposal.required_dissenter,
+                deadline=datetime.fromisoformat(proposal.vote_deadline) if proposal.vote_deadline else None
+            )
+
+            self.sessions[proposal.proposal_id] = session
+
+            logger.info("Received knowledge commit proposal from %s", sender_node_id)
+            logger.info("  - Topic: %s", proposal.topic)
+            logger.info("  - Entries: %d", len(proposal.entries))
+            logger.info("  - Proposal ID: %s", proposal.proposal_id)
+
+            # Notify callback if registered
+            if self.on_proposal_received:
+                await self.on_proposal_received(proposal)
+
+        except Exception as e:
+            logger.error("Error handling proposal message from %s: %s", sender_node_id, e, exc_info=True)
+
+    async def handle_vote_message(self, sender_node_id: str, payload: dict[str, Any]) -> None:
+        """Handle VOTE_KNOWLEDGE_COMMIT message from peer
+
+        Args:
+            sender_node_id: Node ID of the voter
+            payload: Vote payload (dict format)
+        """
+        try:
+            # Reconstruct vote from dict
+            vote = CommitVote(
+                proposal_id=payload.get('proposal_id'),
+                voter_node_id=sender_node_id,
+                vote=payload.get('vote'),
+                comment=payload.get('comment'),
+                timestamp=payload.get('timestamp', datetime.now(timezone.utc).isoformat()),
+                is_required_dissent=payload.get('is_required_dissent', False)
+            )
+
+            # Process vote (receive_vote internally triggers on_vote_received callback)
+            await self.receive_vote(vote)
+
+            logger.info("Received vote from %s: %s", sender_node_id, vote.vote)
+
+        except Exception as e:
+            logger.error("Error handling vote message from %s: %s", sender_node_id, e, exc_info=True)
+
+
+# Example usage
+if __name__ == '__main__':
+    from dpc_protocol.pcm_core import KnowledgeEntry, KnowledgeSource
+
+    async def demo():
+        print("=== ConsensusManager Demo ===\n")
+
+        # Mock PCMCore
+        class MockPCMCore:
+            def load_context(self):
+                from dpc_protocol.pcm_core import PersonalContext, Profile
+                return PersonalContext(
+                    profile=Profile(name="Test", description="Test user")
+                )
+
+            def save_context(self, context):
+                print(f"   [PCMCore] Saved context version {context.version}")
+
+        # Mock broadcast function
+        async def mock_broadcast(message):
+            print(f"   [Broadcast] {message['command']}")
+
+        # Create manager
+        manager = ConsensusManager(
+            node_id="alice",
+            pcm_core=MockPCMCore(),
+            vote_timeout_minutes=5,
+            consensus_threshold=0.75
+        )
+
+        # Create proposal
+        entry = KnowledgeEntry(
+            content="Environmental storytelling is powerful",
+            tags=["game_design"],
+            confidence=0.90,
+            source=KnowledgeSource(type="ai_summary")
+        )
+
+        proposal = KnowledgeCommitProposal(
+            conversation_id="conv-demo",
+            topic="game_design",
+            summary="Add environmental storytelling principle",
+            entries=[entry],
+            participants=["alice", "bob", "charlie"],
+            avg_confidence=0.90
+        )
+
+        print("1. Creating proposal:")
+        print(f"   Topic: {proposal.topic}")
+        print(f"   Participants: {', '.join(proposal.participants)}")
+        print()
+
+        # Start voting
+        print("2. Starting voting session:")
+        session = await manager.propose_commit(proposal, mock_broadcast)
+        print(f"   Proposal ID: {proposal.proposal_id}")
+        print(f"   Required dissenter: {session.required_dissenter}")
+        print(f"   Deadline: {session.deadline}")
+        print()
+
+        # Cast votes
+        print("3. Casting votes:")
+
+        await manager.cast_vote(
+            proposal_id=proposal.proposal_id,
+            vote="approve",
+            comment="Looks good!",
+            broadcast_func=mock_broadcast
+        )
+        print("   [Alice] Voted: approve")
+
+        # Simulate bob's vote
+        bob_vote = CommitVote(
+            proposal_id=proposal.proposal_id,
+            voter_node_id="bob",
+            vote="approve",
+            comment="Agreed"
+        )
+        await manager.receive_vote(bob_vote)
+        print("   [Bob] Voted: approve")
+
+        # Simulate charlie's vote (required dissenter)
+        charlie_vote = CommitVote(
+            proposal_id=proposal.proposal_id,
+            voter_node_id="charlie",
+            vote="approve",
+            comment="Good, but we should document exceptions",
+            is_required_dissent=True
+        )
+        await manager.receive_vote(charlie_vote)
+        print("   [Charlie] Voted: approve (as required dissenter)")
+        print()
+
+        # Check result
+        print("4. Voting result:")
+        session = manager.get_session(proposal.proposal_id)
+        print(f"   Status: {session.status}")
+        print(f"   Votes: {len(session.votes)}/{len(proposal.participants)}")
+        print()
+
+        # Stats
+        print("5. Active sessions:")
+        active = manager.get_active_sessions()
+        print(f"   Count: {len(active)}")
+
+    asyncio.run(demo())
+    print("\n=== Demo Complete ===")

@@ -1,0 +1,35 @@
+{
+  "name": "order_tracking_flow",
+  "description": "Wait for delivery event, then notify customer",
+  "context": {
+    "order_id": null,
+    "customer_email": null
+  },
+  "steps": [
+    {
+      "id": "wait_for_delivery",
+      "type": "wait_event",
+      "wait_for_event": "order.delivered",
+      "event_filter": {"order_id": "${context.order_id}"},
+      "timeout_ms": 86400000,
+      "on_timeout": "notify_delay"
+    },
+    {
+      "id": "notify_delivered",
+      "type": "capability",
+      "capability_name": "notifications.send_email",
+      "arguments": {"template": "delivery_confirmed"},
+      "on_success": "done"
+    },
+    {
+      "id": "notify_delay",
+      "type": "capability",
+      "capability_name": "notifications.send_email",
+      "arguments": {"template": "delivery_delayed"}
+    },
+    {
+      "id": "done",
+      "type": "terminal"
+    }
+  ]
+}

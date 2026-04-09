@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/capability.json",
+  "title": "AICP Capability",
+  "description": "A capability is a meaningful action that can be discovered, executed, and governed.",
+  "type": "object",
+  "required": ["name", "kind"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique identifier (e.g., 'payments.transfer', 'orders.create')",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9._-]*$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what the capability does"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["query", "action", "workflow", "async_action", "batch_action"],
+      "description": "The type of capability determining its execution semantics"
+    },
+    "determinism_class": {
+      "type": "string",
+      "enum": ["deterministic", "bounded_nondeterministic", "observational", "heuristic"],
+      "default": "deterministic",
+      "description": "Output predictability class: deterministic (same input → same outcome), bounded_nondeterministic (varies within constraints), observational (reflects changing external state), heuristic (ranking or AI-assisted inference)"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Input field name used as idempotency key for safe retries (e.g., 'order_id', 'cart_id')"
+    },
+    "input_schema": {
+      "$ref": "#/$defs/inputSchema"
+    },
+    "output_schema": {
+      "$ref": "#/$defs/outputSchema"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Categorization tags for discovery"
+    },
+    "policy": {
+      "$ref": "#/$defs/policyRef",
+      "description": "Reference to a policy for this capability"
+    },
+    "render": {
+      "$ref": "#/$defs/renderSpec",
+      "description": "Hints for rendering capability results"
+    },
+    "continuation": {
+      "$ref": "#/$defs/continuationSpec",
+      "description": "Hints for continuing after execution"
+    },
+    "provider": {
+      "$ref": "#/$defs/providerInfo",
+      "description": "Information about the capability provider"
+    },
+    "dependency_capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Capabilities that must exist before this one can run"
+    },
+    "often_follows": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Capabilities that commonly follow this one"
+    },
+    "rollback_capability": {
+      "type": "string",
+      "description": "Capability that can be used to roll back this action"
+    },
+    "auth": {
+      "$ref": "#/$defs/authRequirement",
+      "description": "Authentication and session requirements for execution"
+    },
+    "output_validation_mode": {
+      "type": "string",
+      "enum": ["strict", "warn", "disabled"],
+      "description": "How output payloads are validated against output_schema"
+    },
+    "version": {
+      "type": "string",
+      "description": "Version of this capability definition"
+    },
+    "deprecated": {
+      "type": "boolean",
+      "default": false
+    },
+    "deprecation_message": {
+      "type": "string",
+      "description": "Message explaining deprecation"
+    }
+  },
+  "$defs": {
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "default": "object" },
+        "properties": {
+          "type": "object",
+          "additionalProperties": { "type": "object" }
+        },
+        "required": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "description": { "type": "string" }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "default": "object" },
+        "properties": {
+          "type": "object",
+          "additionalProperties": { "type": "object" }
+        },
+        "description": { "type": "string" }
+      }
+    },
+    "policyRef": {
+      "type": "object",
+      "required": ["policy_name"],
+      "properties": {
+        "policy_name": {
+          "type": "string",
+          "description": "Name of the policy to apply"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Parameters for the policy"
+        }
+      }
+    },
+    "renderSpec": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["text", "json", "table", "code", "image", "error", "progress", "confirmation"],
+          "default": "text"
+        },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fields to display"
+        },
+        "max_length": {
+          "type": "integer",
+          "description": "Maximum length for display"
+        },
+        "truncate": {
+          "type": "boolean",
+          "default": true
+        },
+        "syntax": {
+          "type": "string",
+          "description": "Syntax highlighting for code (e.g., 'python', 'json')"
+        },
+        "table_columns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Columns for table rendering"
+        }
+      }
+    },
+    "continuationSpec": {
+      "type": "object",
+      "properties": {
+        "can_continue": {
+          "type": "boolean",
+          "default": true
+        },
+        "next_capabilities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Suggested next capabilities"
+        },
+        "next_hint": {
+          "type": "string",
+          "description": "Hint for what to do next"
+        },
+        "poll_capability": {
+          "type": "string",
+          "description": "Capability to call when polling an async job"
+        },
+        "poll_after_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Suggested delay before polling again"
+        },
+        "poll_argument": {
+          "type": "string",
+          "description": "Response field to pass into the polling capability arguments"
+        }
+      }
+    },
+    "providerInfo": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "url": { "type": "string", "format": "uri" }
+      }
+    },
+    "authRequirement": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "type": "string" },
+        "requires_session": { "type": "boolean", "default": false },
+        "csrf_required": { "type": "boolean", "default": false },
+        "refreshable": { "type": "boolean", "default": false },
+        "required_session_provider": { "type": "string" },
+        "allowed_scopes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

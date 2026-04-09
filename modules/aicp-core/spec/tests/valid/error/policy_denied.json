@@ -1,0 +1,12 @@
+{
+  "code": "policy_denied",
+  "message": "Policy 'high_value_transactions' denied this action. Risk score exceeds threshold.",
+  "fix_hint": "Request human approval via POST /v1/approvals or reduce transaction amount below $1000.",
+  "details": {
+    "policy_name": "high_value_transactions",
+    "risk_score": 0.92,
+    "threshold": 0.8
+  },
+  "related": ["approval_required"],
+  "trace_id": "trace_b2c3d4e5"
+}

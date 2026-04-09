@@ -1,0 +1,8 @@
+{
+  "_comment": "Invalid version pattern (not semver)",
+  "name": "bad_version_flow",
+  "version": "not-a-version",
+  "steps": [
+    {"id": "step1", "capability_name": "test.action"}
+  ]
+}

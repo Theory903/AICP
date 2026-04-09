@@ -1,0 +1,17 @@
+{
+  "version": "0.1.0",
+  "capabilities": [
+    {
+      "name": "users.list",
+      "description": "List users",
+      "kind": "query"
+    },
+    {
+      "name": "users.create",
+      "description": "Create user",
+      "kind": "action"
+    }
+  ],
+  "policies": [],
+  "workflows": []
+}
