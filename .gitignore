@@ -1,50 +1,125 @@
-# Reference repos (studied but not part of AICP)
-ref/
-apps/openclaw/
-apps/openclaude-ref/
-apps/corsair/
+# =============================================================================
+# AICP - AI Capability Protocol
+# =============================================================================
+# This file is optimized for a public open-source repository.
+# For internal development, additional patterns may apply.
+# =============================================================================
 
-# Sensitive internal docs (agent guidance, implementation plans)
+# -----------------------------------------------------------------------------
+# Reference Repos (External - Never Commit)
+# -----------------------------------------------------------------------------
+# Cloned repos for study/reference only - not part of AICP
+ref/
+
+# -----------------------------------------------------------------------------
+# Sensitive Internal Files (Private Use Only)
+# -----------------------------------------------------------------------------
+.mammoth/
+.mammoth/skills/repo-integrator/
+.sisyphus/
+AGENTS.md
+ARCHITECTURE.md
+CHANGELOG.md
+TEST_PRODUCTION.md
+continue with all the works
+New Thread
+apps/
+
+# -----------------------------------------------------------------------------
+# Test & Development Artifacts
+# -----------------------------------------------------------------------------
+_test_target/
+test_files/
+
+# -----------------------------------------------------------------------------
+# Sensitive Internal Docs (For Internal Use Only)
+# -----------------------------------------------------------------------------
 docs/AGENT_SYSTEM_PROMPT.md
 docs/plans/
 
+# -----------------------------------------------------------------------------
 # Dependencies
+# -----------------------------------------------------------------------------
+# Node.js
 node_modules/
+*.tgz
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
-.env
-.venv
-venv/
+*.pyd
+.Python
+*.egg-info/
 dist/
 build/
-*.egg-info/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# IDE
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
+env/
+
+# -----------------------------------------------------------------------------
+# IDE & Editor
+# -----------------------------------------------------------------------------
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS
+*~
 .DS_Store
 Thumbs.db
 
-# Logs
+# -----------------------------------------------------------------------------
+# Logs & Temporary Files
+# -----------------------------------------------------------------------------
 *.log
 npm-debug.log*
+yarn-error.log
+lerna-debug.log*
+*.tmp
+*.temp
+session-ses_*.md
+debug_context.py
+_test_target/
 
-# Coverage
+# -----------------------------------------------------------------------------
+# Coverage & Test Reports
+# -----------------------------------------------------------------------------
 coverage/
 .coverage
 htmlcov/
+.tox/
+.nyc_output/
+coverage.xml
+*.cover
 
-# Build outputs
-*.tgz
+# -----------------------------------------------------------------------------
+# Build Outputs
+# -----------------------------------------------------------------------------
 *.whl
+dist/
+out/
+target/ (Rust)
+pkg/ (Rust)
 
-# Temporary files
-.tmp/
-session-ses_2bd1.md
-_test_target/
-debug_context.py
+# -----------------------------------------------------------------------------
+# Rust
+# -----------------------------------------------------------------------------
+**/target/
+Cargo.lock (optional - can be committed if using workspaces)
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+*.bak
+*.orig
+*.rej

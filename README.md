@@ -1,86 +1,251 @@
-# AICP — The Agentic Control Plane
+# AICP — AI Capability Protocol
 
-**Turn any software into a governed, auditable action surface for AI agents.**
+<div align="center">
+
+**The control plane for secure, governed AI agent execution.**
+
+Turn any software into a typed, policy-enforced, auditable action surface for AI agents.
 
 [![CI](https://github.com/Theory903/AICP/actions/workflows/ci.yml/badge.svg)](https://github.com/Theory903/AICP/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/github/v/tag/Theory903/AICP?label=version&sort=semver)](https://github.com/Theory903/AICP/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB)](https://www.python.org/)
 [![Rust](https://img.shields.io/badge/rust-1.75+-dea584)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-1224%20passing-brightgreen)](https://github.com/Theory903/AICP/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-1001%20passing-brightgreen)](https://github.com/Theory903/AICP/actions/workflows/ci.yml)
 [![Compliance](https://img.shields.io/badge/compliance-Level%205-green)](STATUS.md)
-[![Schemas](https://img.shields.io/badge/schemas-23-purple)](spec/schemas/)
 
-[Quick Start](#-quick-start) • [Install](#-install) • [Run](#-run) • [SDKs](#-sdks) • [Features](#-features) • [Docs](docs/)
+</div>
 
 ---
 
-## 🤔 What is AICP?
+## Table of Contents
 
-AICP is the **control plane for secure AI agent execution**. It gives you:
+- [What is AICP?](#what-is-aicp)
+- [Why AICP?](#why-aicp)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Core Concepts](#core-concepts)
+- [SDKs & Tools](#sdks--tools)
+- [Features](#features)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
-| Capability | What It Means |
-|------------|---------------|
-| **Typed Capabilities** | Every action has strict input/output schemas |
-| **Policy Engine** | Allow, deny, or ask before any execution |
-| **Approval Workflows** | Humans can approve/deny risky actions |
-| **Resumable Sessions** | Sessions survive restarts |
-| **Audit Trail** | Every action is logged and replayable |
+---
+
+## What is AICP?
+
+AICP (AI Capability Protocol) is the **control plane for secure AI agent execution**. It provides a governed layer between AI agents and your actual software, ensuring every action is:
+
+| Feature | Description |
+|---------|-------------|
+| **Typed** | Every capability has strict input/output schemas |
+| **Policy-Enforced** | Allow, deny, or ask before any execution |
+| **Approved** | Humans can approve/deny risky actions |
+| **Auditable** | Complete audit trail, every action logged & replayable |
+| **Resumable** | Sessions survive restarts |
 | **Multi-Agent** | Orchestrator → Specialist → Worker hierarchy |
-| **Workflows** | Sequential, parallel, event-driven, loops |
 
-**Mammoth** is the shell — a beautiful TUI for interacting with AICP.
+### The Problem AICP Solves
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ WITHOUT AICP                                                        │
+├─────────────────────────────────────────────────────────────────────┤
+│  AI Agent ───► Execute Anything ───► No Tracking                    │
+│                                                                     │
+│  • Unrestricted access to your systems                             │
+│  • No way to approve or deny risky actions                         │
+│  • Black box - you can't see what the agent did                    │
+│  • No accountability - who did what, when, why?                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ WITH AICP                                                           │
+├─────────────────────────────────────────────────────────────────────┤
+│  AI Agent ──► AICP Control Plane ──► Policy Check ──► Execute     │
+│                            │                                        │
+│                    ┌──────▼──────┐                                  │
+│                    │   DECISION  │                                  │
+│                    ├─────────────┤                                  │
+│                    │ ✓ ALLOW     │  (safe, proceed)                 │
+│                    │ ✗ DENY      │  (blocked)                       │
+│                    │ ⏳ ASK       │  (needs approval)               │
+│                    │ ⚡ LIMIT     │  (rate limited)                 │
+│                    └─────────────┘                                  │
+│                            │                                        │
+│                    ┌──────▼──────┐                                  │
+│                    │   AUDIT     │                                  │
+│                    │   Complete  │                                  │
+│                    │   Log       │                                  │
+│                    └─────────────┘                                  │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🚀 Quick Start
+## Why AICP?
 
-### One-Command Install
+AI agents are becoming capable of more actions, but most lack:
+
+1. **Governance** — Agents execute without policy checks
+2. **Approval Gates** — Risky actions run automatically  
+3. **Audit Trail** — Can't track what the agent did
+4. **Session Persistence** — Agents forget everything on restart
+5. **Typed Contracts** — Every tool has different input/output
+6. **Replayability** — Can't replay agent actions for debugging
+
+AICP adds the **missing governance layer** to any AI agent implementation.
+
+---
+
+## Architecture
+
+AICP follows a **11-plane architecture** for complete agentic control:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        AICP ARCHITECTURE                           │
+├─────────────────────────────────────────────────────────────────────┤
+│  Plane 0: Signal       - Event ingestion, routing                 │
+│  Plane 1: Perception   - DOM, screenshots, accessibility tree     │
+│  Plane 2: AI           - Planner, judge, memory, code intelligence│
+│  Plane 3: Capability   - Registry, schema, discovery              │
+│  Plane 4: Workflow     - Sequential, parallel, loops, subflows      │
+│  Plane 5: Governance   - Policy, trust tiers, risk scoring        │
+│  Plane 6: Execution    - Realtime, transactional, event-driven     │
+│  Plane 7: Multi-Agent  - Orchestrator, specialist, worker         │
+│  Plane 8: Federation   - CRDT, DID, cross-organization             │
+│  Plane 9: Supervision  - Approval queue, replay, human-in-loop     │
+│  Plane 10: Learning    - Skill mining, drift detection             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Project Structure
+
+```
+AICP/
+├── spec/                    # Protocol schemas (JSON)
+├── modules/
+│   ├── aicp-core/           # Domain models, execution, policies
+│   ├── aicp-runtime/        # Workflow engine, services
+│   ├── aicp-cli/            # Command-line interface
+│   ├── aicp-integrations/   # 36+ provider integrations
+│   ├── aicp-mcp/           # MCP server adapter
+│   └── aicp-extensions/    # Plugin system
+├── sdks/
+│   ├── python/              # Python SDK (aicp-sdk)
+│   └── typescript/         # TypeScript SDK (@aicp/core)
+├── adapters/
+│   ├── framework/           # FastAPI, Express, NestJS
+│   ├── protocol/            # MCP, OpenAPI
+│   └── agent/               # LangChain, LangGraph, CrewAI
+└── apps/
+    └── mammoth/             # Rust TUI shell
+```
+
+---
+
+## Quick Start
+
+### Installation
 
 ```bash
-# Clone and install everything
+# Clone the repository
 git clone https://github.com/Theory903/AICP.git
 cd AICP
 
-# Install Python packages (AICP control plane)
-pip install -e "packages/core[dev]" -e packages/runtime -e packages/cli
+# Install Python packages (control plane)
+pip install -e "modules/aicp-core[dev]" -e modules/aicp-runtime -e modules/aicp-cli
 
-# OR: Install just the CLI
+# OR install just the CLI
 pip install aicp-cli
 ```
 
 ### Run the Control Plane
 
 ```bash
-# Start the dev server
+# Start the development server
 aicp dev
 
 # In another terminal: execute a capability
 aicp run notes.create -i '{"title": "Hello", "body": "World"}'
 ```
 
-### Run Mammoth (The Shell)
+### Run Mammoth (Rust TUI Shell)
 
 ```bash
 cd apps/mammoth
 cargo build -p mammoth-cli
 ./target/debug/mammoth --help
 
-# Or run interactively
+# Run interactively
 ./target/debug/mammoth
 ```
 
 ---
 
-## 📦 What's Included
+## Core Concepts
 
-### AICP Control Plane (Python)
+### Capability
+
+A capability is a typed action an AI agent can execute:
+
+```yaml
+name: notes.create
+description: Create a new note
+kind: action
+input:
+  type: object
+  properties:
+    title: { type: string }
+    body: { type: string }
+  required: [title]
+output:
+  type: object
+  properties:
+    id: { type: string }
+    created_at: { type: string }
+tags: [notes, write, risk:low]
+```
+
+### Policy
+
+Policies govern what capabilities can execute:
+
+```yaml
+policies:
+  - name: protect-database
+    effect: ask
+    condition:
+      capability_tags: [database, write]
+      
+  - name: allow-readonly
+    effect: allow
+    condition:
+      capability_tags: [read, risk:low]
+```
+
+### Workflow
+
+Multi-step execution with state tracking:
+
+```yaml
+name: user-onboarding
+steps:
+  - capability: user.create
+  - capability: welcome-email.send
+  - capability: dashboard.setup
+```
+
+---
+
+## SDKs & Tools
+
+### Python SDK
 
 ```python
 from aicp import AicpClient, CapabilityRegistry
-
-# Start the server
-# aicp dev
 
 client = AicpClient("http://localhost:8000")
 
@@ -91,158 +256,147 @@ caps = await client.list_capabilities()
 result = await client.execute("notes.create", {"title": "Hello"})
 ```
 
-### Mammoth Shell (Rust)
+### TypeScript SDK
 
-The TUI shell for operators and agents:
+```typescript
+import { AicpClient } from "@aicp/client";
 
-```bash
-mammoth                    # Interactive mode
-mammoth prompt "summarize this file"
-mammoth --model claude "review my code"
+const client = new AicpClient({ baseUrl: "http://localhost:8000" });
+
+const caps = await client.listCapabilities();
+const result = await client.execute("notes.create", { title: "Hello" });
 ```
 
-### SDKs
-
-| SDK | Status | Install |
-|-----|--------|---------|
-| **Python** | ✅ Full | `pip install aicp-sdk` |
-| **TypeScript** | ✅ Core + Runtime + Client | `@aicp/core`, `@aicp/runtime`, `@aicp/client` |
-
----
-
-## 🔌 Integrations
-
-### Framework Adapters
-- **FastAPI** — `mount_aicp(app)` adds all routes
-- **Express** — `aicp_connect_express`
-- **NestJS** — `aicp_connect_nestjs`
-
-### Protocol Adapters
-- **MCP Server** — Exposes AICP to MCP clients
-- **MCP Adapter** — Consumes external MCP tools
-- **OpenAPI** — Import from OpenAPI specs
-
-### Agent Frameworks
-- LangChain, LangGraph, CrewAI adapters
-
----
-
-## 🛠️ Common Commands
+### CLI Commands
 
 ```bash
-# Development
-aicp dev                    # Start dev server
-aicp scan openapi ./api.json # Import capabilities
-aicp preview <capability>   # Show capability schema
-
-# Execution
-aicp run <capability> -i 'JSON'
-aicp run <capability> --yes  # Auto-approve
-
-# Governance
-aicp protect <capability>    # Require approval
-aicp safe <namespace>       # Mark as safe
-aicp deny <capability>      # Block entirely
-aicp limit <namespace> --rpm 60  # Rate limit
-
-# Approvals
-aicp appr ls                # List pending
-aicp appr ok <id>           # Approve
-aicp appr no <id> --reason "..." # Deny
-
-# Testing
-pytest packages/core/tests/ -v
-pytest packages/runtime/tests/ -v
+aicp dev              # Start dev server
+aicp run <cap>       # Execute a capability
+aicp ls              # List capabilities
+aicp scan            # Scan for capabilities
+aicp protect <cap>   # Require approval
+aicp appr ls         # List pending approvals
+aicp appr ok <id>   # Approve request
 ```
 
 ---
 
-## 📊 Current State
+## Features
 
-| Metric | Value |
-|--------|-------|
-| **Version** | 0.9.10 |
-| **Python Tests** | 1038 |
-| **Rust Tests** | 186 |
-| **Compliance Level** | L5 (Full Orchestration) |
-| **JSON Schemas** | 23 |
-| **CLI Commands** | 28 |
+### ✅ Completed Features (v0.9.10)
 
-### Feature Matrix
-
-| Area | Status |
-|------|--------|
+| Feature | Status |
+|---------|--------|
 | Capability Registry | ✅ Complete |
-| Policy Engine | ✅ Complete |
-| Workflow Engine | ✅ Complete |
+| Policy Engine (Allow/Deny/Ask/Limit) | ✅ Complete |
+| Workflow Engine (Sequential/Parallel/Loops) | ✅ Complete |
 | Approval Lifecycle | ✅ Complete |
-| Multi-Agent | ✅ Complete |
-| Federation | ✅ Complete |
-| Learning System | ✅ Complete |
+| Session Management (Resumable) | ✅ Complete |
+| Audit Trail | ✅ Complete |
+| Multi-Agent Hierarchy | ✅ Complete |
+| Federation (CRDT, DID) | ✅ Complete |
+| Learning System (Skill Mining) | ✅ Complete |
 | Plugin System | ✅ Complete |
-| Multi-Channel | ✅ Complete |
+| Multi-Channel Support | ✅ Complete |
 | Cost Tracking | ✅ Complete |
 
----
+### Protocol Schemas (23)
 
-## 🏗️ Architecture
-
-```
-AICP/
-├── spec/                    # Protocol schemas (source of truth)
-├── packages/
-│   ├── core/               # Domain models, validation
-│   ├── runtime/            # Execution engine, services
-│   └── cli/                 # 28 CLI commands
-├── adapters/
-│   ├── framework/           # FastAPI, Express, NestJS
-│   ├── protocol/            # MCP, OpenAPI
-│   └── agent/               # LangChain, LangGraph, CrewAI
-├── sdks/
-│   ├── python/              # aicp-sdk
-│   └── typescript/           # @aicp/core, runtime, client
-└── apps/
-    └── mammoth/              # Rust TUI shell
-```
+- `capability.schema.json` — Action, query, workflow, async, batch
+- `workflow.schema.json` — Sequential, parallel, fork/join, loops
+- `policy.schema.json` — Allow/deny/ask/limit, trust tiers
+- `execution-result.schema.json` — Canonical response envelope
+- `approval-request.schema.json` — Risk assessment
+- `session.schema.json` — Resumable sessions
+- And 17 more...
 
 ---
 
-## 📚 Documentation
+## Development
 
-- [Quick Start Guide](docs/guides/quickstart.md)
-- [Architecture](ARCHITECTURE.md)
-- [Status](STATUS.md)
-- [Roadmap](ROADMAP.md)
-- [API Reference](docs/reference/)
-
----
-
-## 🤝 Contributing
+### Running Tests
 
 ```bash
-# Development setup
-git clone https://github.com/Theory903/AICP.git
-cd AICP
-pip install -e "packages/core[dev]" -e packages/runtime -e packages/cli
+# Python tests
+pytest modules/aicp-core/tests/ -v
+pytest modules/aicp-runtime/tests/ -v
+pytest modules/aicp-cli/tests/ -v
 
-# Run tests
-pytest packages/ -v
+# Rust tests
+cd apps/mammoth && cargo test
 
-# Lint
+# TypeScript tests
+cd sdks/typescript/packages/core && npm test
+```
+
+### Linting
+
+```bash
+# Python (ruff)
 ruff check . && ruff format --check .
+
+# TypeScript
+cd sdks/typescript && npm run lint
+```
+
+### Building
+
+```bash
+# Python packages
+pip install -e "modules/aicp-core[dev]" -e modules/aicp-runtime -e modules/aicp-cli
+
+# Rust (Mammoth)
+cd apps/mammoth && cargo build
+
+# TypeScript SDKs
+cd sdks/typescript/packages/core && npm run build
 ```
 
 ---
 
-## 📄 License
+## Contributing
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details.
+
+```bash
+# Fork and clone
+git clone https://github.com/Theory903/AICP.git
+cd AICP
+
+# Create a feature branch
+git checkout -b feature/amazing-feature
+
+# Make your changes and test
+pytest modules/ -v
+
+# Commit and push
+git commit -m "Add amazing feature"
+git push origin feature/amazing-feature
+
+# Open a Pull Request
+```
+
+---
+
+## License
+
+Licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
+
+---
+
+## Resources
+
+- [Documentation](docs/)
+- [API Reference](docs/reference/)
+- [Architecture Details](ARCHITECTURE.md)
+- [Current Status](STATUS.md)
+- [Roadmap](ROADMAP.md)
 
 ---
 
 <div align="center">
 
-**The protocol layer for the agentic web.**
+**The missing governance layer for AI agents.**
 
 [GitHub](https://github.com/Theory903/AICP) • [Issues](https://github.com/Theory903/AICP/issues) • [Discussions](https://github.com/Theory903/AICP/discussions)
 
