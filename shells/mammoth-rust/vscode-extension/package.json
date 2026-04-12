@@ -1,0 +1,89 @@
+{
+  "name": "mammoth-vscode",
+  "displayName": "Mammoth - AI Control Plane",
+  "description": "AICP-powered AI assistant with capability discovery, workflow execution, and approval handling",
+  "version": "0.1.0",
+  "publisher": "aicp",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["AI", "Developer Tools"],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:python",
+    "onLanguage:rust",
+    "onLanguage:go"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "mammoth.start",
+        "title": "Mammoth: Start Session",
+        "description": "Start a new Mammoth AI session"
+      },
+      {
+        "command": "mammoth.prompt",
+        "title": "Mammoth: Send Prompt",
+        "description": "Send a prompt to Mammoth"
+      },
+      {
+        "command": "mammoth.capabilities",
+        "title": "Mammoth: List Capabilities",
+        "description": "List available AICP capabilities"
+      },
+      {
+        "command": "mammoth.approvals",
+        "title": "Mammoth: Show Approvals",
+        "description": "Show pending approval requests"
+      },
+      {
+        "command": "mammoth.workflows",
+        "title": "Mammoth: List Workflows",
+        "description": "List available workflows"
+      }
+    ],
+    "configuration": {
+      "title": "Mammoth",
+      "properties": {
+        "mammoth.aicpUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "AICP server URL"
+        },
+        "mammoth.defaultModel": {
+          "type": "string",
+          "default": "gpt-4",
+          "description": "Default model to use"
+        },
+        "mammoth.autoApprove": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically approve low-risk actions"
+        }
+      }
+    },
+    "languageModels": [
+      {
+        "id": "mammoth",
+        "name": "Mammoth (AICP)",
+        "vendor": "aicp",
+        "version": "1.0"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsc -p ./",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,127 @@
+# Employee Management Capabilities
+
+capabilities:
+  # READ OPERATIONS - Always allowed
+  - name: employee.list
+    description: List all employees
+    kind: query
+    provider:
+      name: employee-db
+      type: database
+    tags:
+      - employee
+      - read
+      - low-risk
+    input:
+      type: object
+      properties:
+        department:
+          type: string
+        limit:
+          type: integer
+          default: 50
+    output:
+      type: array
+      items:
+        type: object
+
+  - name: employee.read
+    description: Get single employee by ID
+    kind: query
+    provider:
+      name: employee-db
+      type: database
+    tags:
+      - employee
+      - read
+      - low-risk
+    input:
+      type: object
+      required:
+        - employee_id
+      properties:
+        employee_id:
+          type: string
+
+  - name: employee.search
+    description: Search employees by name, email, or department
+    kind: query
+    provider:
+      name: employee-db
+      type: database
+    tags:
+      - employee
+      - read
+      - search
+
+  # WRITE OPERATIONS - Require approval
+  - name: employee.create
+    description: Create new employee record
+    kind: action
+    provider:
+      name: employee-db
+      type: database
+    tags:
+      - employee
+      - write
+      - medium-risk
+    input:
+      type: object
+      required:
+        - name
+        - email
+        - department
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        department:
+          type: string
+        role:
+          type: string
+          default: employee
+
+  - name: employee.update
+    description: Update employee record
+    kind: action
+    provider:
+      name: employee-db
+      type: database
+    tags:
+      - employee
+      - write
+      - medium-risk
+
+  - name: employee.delete
+    description: Delete employee record - HIGH RISK
+    kind: action
+    provider:
+      name: employee-db
+      type: database
+    tags:
+      - employee
+      - write
+      - high-risk
+
+  # NOTIFICATIONS
+  - name: notification.send
+    description: Send email notification
+    kind: action
+    provider:
+      name: email-service
+      type: http
+    tags:
+      - notification
+      - email
+
+  # AUDIT
+  - name: audit.log
+    description: Get audit logs
+    kind: query
+    provider:
+      name: audit-service
+      type: internal
+    tags:
+      - audit
+      - admin

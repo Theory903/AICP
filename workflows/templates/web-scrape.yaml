@@ -1,0 +1,37 @@
+name: Web Scraper
+description: Scrape data from website and save to CSV
+version: 1.0
+
+nodes:
+  - id: fetch_page
+    capability: http.get
+    params:
+      url: "{{ target_url }}"
+      
+  - id: parse_html
+    capability: html.parse
+    params:
+      html: "{{ fetch_page.body }}"
+      selector: ".product-item"
+      
+  - id: extract_data
+    capability: transform.map
+    params:
+      items: "{{ parse_html.results }}"
+      mapping:
+        name: ".title"
+        price: ".price"
+        
+  - id: save_to_csv
+    capability: filesystem.write_csv
+    params:
+      data: "{{ extract_data.mapped }}"
+      path: "output.csv"
+
+edges:
+  - from: fetch_page
+    to: parse_html
+  - from: parse_html
+    to: extract_data
+  - from: extract_data
+    to: save_to_csv

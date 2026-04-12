@@ -1,6 +1,12 @@
 import { Capability, ExecutionResult, PolicyResult } from "@aicp/core";
 import { z } from "zod";
 
+interface RequestOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+}
+
 const ExecuteInputSchema = z.object({
   capability: z.string(),
   arguments: z.record(z.unknown()).optional(),
@@ -24,7 +30,7 @@ export class AicpRuntime {
     this.apiKey = opts.apiKey;
   }
 
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),

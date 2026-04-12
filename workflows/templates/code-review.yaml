@@ -1,0 +1,29 @@
+name: Code Review
+description: Review a PR and post findings
+version: 1.0
+
+nodes:
+  - id: get_pr_diff
+    capability: github.get_pr_diff
+    params:
+      repo: "{{ repo }}"
+      pr: "{{ pr_number }}"
+      
+  - id: analyze_code
+    capability: ai.analyze
+    params:
+      content: "{{ get_pr_diff.diff }}"
+      prompt: "Review this code for bugs, security issues, and best practices"
+      
+  - id: post_comment
+    capability: github.post_comment
+    params:
+      repo: "{{ repo }}"
+      pr: "{{ pr_number }}"
+      body: "{{ analyze_code.findings }}"
+
+edges:
+  - from: get_pr_diff
+    to: analyze_code
+  - from: analyze_code
+    to: post_comment

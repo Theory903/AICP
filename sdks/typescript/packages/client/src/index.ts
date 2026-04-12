@@ -5,7 +5,7 @@ import {
   WorkflowState,
   ApprovalRequest,
   ApprovalDecision,
-  Error,
+  AicpError,
 } from "@aicp/core";
 import { AicpRuntime } from "@aicp/runtime";
 
@@ -20,7 +20,10 @@ export class AicpClient {
   private readonly timeout: number;
 
   constructor(opts: ClientOptions) {
-    this.runtime = new AicpRuntime({ baseUrl: opts.baseUrl, apiKey: opts.apiKey });
+    this.runtime = new AicpRuntime({
+      baseUrl: opts.baseUrl,
+      apiKey: opts.apiKey,
+    });
     this.timeout = opts.timeout ?? 30000;
   }
 
@@ -29,9 +32,9 @@ export class AicpClient {
     capabilities: Capability[];
     policies: Policy[];
   }> {
-    return this.runtime.execute({ capability: "discovery.discover" } as any).then(
-      (r) => r.data as any
-    );
+    return this.runtime
+      .execute({ capability: "discovery.discover" } as unknown)
+      .then((r) => r.data as unknown);
   }
 
   async listCapabilities(): Promise<Capability[]> {
@@ -42,14 +45,19 @@ export class AicpClient {
     return this.runtime.getCapability(name);
   }
 
-  async execute(capability: string, args?: Record<string, unknown>): Promise<ExecutionResult> {
+  async execute(
+    capability: string,
+    args?: Record<string, unknown>,
+  ): Promise<ExecutionResult> {
     return this.runtime.execute({ capability, arguments: args });
   }
 
   async listPolicies(): Promise<Policy[]> {
     return this.runtime
-      .execute({ capability: "policy.list" } as any)
-      .then((r) => (r.data as any).policies ?? []);
+      .execute({ capability: "policy.list" } as unknown)
+      .then(
+        (r) => (r.data as unknown as Record<string, Policy[]>).policies ?? [],
+      );
   }
 
   async getPolicy(name: string): Promise<Policy | null> {
@@ -59,20 +67,30 @@ export class AicpClient {
 
   async listWorkflows(): Promise<WorkflowState[]> {
     return this.runtime
-      .execute({ capability: "workflow.list" } as any)
-      .then((r) => (r.data as any).workflows ?? []);
+      .execute({ capability: "workflow.list" } as unknown)
+      .then(
+        (r) =>
+          (r.data as unknown as Record<string, WorkflowState[]>).workflows ??
+          [],
+      );
   }
 
   async getWorkflow(id: string): Promise<WorkflowState | null> {
     return this.runtime
-      .execute({ capability: "workflow.get", arguments: { workflow_id: id } } as any)
-      .then((r) => r.data as any);
+      .execute({
+        capability: "workflow.get",
+        arguments: { workflow_id: id },
+      } as unknown)
+      .then((r) => r.data as unknown);
   }
 
   async createWorkflow(definition: unknown): Promise<WorkflowState> {
     return this.runtime
-      .execute({ capability: "workflow.create", arguments: { definition } } as any)
-      .then((r) => r.data as any);
+      .execute({
+        capability: "workflow.create",
+        arguments: { definition },
+      } as unknown)
+      .then((r) => r.data as unknown);
   }
 
   async resumeWorkflow(id: string, input?: unknown): Promise<ExecutionResult> {
@@ -84,20 +102,34 @@ export class AicpClient {
 
   async listApprovals(): Promise<ApprovalRequest[]> {
     return this.runtime
-      .execute({ capability: "approval.list" } as any)
-      .then((r) => (r.data as any).approvals ?? []);
+      .execute({ capability: "approval.list" } as unknown)
+      .then(
+        (r) =>
+          (r.data as unknown as Record<string, ApprovalRequest[]>).approvals ??
+          [],
+      );
   }
 
   async getApproval(id: string): Promise<ApprovalRequest | null> {
     return this.runtime
-      .execute({ capability: "approval.get", arguments: { approval_id: id } } as any)
-      .then((r) => r.data as any);
+      .execute({
+        capability: "approval.get",
+        arguments: { approval_id: id },
+      } as unknown)
+      .then((r) => r.data as unknown);
   }
 
-  async decideApproval(id: string, decision: ApprovalDecision): Promise<ExecutionResult> {
+  async decideApproval(
+    id: string,
+    decision: ApprovalDecision,
+  ): Promise<ExecutionResult> {
     return this.runtime.execute({
       capability: "approval.decide",
-      arguments: { approval_id: id, decision: decision.decision, reason: decision.reason },
+      arguments: {
+        approval_id: id,
+        decision: decision.decision,
+        reason: decision.reason,
+      },
     });
   }
 
@@ -111,9 +143,17 @@ export class AicpClient {
 
   async health(): Promise<{ status: string; version: string }> {
     return this.runtime
-      .execute({ capability: "system.health" } as any)
-      .then((r) => r.data as any);
+      .execute({ capability: "system.health" } as unknown)
+      .then((r) => r.data as unknown);
   }
 }
 
-export { Capability, ExecutionResult, Policy, WorkflowState, ApprovalRequest, ApprovalDecision, Error };
+export type {
+  Capability,
+  ExecutionResult,
+  Policy,
+  WorkflowState,
+  ApprovalRequest,
+  ApprovalDecision,
+  AicpError,
+};

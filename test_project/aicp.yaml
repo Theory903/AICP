@@ -1,0 +1,52 @@
+# AICP Project Configuration
+# Real-world test: Employee Management System
+
+version: "1.0"
+name: employee-management-system
+description: Governed AI system for employee management
+
+# Policy Configuration
+policies:
+  # Read operations - always allowed
+  - name: read-allowed
+    description: All read operations are allowed
+    effect: ALLOW
+    subject:
+      capability_pattern: "employee.read*"
+    priority: 10
+
+  # Write operations - require approval
+  - name: write-requires-approval
+    description: All write operations require approval
+    effect: ASK
+    subject:
+      capability_pattern: "employee.*"
+    condition:
+      require_confirmation: true
+    priority: 100
+
+  # High risk operations - always denied without explicit approval
+  - name: delete-denied
+    description: Delete operations are high risk
+    effect: DENY
+    subject:
+      capability_pattern: "employee.delete"
+    priority: 200
+
+# Rate limiting
+rate_limits:
+  employee.search:
+    rpm: 60
+    rph: 1000
+  employee.create:
+    rpm: 10
+    rph: 100
+  employee.read:
+    rpm: 120
+    rph: 5000
+
+# Approval settings
+approvals:
+  auto_expire_minutes: 60
+  reminder_minutes: 15
+  max_pending: 10

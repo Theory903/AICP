@@ -1,0 +1,31 @@
+name: Send Notification
+description: Send notification to multiple channels
+version: 1.0
+
+nodes:
+  - id: format_message
+    capability: transform.template
+    params:
+      template: "Build {{ status }}: {{ message }}"
+      data:
+        status: "{{ build_status }}"
+        message: "{{ build_message }}"
+        
+  - id: send_slack
+    capability: slack.send_message
+    params:
+      channel: "#builds"
+      text: "{{ format_message.result }}"
+      
+  - id: send_email
+    capability: gmail.send
+    params:
+      to: "{{ recipients }}"
+      subject: "Build {{ status }}"
+      body: "{{ format_message.result }}"
+
+edges:
+  - from: format_message
+    to: send_slack
+  - from: format_message
+    to: send_email

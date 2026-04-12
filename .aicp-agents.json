@@ -1,0 +1,60 @@
+{
+  "agents": {
+    "aicp/hermes-agent": {
+      "repository": "NousResearch/hermes-agent",
+      "integrated_at": "2026-04-07T23:06:55.623682",
+      "language": "python",
+      "provider": "ollama",
+      "agent_md": "/Users/abhishekjha/CODE/AICP/agents/aicp_hermes-agent.md"
+    },
+    "aicp/bootstrap": {
+      "repository": "twbs/bootstrap",
+      "integrated_at": "2026-04-07T23:31:18.499607",
+      "language": "typescript",
+      "provider": "ollama",
+      "agent_md": "/Users/abhishekjha/CODE/AICP/agents/aicp_bootstrap.md"
+    },
+    "aicp/linux": {
+      "repository": "torvalds/linux",
+      "integrated_at": "2026-04-07T23:33:29.339268",
+      "language": "cpp",
+      "provider": "ollama",
+      "agent_md": "/Users/abhishekjha/CODE/AICP/agents/aicp_linux.md"
+    },
+    "aicp/go": {
+      "repository": "golang/go",
+      "integrated_at": "2026-04-07T23:33:46.161272",
+      "language": "unknown",
+      "provider": "ollama",
+      "agent_md": "/Users/abhishekjha/CODE/AICP/agents/aicp_go.md"
+    },
+    "aicp/rust": {
+      "repository": "rust-lang/rust",
+      "integrated_at": "2026-04-07T23:34:21.636747",
+      "language": "typescript",
+      "provider": "ollama",
+      "agent_md": "/Users/abhishekjha/CODE/AICP/agents/aicp_rust.md"
+    },
+    "aicp/react": {
+      "repository": "facebook/react",
+      "integrated_at": "2026-04-07T23:34:27.860255",
+      "language": "typescript",
+      "provider": "ollama",
+      "agent_md": "/Users/abhishekjha/CODE/AICP/agents/aicp_react.md"
+    },
+    "aicp/vscode": {
+      "repository": "microsoft/vscode",
+      "integrated_at": "2026-04-07T23:35:56.921794",
+      "language": "typescript",
+      "provider": "ollama",
+      "agent_md": "/Users/abhishekjha/CODE/AICP/agents/aicp_vscode.md"
+    },
+    "aicp/rails": {
+      "repository": "rails/rails",
+      "integrated_at": "2026-04-07T23:36:01.533150",
+      "language": "typescript",
+      "provider": "ollama",
+      "agent_md": "/Users/abhishekjha/CODE/AICP/agents/aicp_rails.md"
+    }
+  }
+}

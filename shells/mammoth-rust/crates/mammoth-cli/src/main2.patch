@@ -1,0 +1,8 @@
+--- crates/mammoth-cli/src/main.rs
++++ crates/mammoth-cli/src/main.rs
+@@ -3661,6 +3661,7 @@
+                 .map_err(|error| RuntimeError::new(error.to_string()))?
+             {
++                eprintln!("Event: {:?}", event);
+                 match event {
+                     ApiStreamEvent::MessageStart(start) => {

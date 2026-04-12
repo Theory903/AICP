@@ -32,3 +32,6 @@ export interface PolicyDecision {
   policy_name?: string;
   metadata?: Record<string, unknown>;
 }
+
+// PolicyResult is returned from policy evaluation (alias for PolicyDecision)
+export type PolicyResult = PolicyDecision;

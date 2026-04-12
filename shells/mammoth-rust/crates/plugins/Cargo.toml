@@ -1,0 +1,21 @@
+[package]
+name = "plugins"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json.workspace = true
+ed25519-dalek = { version = "2", features = ["std"] }
+mammoth-runtime = { path = "../runtime" }
+ratatui = "0.29"
+crossterm = "0.28"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+
+[dev-dependencies]
+mockito = "1"
+
+[lints]
+workspace = true

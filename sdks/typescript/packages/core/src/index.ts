@@ -3,6 +3,7 @@ export * from "./policy";
 export * from "./execution-result";
 export * from "./error";
 export * from "./workflow";
+export * from "./approval";
 
 export interface DiscoveryResponse {
   version: string;
